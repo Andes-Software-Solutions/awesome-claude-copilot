@@ -1,71 +1,98 @@
 #!/usr/bin/env node
-// Cross-harness audit for this repo's two AI-assistant trees.
+// Structural audit for the andes plugin marketplace.
 //
-// Verifies that `.claude/` (Claude Code) and `.github/` (GitHub Copilot) still ship the
-// same standards: mirrored skills, rule/instruction twins, agent twins with the agreed
-// model mapping, registry listings, and a few cost-hygiene lints.
+// Every plugin under `plugins/` serves Claude Code and GitHub Copilot from one directory:
+// shared `skills/`, per-harness manifests, and per-harness agent folders. This script
+// verifies that those pieces still line up, that agents follow the naming/review/MCP
+// contracts, that the shared AGENTS.md block matches the template `andes-init` installs,
+// and that the .NET testing policy has not regressed.
 //
-//   node scripts/repo-audit.mjs                 human-readable report
-//   node scripts/repo-audit.mjs --json          machine-readable report
-//   node scripts/repo-audit.mjs --strict        warnings also fail (exit 10)
-//   node scripts/repo-audit.mjs --check=a,b     run a subset of checks
+//   node scripts/repo-audit.mjs                     human-readable report
+//   node scripts/repo-audit.mjs --json              machine-readable report
+//   node scripts/repo-audit.mjs --strict            warnings also fail (exit 10)
+//   node scripts/repo-audit.mjs --check=a,b         run a subset of checks
+//   node scripts/repo-audit.mjs --base=origin/main  also require a version bump for every
+//                                                   plugin whose files changed since <base>
 //
-// Exit codes are the contract that /repo-audit branches on:
+// Exit codes are the contract that /repo-audit and CI branch on:
 //   0  clean (warnings allowed)     10  findings     1  error (the script itself failed)
 // Keeping 1 distinct from 10 is what stops a crashed run from being read as "drift".
 //
-// Line endings are deliberately tolerated: git's autocrlf means working trees on Windows
-// legitimately hold CRLF where the twin holds LF (today: 7 files in ngrx-signal-store).
-// Every comparison therefore normalizes EOL first; an EOL-only difference is not a finding.
+// Line endings are normalized before every comparison (Windows checkouts hold CRLF).
 // The script never writes files — detection is deterministic here, judgment is the model's.
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { dirname, join, relative } from 'node:path';
+import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-// Exit 1 on any script failure so a crashed run is never read as "clean" or "drift".
 process.on('uncaughtException', (err) => {
   console.error(`Audit failed: ${err.message}`);
   process.exit(1);
 });
 
 const CONFIG = {
-  // Word budgets for the always-loaded files (~15% headroom over their current size).
-  budgets: { '.claude/CLAUDE.md': 1400, '.github/copilot-instructions.md': 1100 },
-  // Globs broad enough to tax context (Claude) and billed input tokens (Copilot) on
-  // files the rule has nothing to say about.
-  broadGlobs: ['**', '**/*', '**/*.json'],
-  // Agents that exist only on the Copilot side by design — Claude Code's main session
-  // plays these roles, so no `.claude/agents/` twin is expected.
+  pluginsDir: 'plugins',
+  namePattern: /^andes-[a-z0-9]+(-[a-z0-9]+)*$/,
+  marketplace: '.claude-plugin/marketplace.json',
+  // The template andes-init writes into consumer repos; the root AGENTS.md must embed it verbatim.
+  agentsTemplate: 'plugins/andes-core/skills/andes-init/assets/agents-block.md',
+  agentsBlockBudget: 700,
+  skillDescriptionBudget: 600,
+  // Folders whose defaults either harness would auto-scan; agents live in claude-agents/ and
+  // copilot-agents/ so neither harness loads the other's files.
+  forbiddenPluginDirs: ['agents', 'commands', 'hooks'],
+  // Claude Code's main session implements code, so these roles exist only for Copilot.
   copilotOnlyAgents: [
-    'planner-expert', 'csharp-expert', 'angular-expert', 'full-stack-expert',
-    'csharp-dotnet-janitor', 'csharp-mcp-expert',
+    'andes-planner-expert', 'andes-full-stack-expert', 'andes-csharp-expert',
+    'andes-angular-expert', 'andes-csharp-dotnet-janitor',
   ],
-  // Default model mapping between a Claude agent's `model:` and its Copilot twin's.
+  // Copilot agents that implement and therefore carry the "## Review loop" section of AGENTS.md
+  // verbatim (Copilot subagents do not receive AGENTS.md).
+  loopAgents: [
+    'andes-csharp-expert', 'andes-angular-expert', 'andes-csharp-dotnet-janitor', 'andes-full-stack-expert',
+  ],
+  // Reviewers find defects, so they keep the deepest effort; everything else runs at high.
+  effort: { reviewer: 'xhigh', other: 'high' },
   modelParity: {
     sonnet: 'Claude Sonnet 5 (copilot)',
     haiku: 'Claude Haiku 4.5 (copilot)',
     opus: 'Claude Opus 4.6 (copilot)',
     fable: 'Claude Fable 5 (copilot)',
   },
-  // Documented per-harness cost overrides (README "Conventions for contributors").
-  // An override must state the Claude model it was recorded against so it goes stale
-  // loudly instead of silently excusing a future model change.
+  // Documented per-harness cost overrides. Each states the Claude model it was recorded
+  // against so it goes stale loudly instead of silently excusing a future model change.
   modelParityOverrides: {
-    'github-actions-reviewer': {
+    'andes-github-actions-reviewer': {
       claude: 'opus',
       copilot: 'Claude Sonnet 5 (copilot)',
       reason: 'deliberate: deepest review tier on Claude; Opus pricing not justified on Copilot AI Credits',
     },
-    'se-technical-writer': {
+    'andes-se-technical-writer': {
       claude: 'sonnet',
       copilot: 'Claude Haiku 4.5 (copilot)',
-      reason: 'template-driven docs; ~2x cheaper on AI Credits; Copilot has no effort key, so the Claude-side "Haiku ignores effort" concern does not apply on this harness',
+      reason: 'template-driven docs; ~2x cheaper on AI Credits; Copilot has no effort key',
     },
   },
+  copilotBuiltinAgents: ['agent', 'Explore', 'Plan', 'ask'],
+  // Only these MCP servers may run without a version pin: npx resolves the consumer's
+  // project-local Angular CLI first, so the MCP tool set matches their Angular version.
+  unpinnedMcpServers: ['angular-cli'],
+  requiredMcpArgs: { 'angular-cli': ['--read-only'], terraform: ['--toolsets=registry'] },
+  // Exposed by the Angular CLI MCP server but never granted to an agent.
+  forbiddenMcpTools: ['ai_tutor'],
+  // Skills whose bytes are pinned to an upstream source and must not be edited here.
+  upstreamLock: 'scripts/upstream-skills.lock.json',
+  // Paths that only exist in the old drop-in layout; plugin content must name skills instead.
+  harnessPathPattern: /\.claude\/(rules|skills|agents|CLAUDE\.md)|\.github\/(skills|instructions|agents|copilot-instructions\.md)|copilot-instructions\.md/,
+  // andes-init detects and removes the old drop-in layout, so it must name those paths.
+  harnessPathAllow: ['plugins/andes-core/skills/andes-init/'],
+  bannedTestLibs: /\b(FluentAssertions|AwesomeAssertions|Shouldly|Moq|FakeItEasy|NUnit|MSTest|UseInMemoryDatabase)\b|fluent assertions/i,
+  policyLine: /\b(never|not|no|don't|banned|instead of|last resort|avoid|only)\b/i,
+  textExt: /\.(md|json|mjs|js|ts|yml|yaml)$/,
 };
 
 const args = process.argv.slice(2);
@@ -73,6 +100,8 @@ const JSON_OUT = args.includes('--json');
 const STRICT = args.includes('--strict');
 const onlyArg = args.find((a) => a.startsWith('--check='));
 const ONLY = onlyArg ? new Set(onlyArg.slice('--check='.length).split(',')) : null;
+const baseArg = args.find((a) => a.startsWith('--base='));
+const BASE = baseArg ? baseArg.slice('--base='.length) : null;
 const runs = (name) => !ONLY || ONLY.has(name);
 
 const findings = [];
@@ -84,37 +113,52 @@ function add(check, id, severity, message, paths, detail, fixHint) {
 }
 
 const norm = (s) => (s.charCodeAt(0) === 0xfeff ? s.slice(1) : s).replace(/\r\n?/g, '\n');
+const exists = (rel) => existsSync(join(ROOT, rel));
+const isDir = (rel) => exists(rel) && statSync(join(ROOT, rel)).isDirectory();
 const read = (rel) => norm(readFileSync(join(ROOT, rel), 'utf8'));
+const readJson = (rel) => {
+  try { return JSON.parse(read(rel)); } catch (e) { throw new Error(`${rel}: invalid JSON (${e.message})`); }
+};
 const sha = (s) => createHash('sha256').update(s).digest('hex');
 const words = (s) => s.split(/\s+/).filter(Boolean).length;
 const stripQuotes = (v) =>
   (v.startsWith('"') && v.endsWith('"')) || (v.startsWith("'") && v.endsWith("'")) ? v.slice(1, -1) : v;
+const dirs = (rel) => (isDir(rel) ? readdirSync(join(ROOT, rel), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort() : []);
+const files = (rel, suffix) => (isDir(rel) ? readdirSync(join(ROOT, rel)).filter((f) => f.endsWith(suffix)).sort() : []);
 
-function walkFiles(dir, base = dir) {
+function walkFiles(dir) {
   const out = [];
   for (const e of readdirSync(join(ROOT, dir), { withFileTypes: true })) {
     const rel = `${dir}/${e.name}`;
-    if (e.isDirectory()) out.push(...walkFiles(rel, base));
-    else out.push(rel.slice(base.length + 1));
+    if (e.isDirectory()) out.push(...walkFiles(rel));
+    else out.push(rel);
   }
   return out;
 }
 
-// Minimal frontmatter access — top-level scalars and block lists only, which covers
-// every key this audit needs (`name`, `model`, `effort`, `description`, `paths`, `applyTo`).
+// Minimal frontmatter access: top-level scalars, block lists, and (possibly multi-line)
+// flow lists — which covers every key the agents and skills here use.
 function splitFrontmatter(text) {
   const m = text.match(/^---\n([\s\S]*?)\n---\n?/);
-  if (!m) return { fm: '', body: text, fmLines: 0 };
-  return { fm: m[1], body: text.slice(m[0].length), fmLines: m[0].split('\n').length - 1 };
+  if (!m) return { fm: '', body: text };
+  return { fm: m[1], body: text.slice(m[0].length) };
 }
 function fmScalar(fm, key) {
   const m = fm.match(new RegExp(`^${key}:[ \\t]*(.+)$`, 'm'));
   return m ? stripQuotes(m[1].trim()) : null;
 }
-function fmBlockList(fm, key) {
+function fmList(fm, key) {
   const lines = fm.split('\n');
-  const i = lines.findIndex((l) => l.trimEnd() === `${key}:`);
+  const i = lines.findIndex((l) => l.startsWith(`${key}:`));
   if (i < 0) return null;
+  const rest = lines[i].slice(key.length + 1).trim();
+  if (rest.startsWith('[')) {
+    let buf = rest;
+    for (let j = i + 1; !buf.includes(']') && j < lines.length; j++) buf += lines[j];
+    return buf.slice(buf.indexOf('[') + 1, buf.lastIndexOf(']')).split(',')
+      .map((s) => stripQuotes(s.trim())).filter(Boolean);
+  }
+  if (rest) return rest.split(',').map((s) => stripQuotes(s.trim())).filter(Boolean);
   const items = [];
   for (let j = i + 1; j < lines.length; j++) {
     const m = lines[j].match(/^\s+-\s*(.+)$/);
@@ -123,288 +167,372 @@ function fmBlockList(fm, key) {
   }
   return items;
 }
+const hasKey = (fm, key) => new RegExp(`^${key}:`, 'm').test(fm);
+function handoffTargets(fm) {
+  const lines = fm.split('\n');
+  const i = lines.findIndex((l) => l.startsWith('handoffs:'));
+  if (i < 0) return [];
+  const out = [];
+  for (let j = i + 1; j < lines.length && /^\s/.test(lines[j]); j++) {
+    const m = lines[j].match(/^\s+(?:-\s+)?agent:\s*(.+)$/);
+    if (m) out.push(stripQuotes(m[1].trim()));
+  }
+  return out;
+}
+function section(body, heading) {
+  const lines = body.split('\n');
+  const i = lines.findIndex((l) => l.trim() === heading);
+  if (i < 0) return null;
+  let j = i + 1;
+  while (j < lines.length && !/^#{1,2} /.test(lines[j]) && !lines[j].startsWith('<!-- andes:end')) j++;
+  return lines.slice(i + 1, j).join('\n').trim();
+}
 
-const stats = { mirroredFiles: 0, rulePairs: 0, agentTwins: 0, commandTwins: 0 };
+const plugins = dirs(CONFIG.pluginsDir);
+const P = (name) => `${CONFIG.pluginsDir}/${name}`;
+const stats = { plugins: plugins.length, skills: 0, claudeAgents: 0, copilotAgents: 0, agentTwins: 0 };
 
-// --- skills-mirror -----------------------------------------------------------
-if (runs('skills-mirror')) {
-  const claude = new Set(walkFiles('.claude/skills'));
-  const github = new Set(walkFiles('.github/skills'));
-  for (const f of claude) {
-    if (!github.has(f)) {
-      add('skills-mirror', 'missing-github', 'error', 'File exists only in the Claude tree',
-        [`.claude/skills/${f}`], undefined, `Copy it to .github/skills/${f} (or delete both).`);
+// Collected once; several checks read the agent inventory.
+const agents = [];
+for (const p of plugins) {
+  for (const f of files(`${P(p)}/claude-agents`, '.md')) {
+    const path = `${P(p)}/claude-agents/${f}`;
+    agents.push({ plugin: p, harness: 'claude', stem: f.slice(0, -3), path, ...splitFrontmatter(read(path)) });
+  }
+  for (const f of files(`${P(p)}/copilot-agents`, '.agent.md')) {
+    const path = `${P(p)}/copilot-agents/${f}`;
+    agents.push({ plugin: p, harness: 'copilot', stem: f.slice(0, -'.agent.md'.length), path, ...splitFrontmatter(read(path)) });
+  }
+}
+const isReviewer = (a) => a.stem.endsWith('-reviewer');
+
+// --- manifests ---------------------------------------------------------------
+if (runs('manifests')) {
+  const seen = new Map();
+  for (const p of plugins) {
+    const cPath = `${P(p)}/.claude-plugin/plugin.json`;
+    const gPath = `${P(p)}/.github/plugin/plugin.json`;
+    if (!CONFIG.namePattern.test(p)) {
+      add('manifests', 'name-pattern', 'error', `Plugin folder '${p}' does not match ${CONFIG.namePattern}`, [P(p)]);
+    }
+    for (const d of CONFIG.forbiddenPluginDirs) {
+      if (isDir(`${P(p)}/${d}`)) {
+        add('manifests', 'default-dir', 'error', `Plugin has a default-named '${d}/' folder that one harness would auto-load for the other`,
+          [`${P(p)}/${d}`], undefined, 'Use claude-agents/ and copilot-agents/ (listed in each manifest) instead.');
+      }
+    }
+    const missing = [cPath, gPath].filter((x) => !exists(x));
+    if (missing.length) {
+      add('manifests', 'missing', 'error', 'Plugin is missing a harness manifest', missing);
+      continue;
+    }
+    const c = readJson(cPath);
+    const g = readJson(gPath);
+    seen.set(p, c.version);
+    for (const [label, m, path] of [['claude', c, cPath], ['copilot', g, gPath]]) {
+      if (m.name !== p) add('manifests', 'name-mismatch', 'error', `${label} manifest name '${m.name}' is not the folder name '${p}'`, [path]);
+      if (!/^\d+\.\d+\.\d+$/.test(m.version ?? '')) add('manifests', 'semver', 'error', `${label} manifest version '${m.version}' is not x.y.z`, [path]);
+    }
+    for (const key of ['version', 'description']) {
+      if (c[key] !== g[key]) add('manifests', `${key}-drift`, 'error', `Manifests disagree on '${key}'`, [cPath, gPath], { claude: c[key], copilot: g[key] });
+    }
+    const listed = (c.agents ?? []).map((a) => a.replace(/^\.\//, ''));
+    const onDisk = files(`${P(p)}/claude-agents`, '.md').map((f) => `claude-agents/${f}`);
+    for (const a of onDisk) if (!listed.includes(a)) add('manifests', 'claude-agent-unlisted', 'error', `Claude agent '${a}' is not listed in plugin.json "agents" (Claude loads only listed files)`, [cPath, `${P(p)}/${a}`]);
+    for (const a of listed) if (!onDisk.includes(a)) add('manifests', 'claude-agent-ghost', 'error', `plugin.json lists '${a}' but the file does not exist`, [cPath]);
+    if (isDir(`${P(p)}/copilot-agents`) && g.agents !== 'copilot-agents/') {
+      add('manifests', 'copilot-agents-path', 'error', 'Copilot manifest must point "agents" at copilot-agents/', [gPath]);
+    }
+    if (isDir(`${P(p)}/skills`) && g.skills !== 'skills/') {
+      add('manifests', 'copilot-skills-path', 'error', 'Copilot manifest must point "skills" at skills/', [gPath]);
+    }
+    for (const dep of c.dependencies ?? []) {
+      const depName = typeof dep === 'string' ? dep.split('@')[0] : dep.name;
+      if (!plugins.includes(depName)) add('manifests', 'dependency-ghost', 'error', `Dependency '${depName}' is not a plugin in this marketplace`, [cPath]);
     }
   }
-  for (const f of github) {
-    if (!claude.has(f)) {
-      add('skills-mirror', 'missing-claude', 'error', 'File exists only in the Copilot tree',
-        [`.github/skills/${f}`], undefined, `Copy it to .claude/skills/${f} (or delete both).`);
+
+  if (!exists(CONFIG.marketplace)) {
+    add('manifests', 'marketplace-missing', 'error', 'Marketplace manifest is missing', [CONFIG.marketplace]);
+  } else {
+    const m = readJson(CONFIG.marketplace);
+    const entries = m.plugins ?? [];
+    for (const p of plugins) {
+      const hits = entries.filter((e) => e.name === p);
+      if (hits.length !== 1) add('manifests', 'marketplace-entry', 'error', `Marketplace lists '${p}' ${hits.length} times (expected once)`, [CONFIG.marketplace]);
+      else if (hits[0].source !== `./${P(p)}`) add('manifests', 'marketplace-source', 'error', `Marketplace source for '${p}' should be './${P(p)}'`, [CONFIG.marketplace], { source: hits[0].source });
     }
+    for (const e of entries) if (!plugins.includes(e.name)) add('manifests', 'marketplace-ghost', 'error', `Marketplace lists '${e.name}' but no plugin folder exists`, [CONFIG.marketplace]);
   }
-  for (const f of claude) {
-    if (!github.has(f)) continue;
-    stats.mirroredFiles++;
-    if (sha(read(`.claude/skills/${f}`)) !== sha(read(`.github/skills/${f}`))) {
-      add('skills-mirror', 'differs', 'error', 'Mirrored skill file content differs (beyond line endings)',
-        [`.claude/skills/${f}`, `.github/skills/${f}`], undefined,
-        'git status/git diff shows which side carries the newer change; copy it over the other.');
+
+  if (BASE) {
+    const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' });
+    const mergeBase = git('merge-base', BASE, 'HEAD').trim();
+    const changed = git('diff', '--name-only', mergeBase, '--', CONFIG.pluginsDir).split('\n').filter(Boolean);
+    for (const p of plugins) {
+      if (!changed.some((f) => f.startsWith(`${P(p)}/`))) continue;
+      let before;
+      try { before = JSON.parse(git('show', `${mergeBase}:${P(p)}/.claude-plugin/plugin.json`)).version; } catch { continue; }
+      if (before === seen.get(p)) {
+        add('manifests', 'version-bump', 'error', `'${p}' changed since ${BASE} but its version is still ${before} — installed copies are cached by version and will not update`,
+          [`${P(p)}/.claude-plugin/plugin.json`, `${P(p)}/.github/plugin/plugin.json`], undefined, 'Bump the version in both manifests.');
+      }
     }
   }
 }
 
-// --- rules-parity ------------------------------------------------------------
-const ruleNames = readdirSync(join(ROOT, '.claude/rules'))
-  .filter((f) => f.endsWith('.md')).map((f) => f.slice(0, -3));
-if (runs('rules-parity')) {
-  const instructionNames = readdirSync(join(ROOT, '.github/instructions'))
-    .filter((f) => f.endsWith('.instructions.md')).map((f) => f.slice(0, -'.instructions.md'.length));
-  for (const n of instructionNames) {
-    if (!ruleNames.includes(n)) {
-      add('rules-parity', 'missing-twin', 'error', 'Instructions file has no Claude rule twin',
-        [`.github/instructions/${n}.instructions.md`], undefined, `Create .claude/rules/${n}.md (or delete both).`);
+// --- skills ------------------------------------------------------------------
+if (runs('skills')) {
+  const owners = new Map();
+  for (const p of plugins) {
+    for (const s of dirs(`${P(p)}/skills`)) {
+      stats.skills++;
+      const path = `${P(p)}/skills/${s}/SKILL.md`;
+      if (!exists(path)) { add('skills', 'missing-skill-md', 'error', `Skill folder '${s}' has no SKILL.md`, [`${P(p)}/skills/${s}`]); continue; }
+      const { fm } = splitFrontmatter(read(path));
+      const name = fmScalar(fm, 'name');
+      const desc = fmScalar(fm, 'description');
+      if (name !== s) add('skills', 'name-mismatch', 'error', `Skill name '${name}' does not match its folder '${s}'`, [path]);
+      if (!desc) add('skills', 'no-description', 'error', 'Skill has no description — it can never trigger on its own', [path]);
+      else if (desc.length > CONFIG.skillDescriptionBudget) {
+        add('skills', 'description-budget', 'warn', `Description is ${desc.length} chars (budget ${CONFIG.skillDescriptionBudget}); every installed skill description is always in context`, [path]);
+      }
+      for (const k of ['paths', 'applyTo']) {
+        if (hasKey(fm, k)) add('skills', 'rule-frontmatter', 'error', `SKILL.md still carries rule frontmatter '${k}:' (plugins cannot ship path-scoped rules)`, [path]);
+      }
+      if (!owners.has(s)) owners.set(s, []);
+      owners.get(s).push(p);
     }
   }
-  for (const n of ruleNames) {
-    const rulePath = `.claude/rules/${n}.md`;
-    const instrPath = `.github/instructions/${n}.instructions.md`;
-    if (!existsSync(join(ROOT, instrPath))) {
-      add('rules-parity', 'missing-twin', 'error', 'Claude rule has no Copilot instructions twin',
-        [rulePath], undefined, `Create ${instrPath} (or delete both).`);
-      continue;
-    }
-    stats.rulePairs++;
-    const rule = splitFrontmatter(read(rulePath));
-    const instr = splitFrontmatter(read(instrPath));
+  for (const [s, ps] of owners) {
+    if (ps.length > 1) add('skills', 'duplicate-name', 'error', `Skill '${s}' is defined in several plugins: ${ps.join(', ')}`, ps.map((p) => `${P(p)}/skills/${s}`));
+  }
 
-    const rGlobs = (fmBlockList(rule.fm, 'paths') ?? []).map((g) => g.trim()).sort();
-    const iGlobs = (fmScalar(instr.fm, 'applyTo') ?? '').split(',').map((g) => g.trim()).filter(Boolean).sort();
-    if (JSON.stringify(rGlobs) !== JSON.stringify(iGlobs)) {
-      add('rules-parity', 'glob-mismatch', 'error', 'paths: and applyTo: globs are not the same set',
-        [rulePath, instrPath], { claude: rGlobs, github: iGlobs },
-        'Make the sets equal; the Claude paths: list is the canonical order.');
-    }
-
-    // Map the intentional cross-reference spellings before comparing bodies:
-    // rule basenames rename to *.instructions.md, tree paths and the always-on file swap.
-    let mapped = rule.body;
-    for (const rn of ruleNames) {
-      mapped = mapped
-        .replaceAll(`\`.claude/rules/${rn}.md\``, `\`${rn}.instructions.md\``)
-        .replaceAll(`\`${rn}.md\``, `\`${rn}.instructions.md\``);
-    }
-    mapped = mapped
-      .replaceAll('.claude/skills/', '.github/skills/')
-      .replaceAll('.claude/rules/', '.github/instructions/')
-      .replaceAll('.claude/CLAUDE.md', '.github/copilot-instructions.md')
-      .replaceAll('CLAUDE.md', 'copilot-instructions.md');
-    const trim = (s) => s.split('\n').map((l) => l.trimEnd()).join('\n').replace(/\n+$/, '');
-    const a = trim(mapped).split('\n');
-    const b = trim(instr.body).split('\n');
-    if (a.join('\n') !== b.join('\n')) {
-      let i = 0;
-      while (i < a.length && i < b.length && a[i] === b[i]) i++;
-      add('rules-parity', 'body-drift', 'error', 'Bodies differ after normalization and reference mapping',
-        [rulePath, instrPath],
-        {
-          claudeLine: rule.fmLines + i + 1, githubLine: instr.fmLines + i + 1,
-          claude: (a[i] ?? '<end of file>').slice(0, 200), github: (b[i] ?? '<end of file>').slice(0, 200),
-        },
-        'Reconcile the wording and apply the same sentence to both files.');
+  if (exists(CONFIG.upstreamLock)) {
+    const lock = readJson(CONFIG.upstreamLock);
+    for (const [s, entry] of Object.entries(lock.skills ?? {})) {
+      const dir = entry.andes?.path;
+      if (!dir || !isDir(dir)) { add('skills', 'upstream-path', 'error', `Upstream-pinned skill '${s}' has no andes.path in the lock, or the folder is missing`, [CONFIG.upstreamLock]); continue; }
+      const tree = walkFiles(dir).sort().map((f) => `${f.slice(dir.length + 1)}\n${sha(read(f))}`).join('\n');
+      if (sha(tree) !== entry.andes.treeSha256) {
+        add('skills', 'upstream-drift', 'error', `Upstream-pinned skill '${s}' was edited locally (tree hash mismatch)`, [dir, CONFIG.upstreamLock],
+          { expected: entry.andes.treeSha256, actual: sha(tree) }, 'Revert the local edit, or re-vendor from upstream and update treeSha256.');
+      }
     }
   }
 }
 
-// --- agent-twins -------------------------------------------------------------
-if (runs('agent-twins')) {
-  const claudeAgents = readdirSync(join(ROOT, '.claude/agents'))
-    .filter((f) => f.endsWith('.md')).map((f) => f.slice(0, -3));
-  const copilotAgents = readdirSync(join(ROOT, '.github/agents'))
-    .filter((f) => f.endsWith('.agent.md')).map((f) => f.slice(0, -'.agent.md'.length));
-  for (const n of copilotAgents) {
-    if (!claudeAgents.includes(n) && !CONFIG.copilotOnlyAgents.includes(n)) {
-      add('agent-twins', 'missing-claude-twin', 'error',
-        'Copilot agent has no Claude twin and is not listed in copilotOnlyAgents',
-        [`.github/agents/${n}.agent.md`], undefined,
-        'Create the .claude/agents twin, or add the agent to copilotOnlyAgents in scripts/repo-audit.mjs.');
+// --- harness-paths -----------------------------------------------------------
+if (runs('harness-paths')) {
+  for (const f of walkFiles(CONFIG.pluginsDir)) {
+    if (!CONFIG.textExt.test(f) || CONFIG.harnessPathAllow.some((a) => f.startsWith(a))) continue;
+    read(f).split('\n').forEach((line, i) => {
+      if (CONFIG.harnessPathPattern.test(line)) {
+        add('harness-paths', 'drop-in-path', 'error', 'Plugin content references a drop-in-tree path that does not exist once installed', [`${f}:${i + 1}`],
+          { line: line.trim().slice(0, 200) }, 'Refer to the skill or agent by name instead.');
+      }
+    });
+  }
+}
+
+// --- agents ------------------------------------------------------------------
+if (runs('agents')) {
+  const copilotNames = new Set(agents.filter((a) => a.harness === 'copilot').map((a) => fmScalar(a.fm, 'name')));
+  const mcpServers = new Set(plugins.flatMap((p) => (exists(`${P(p)}/.mcp.json`) ? Object.keys(readJson(`${P(p)}/.mcp.json`).mcpServers ?? {}) : [])));
+
+  for (const a of agents) {
+    if (a.harness === 'claude') stats.claudeAgents++; else stats.copilotAgents++;
+    const name = fmScalar(a.fm, 'name');
+    const tools = fmList(a.fm, 'tools') ?? [];
+    if (name !== a.stem) add('agents', 'name-stem', 'error', `Agent name '${name}' must equal its file stem '${a.stem}'`, [a.path]);
+    if (!CONFIG.namePattern.test(a.stem)) add('agents', 'name-pattern', 'error', `Agent '${a.stem}' must match ${CONFIG.namePattern}`, [a.path]);
+    if (!fmScalar(a.fm, 'model')) add('agents', 'model-pin', 'error', 'Agent does not pin a model', [a.path]);
+    if (!fmScalar(a.fm, 'description')) add('agents', 'no-description', 'error', 'Agent has no description', [a.path]);
+
+    for (const t of tools) {
+      if (t.endsWith('*') || (a.harness === 'claude' ? t.startsWith('mcp__') && !t.slice(5).includes('__') : mcpServers.has(t))) {
+        add('agents', 'mcp-wildcard', 'error', `Tool grant '${t}' exposes a whole server or toolset; list exact tools`, [a.path]);
+      }
+      if (CONFIG.forbiddenMcpTools.some((f) => t.endsWith(`__${f}`) || t.endsWith(`/${f}`))) {
+        add('agents', 'forbidden-tool', 'error', `Agent is granted '${t}'`, [a.path]);
+      }
+    }
+
+    if (a.harness === 'claude') {
+      const effort = fmScalar(a.fm, 'effort');
+      const want = isReviewer(a) ? CONFIG.effort.reviewer : CONFIG.effort.other;
+      if (effort !== want) add('agents', 'effort', 'error', `Claude agent effort is '${effort}', expected '${want}'`, [a.path]);
+    }
+
+    if (isReviewer(a)) {
+      if (hasKey(a.fm, 'handoffs')) add('agents', 'reviewer-handoff', 'error', 'Reviewer declares handoffs — reviewers report to their caller and never hand work back', [a.path]);
+      if (hasKey(a.fm, 'agents')) add('agents', 'reviewer-agents', 'error', 'Reviewer declares agents: — reviewers never invoke other agents', [a.path]);
+      const writeTools = a.harness === 'claude' ? ['Write', 'Edit', 'NotebookEdit', 'Agent', 'Task'] : ['edit', 'agent'];
+      for (const t of tools) {
+        if (writeTools.includes(t) || writeTools.some((w) => t.startsWith(`${w}/`))) {
+          add('agents', 'reviewer-write', 'error', `Reviewer is granted '${t}'`, [a.path]);
+        }
+      }
+      if (a.harness === 'claude') {
+        const denied = fmList(a.fm, 'disallowedTools') ?? [];
+        for (const t of ['Write', 'Edit', 'NotebookEdit', 'Agent']) {
+          if (!denied.includes(t)) add('agents', 'reviewer-disallow', 'error', `Reviewer must list '${t}' in disallowedTools`, [a.path]);
+        }
+      }
+      if (!/\*\*High\*\*/.test(a.body) || !/\*\*Medium\*\*/.test(a.body) || /\*\*(Critical|Low)\*\*/.test(a.body)) {
+        add('agents', 'reviewer-severity', 'error', 'Reviewer must report exactly two severities: **High** and **Medium**', [a.path]);
+      }
+    }
+
+    if (a.harness === 'copilot') {
+      for (const t of [...(fmList(a.fm, 'agents') ?? []), ...handoffTargets(a.fm)]) {
+        if (!copilotNames.has(t) && !CONFIG.copilotBuiltinAgents.includes(t)) {
+          add('agents', 'target-ghost', 'error', `Agent references '${t}', which is not a Copilot agent in this marketplace`, [a.path]);
+        }
+      }
     }
   }
-  for (const n of claudeAgents) {
-    const cPath = `.claude/agents/${n}.md`;
-    const gPath = `.github/agents/${n}.agent.md`;
-    if (!copilotAgents.includes(n)) {
-      add('agent-twins', 'missing-copilot-twin', 'error', 'Claude agent has no Copilot twin',
-        [cPath], undefined, `Create ${gPath}.`);
+
+  for (const a of agents.filter((x) => x.harness === 'copilot')) {
+    const twin = agents.find((x) => x.harness === 'claude' && x.stem === a.stem);
+    if (!twin) {
+      if (!CONFIG.copilotOnlyAgents.includes(a.stem)) {
+        add('agents', 'missing-claude-twin', 'error', 'Copilot agent has no Claude twin and is not listed in copilotOnlyAgents', [a.path]);
+      }
       continue;
     }
+    if (twin.plugin !== a.plugin) add('agents', 'twin-plugin', 'error', 'Agent twins live in different plugins', [twin.path, a.path]);
     stats.agentTwins++;
-    const cModel = fmScalar(splitFrontmatter(read(cPath)).fm, 'model');
-    const gModel = fmScalar(splitFrontmatter(read(gPath)).fm, 'model');
-    const override = CONFIG.modelParityOverrides[n];
+    const cModel = fmScalar(twin.fm, 'model');
+    const gModel = fmScalar(a.fm, 'model');
+    const override = CONFIG.modelParityOverrides[a.stem];
     if (override && override.claude !== cModel) {
-      add('agent-twins', 'model-parity', 'error',
-        `Stale override: recorded against Claude model '${override.claude}' but the agent now pins '${cModel}'`,
-        [cPath, 'scripts/repo-audit.mjs'], undefined,
-        'Update or remove the modelParityOverrides entry so it matches reality.');
+      add('agents', 'model-parity', 'error', `Stale override: recorded against Claude model '${override.claude}' but the agent now pins '${cModel}'`,
+        [twin.path, 'scripts/repo-audit.mjs'], undefined, 'Update or remove the modelParityOverrides entry.');
       continue;
     }
     const expected = override ? override.copilot : CONFIG.modelParity[cModel];
-    if (!expected) {
-      add('agent-twins', 'unknown-model', 'warn',
-        `Claude model '${cModel}' has no entry in the modelParity table`,
-        [cPath, 'scripts/repo-audit.mjs'], undefined, 'Add the mapping to CONFIG.modelParity.');
-    } else if (gModel !== expected) {
-      add('agent-twins', 'model-parity', 'error',
-        `Copilot twin pins '${gModel}' but the parity ${override ? 'override' : 'table'} expects '${expected}'`,
-        [cPath, gPath], override ? { override } : undefined,
-        'Align the model, or record a documented override in CONFIG.modelParityOverrides (user approval required).');
+    if (!expected) add('agents', 'unknown-model', 'warn', `Claude model '${cModel}' has no modelParity entry`, [twin.path]);
+    else if (gModel !== expected) {
+      add('agents', 'model-parity', 'error', `Copilot twin pins '${gModel}' but parity expects '${expected}'`, [twin.path, a.path],
+        override ? { override } : undefined, 'Align the model, or record a documented override (user approval required).');
     }
+  }
+  for (const a of agents.filter((x) => x.harness === 'claude')) {
+    if (!agents.some((x) => x.harness === 'copilot' && x.stem === a.stem)) {
+      add('agents', 'missing-copilot-twin', 'error', 'Claude agent has no Copilot twin', [a.path]);
+    }
+  }
+}
+
+// --- mcp ---------------------------------------------------------------------
+if (runs('mcp')) {
+  for (const stale of ['.mcp.json', '.vscode/mcp.json']) {
+    if (exists(stale)) add('mcp', 'root-config', 'error', 'Repo-level MCP config duplicates the servers the plugins ship', [stale]);
+  }
+  for (const p of plugins) {
+    const path = `${P(p)}/.mcp.json`;
+    if (!exists(path)) continue;
+    for (const [name, s] of Object.entries(readJson(path).mcpServers ?? {})) {
+      const argv = s.args ?? [];
+      if (s.command === 'npx' && !CONFIG.unpinnedMcpServers.includes(name)) {
+        const pkg = argv.find((x) => !x.startsWith('-'));
+        if (!pkg || !/@\d/.test(pkg.replace(/^@/, ''))) add('mcp', 'unpinned', 'error', `npx server '${name}' is not version-pinned`, [path], { pkg });
+      }
+      if (s.command === 'docker') {
+        const image = argv.find((x) => x.includes('/') && !x.startsWith('-'));
+        if (!image || !image.includes(':')) add('mcp', 'unpinned', 'error', `docker server '${name}' has no image tag`, [path], { image });
+      }
+      for (const req of CONFIG.requiredMcpArgs[name] ?? []) {
+        if (!argv.includes(req)) add('mcp', 'required-arg', 'error', `Server '${name}' must run with '${req}'`, [path]);
+      }
+    }
+  }
+}
+
+// --- memory ------------------------------------------------------------------
+if (runs('memory')) {
+  for (const f of ['.claude/CLAUDE.md', '.github/copilot-instructions.md']) {
+    if (exists(f)) add('memory', 'shadowing-file', 'error', `${f} would load a second copy of the instructions (or shadow AGENTS.md)`, [f]);
+  }
+  if (exists('CLAUDE.md') && read('CLAUDE.md').trim() !== '@AGENTS.md') {
+    add('memory', 'claude-stub', 'error', 'Root CLAUDE.md must contain exactly "@AGENTS.md"', ['CLAUDE.md']);
+  }
+  if (!exists('AGENTS.md') || !exists(CONFIG.agentsTemplate)) {
+    add('memory', 'missing', 'error', 'AGENTS.md or the andes-init template is missing', ['AGENTS.md', CONFIG.agentsTemplate]);
+  } else {
+    const template = read(CONFIG.agentsTemplate).trim();
+    const agentsMd = read('AGENTS.md');
+    const m = agentsMd.match(/<!-- andes:begin[^>]*-->[\s\S]*?<!-- andes:end -->/g) ?? [];
+    if (m.length !== 1) add('memory', 'block-count', 'error', `AGENTS.md must hold exactly one andes block (found ${m.length})`, ['AGENTS.md']);
+    else if (m[0].trim() !== template) {
+      add('memory', 'block-drift', 'error', 'The AGENTS.md andes block differs from the andes-init template', ['AGENTS.md', CONFIG.agentsTemplate],
+        undefined, 'Edit the template, then copy it verbatim between the markers in AGENTS.md.');
+    }
+    const w = words(template);
+    if (w > CONFIG.agentsBlockBudget) {
+      add('memory', 'budget', 'warn', `The always-on andes block is ${w} words (budget ${CONFIG.agentsBlockBudget})`, [CONFIG.agentsTemplate], { words: w });
+    }
+    const loop = section(template, '## Review loop');
+    if (!loop) add('memory', 'loop-missing', 'error', 'Template has no "## Review loop" section', [CONFIG.agentsTemplate]);
+    for (const stem of CONFIG.loopAgents) {
+      const a = agents.find((x) => x.harness === 'copilot' && x.stem === stem);
+      if (!a) { add('memory', 'loop-agent-missing', 'error', `Loop agent '${stem}' does not exist`, ['scripts/repo-audit.mjs']); continue; }
+      if (loop && section(a.body, '## Review loop') !== loop) {
+        add('memory', 'loop-drift', 'error', 'The "## Review loop" section differs from AGENTS.md (Copilot subagents do not receive AGENTS.md, so it is copied verbatim)',
+          [a.path, CONFIG.agentsTemplate]);
+      }
+    }
+  }
+}
+
+// --- testing-policy ----------------------------------------------------------
+if (runs('testing-policy')) {
+  const scan = [...walkFiles(CONFIG.pluginsDir), ...(exists('AGENTS.md') ? ['AGENTS.md'] : [])];
+  for (const f of scan) {
+    if (!f.endsWith('.md')) continue;
+    read(f).split('\n').forEach((line, i) => {
+      if (CONFIG.bannedTestLibs.test(line) && !CONFIG.policyLine.test(line)) {
+        add('testing-policy', 'banned-library', 'error', 'A banned test library is recommended (xUnit + NSubstitute only)', [`${f}:${i + 1}`],
+          { line: line.trim().slice(0, 200) }, 'Rewrite the line to the xUnit + NSubstitute policy, or phrase it as a prohibition.');
+      }
+    });
   }
 }
 
 // --- registry ----------------------------------------------------------------
 if (runs('registry')) {
-  const copilotMd = read('.github/copilot-instructions.md');
-  const claudeMd = read('.claude/CLAUDE.md');
-  const readme = read('README.md');
-
-  const skillFolders = readdirSync(join(ROOT, '.github/skills'), { withFileTypes: true })
-    .filter((e) => e.isDirectory()).map((e) => e.name);
-  const availLine = copilotMd.split('\n').find((l) => l.includes('Available:')) ?? '';
-  const listed = [...availLine.matchAll(/`([a-z0-9-]+)`/g)].map((m) => m[1]);
-  for (const s of skillFolders) {
-    if (!listed.includes(s)) {
-      add('registry', 'skill-unlisted', 'error', `Skill folder '${s}' is missing from the copilot-instructions.md skills list`,
-        ['.github/copilot-instructions.md', `.github/skills/${s}`], undefined, 'Add it to the "Available:" list.');
-    }
-  }
-  for (const s of listed) {
-    if (!skillFolders.includes(s)) {
-      add('registry', 'skill-ghost', 'error', `copilot-instructions.md lists skill '${s}' but no such folder exists`,
-        ['.github/copilot-instructions.md'], undefined, 'Remove the stale entry or restore the skill.');
-    }
-  }
-
-  const commands = readdirSync(join(ROOT, '.claude/commands'))
-    .filter((f) => f.endsWith('.md')).map((f) => f.slice(0, -3));
-  const prompts = readdirSync(join(ROOT, '.github/prompts'))
-    .filter((f) => f.endsWith('.prompt.md')).map((f) => f.slice(0, -'.prompt.md'.length));
-  for (const c of commands) {
-    if (!prompts.includes(c)) {
-      add('registry', 'command-prompt-twin', 'error', `Command '/${c}' has no Copilot prompt twin`,
-        [`.claude/commands/${c}.md`], undefined, `Create .github/prompts/${c}.prompt.md.`);
-    }
-  }
-  for (const p of prompts) {
-    if (!commands.includes(p)) {
-      add('registry', 'command-prompt-twin', 'error', `Prompt '${p}' has no Claude command twin`,
-        [`.github/prompts/${p}.prompt.md`], undefined, `Create .claude/commands/${p}.md.`);
-    }
-  }
-  for (const c of commands) {
-    if (!prompts.includes(c)) continue;
-    stats.commandTwins++;
+  const commands = files('.claude/commands', '.md').map((f) => f.slice(0, -3));
+  const prompts = files('.github/prompts', '.prompt.md').map((f) => f.slice(0, -'.prompt.md'.length));
+  for (const c of commands) if (!prompts.includes(c)) add('registry', 'command-prompt-twin', 'error', `Command '/${c}' has no Copilot prompt twin`, [`.claude/commands/${c}.md`]);
+  for (const p of prompts) if (!commands.includes(p)) add('registry', 'command-prompt-twin', 'error', `Prompt '${p}' has no Claude command twin`, [`.github/prompts/${p}.prompt.md`]);
+  for (const c of commands.filter((x) => prompts.includes(x))) {
     const cDesc = fmScalar(splitFrontmatter(read(`.claude/commands/${c}.md`)).fm, 'description');
     const pDesc = fmScalar(splitFrontmatter(read(`.github/prompts/${c}.prompt.md`)).fm, 'description');
-    if (cDesc !== pDesc) {
-      add('registry', 'command-prompt-description', 'warn', `Command/prompt twin '${c}' descriptions differ`,
-        [`.claude/commands/${c}.md`, `.github/prompts/${c}.prompt.md`],
-        { claude: cDesc, github: pDesc }, 'Use the same description on both.');
-    }
+    if (cDesc !== pDesc) add('registry', 'command-prompt-description', 'warn', `Command/prompt twin '${c}' descriptions differ`, [`.claude/commands/${c}.md`, `.github/prompts/${c}.prompt.md`]);
   }
-
-  for (const n of readdirSync(join(ROOT, '.claude/agents')).filter((f) => f.endsWith('.md'))) {
-    const base = n.slice(0, -3);
-    if (!claudeMd.includes(base)) {
-      add('registry', 'agent-unreferenced', 'warn', `Claude agent '${base}' is never referenced in CLAUDE.md`,
-        ['.claude/CLAUDE.md', `.claude/agents/${n}`], undefined, 'Wire it into the delegation rules or remove it.');
-    }
-  }
-  for (const n of readdirSync(join(ROOT, '.github/agents')).filter((f) => f.endsWith('.agent.md'))) {
-    const display = fmScalar(splitFrontmatter(read(`.github/agents/${n}`)).fm, 'name');
-    if (display && !copilotMd.includes(display)) {
-      add('registry', 'agent-unreferenced', 'warn', `Copilot agent '${display}' is never referenced in copilot-instructions.md`,
-        ['.github/copilot-instructions.md', `.github/agents/${n}`], undefined, 'Wire it into the agents section or remove it.');
-    }
-  }
-
-  for (const n of ruleNames) {
-    if (!readme.includes(`${n}.md`)) {
-      add('registry', 'readme-mention', 'warn', `Rule '${n}.md' is not mentioned in README.md`,
-        ['README.md', `.claude/rules/${n}.md`], undefined, 'Add it to the structure diagram / rules table.');
-    }
-  }
-  for (const s of skillFolders) {
-    if (!readme.includes(s)) {
-      add('registry', 'readme-mention', 'warn', `Skill '${s}' is not mentioned in README.md`,
-        ['README.md', `.github/skills/${s}`], undefined, 'Add it to the skills list.');
-    }
-  }
-}
-
-// --- cost-hygiene ------------------------------------------------------------
-if (runs('cost-hygiene')) {
-  for (const [file, budget] of Object.entries(CONFIG.budgets)) {
-    const w = words(read(file));
-    if (w > budget) {
-      add('cost-hygiene', 'always-on-budget', 'warn',
-        `${file} is ${w} words (budget ${budget}) — it loads in every session/request`,
-        [file], { words: w, budget }, 'Trim or move detail into rules/skills; every word here is paid on every request.');
-    }
-  }
-  const globOwners = new Map();
-  for (const n of ruleNames) {
-    const rulePath = `.claude/rules/${n}.md`;
-    const { fm, body } = splitFrontmatter(read(rulePath));
-    const globs = fmBlockList(fm, 'paths') ?? [];
-    for (const g of globs) {
-      if (CONFIG.broadGlobs.includes(g)) {
-        add('cost-hygiene', 'broad-glob', 'warn',
-          `Rule '${n}' fires on '${g}' — a very broad glob that injects its words into unrelated requests`,
-          [rulePath, `.github/instructions/${n}.instructions.md`], { glob: g },
-          'Narrow the glob (both trees) or fold the content into the general rule.');
-      }
-      if (!globOwners.has(g)) globOwners.set(g, []);
-      globOwners.get(g).push({ rule: n, words: words(body) });
-    }
-  }
-  for (const [g, owners] of globOwners) {
-    if (owners.length < 2) continue;
-    const total = owners.reduce((s, o) => s + o.words, 0);
-    add('cost-hygiene', 'glob-overlap', 'warn',
-      `${owners.length} rules all fire on '${g}' (${total} words loaded per matching edit): ${owners.map((o) => o.rule).join(', ')}`,
-      owners.map((o) => `.claude/rules/${o.rule}.md`), { glob: g, totalWords: total },
-      'Consider narrowing project-type-specific rules or converting them to on-demand skills.');
-  }
-  for (const f of readdirSync(join(ROOT, '.claude/agents')).filter((x) => x.endsWith('.md'))) {
-    const { fm } = splitFrontmatter(read(`.claude/agents/${f}`));
-    for (const key of ['model', 'effort']) {
-      if (!fmScalar(fm, key)) {
-        add('cost-hygiene', 'agent-pinning', 'warn', `Claude agent '${f}' does not pin '${key}'`,
-          [`.claude/agents/${f}`], undefined, 'Pin it so cost does not silently follow the session default.');
-      }
-    }
-  }
-  for (const f of readdirSync(join(ROOT, '.github/agents')).filter((x) => x.endsWith('.agent.md'))) {
-    if (!fmScalar(splitFrontmatter(read(`.github/agents/${f}`)).fm, 'model')) {
-      add('cost-hygiene', 'agent-pinning', 'warn', `Copilot agent '${f}' does not pin 'model'`,
-        [`.github/agents/${f}`], undefined, 'Pin it so cost does not silently follow the session picker.');
+  const readme = exists('README.md') ? read('README.md') : '';
+  const names = [...plugins, ...new Set(agents.map((a) => a.stem)), ...plugins.flatMap((p) => dirs(`${P(p)}/skills`))];
+  for (const n of names) if (!readme.includes(n)) add('registry', 'readme-mention', 'warn', `'${n}' is not mentioned in README.md`, ['README.md']);
+  if (exists(CONFIG.agentsTemplate)) {
+    const tpl = read(CONFIG.agentsTemplate);
+    for (const a of agents.filter((x) => x.harness === 'claude')) {
+      if (!tpl.includes(a.stem)) add('registry', 'agent-unrouted', 'warn', `Claude agent '${a.stem}' is never named in the AGENTS.md block`, [CONFIG.agentsTemplate, a.path]);
     }
   }
 }
 
 // --- changelog ---------------------------------------------------------------
 if (runs('changelog')) {
-  if (!existsSync(join(ROOT, 'CHANGELOG.md')) || !read('CHANGELOG.md').includes('## [Unreleased]')) {
-    add('changelog', 'missing-unreleased', 'error', 'Root CHANGELOG.md is missing its ## [Unreleased] section',
-      ['CHANGELOG.md'], undefined, 'Restore the Keep a Changelog structure.');
+  if (!exists('CHANGELOG.md') || !read('CHANGELOG.md').includes('## [Unreleased]')) {
+    add('changelog', 'missing-unreleased', 'error', 'Root CHANGELOG.md is missing its ## [Unreleased] section', ['CHANGELOG.md']);
   }
 }
 
 // --- report ------------------------------------------------------------------
 const errors = findings.filter((f) => f.severity === 'error');
 const warnings = findings.filter((f) => f.severity === 'warn');
-const checkNames = ['skills-mirror', 'rules-parity', 'agent-twins', 'registry', 'cost-hygiene', 'changelog'];
+const checkNames = ['manifests', 'skills', 'harness-paths', 'agents', 'mcp', 'memory', 'testing-policy', 'registry', 'changelog'];
 const report = {
   status: errors.length || (STRICT && warnings.length) ? 'findings' : 'clean',
   generatedAt: new Date().toISOString(),
@@ -422,9 +550,8 @@ const report = {
 
 const summaryLine =
   `Repo audit ${report.status === 'clean' ? 'clean' : 'found drift'}: ` +
-  `${stats.mirroredFiles} mirrored files, ${stats.rulePairs} rule pairs, ` +
-  `${stats.agentTwins} agent twins, ${stats.commandTwins} command twin(s). ` +
-  `${errors.length} error(s), ${warnings.length} warning(s)` +
+  `${stats.plugins} plugins, ${stats.skills} skills, ${stats.claudeAgents} Claude + ${stats.copilotAgents} Copilot agents ` +
+  `(${stats.agentTwins} twins). ${errors.length} error(s), ${warnings.length} warning(s)` +
   (warnings.length && !STRICT ? ' (warnings do not fail; use --strict to work them)' : '') + '.';
 
 if (JSON_OUT) {
