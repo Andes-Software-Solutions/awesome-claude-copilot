@@ -1,12 +1,12 @@
 ---
-description: Audit cross-harness parity (.claude/ vs .github/) and config cost hygiene; report findings and optionally fix mechanical drift.
-argument-hint: "[--fix] [--strict]"
-allowed-tools: Bash(node:*), Bash(git status:*), Bash(git diff:*), Bash(cp:*), Read, Edit, Glob, Grep
+description: Audit the andes plugin marketplace (manifests, skills, agents, MCP, AGENTS.md block, testing policy); report findings and optionally fix mechanical drift.
+argument-hint: "[--fix] [--strict] [--base=<ref>]"
+allowed-tools: Bash(node:*), Bash(git status:*), Bash(git diff:*), Bash(claude plugin validate:*), Read, Edit, Glob, Grep
 ---
 
-Audit the two harness trees against each other: mirrored skills, rule/instruction twins, agent twins and their model parity, registry listings, and cost hygiene.
+Audit the plugins under `plugins/` against the marketplace's contracts: both harness manifests, skills, agent naming and review rules, MCP scoping, the shared AGENTS.md block, and the .NET testing policy.
 
-The deterministic work lives in `scripts/repo-audit.mjs` — it compares content hashes, frontmatter, and registries, and prints a JSON report. Your job is only to act on what it flags.
+The deterministic work lives in `scripts/repo-audit.mjs` — it parses manifests and frontmatter, compares the AGENTS.md block with the `andes-init` template, and prints a JSON report. Your job is only to act on what it flags.
 
 ## 1. Run the audit
 
@@ -14,30 +14,31 @@ The deterministic work lives in `scripts/repo-audit.mjs` — it compares content
 node scripts/repo-audit.mjs --json
 ```
 
-Append `--strict` if the user passed it (warnings then also fail).
+Append `--strict` if the user passed it (warnings then also fail) and `--base=<ref>` if they passed one (every plugin changed since `<ref>` must bump its version). Then run `claude plugin validate .` when the `claude` CLI is available.
 
 ## 2. Branch on the exit code — it is the contract
 
-- **`0` — clean.** Print the one-line summary (it already carries the warning count) and **stop immediately**. Do not read files, do not "double-check" the trees — the hashes already did. This is the routine path and it should cost close to nothing.
-- **`1` — the script itself failed** (unreadable tree, parse crash). Report the error and stop. Fix nothing on the basis of a failed check.
+- **`0` — clean.** Print the one-line summary (it carries the warning count) and **stop immediately**. Do not read files or "double-check" — this is the routine path and should cost close to nothing.
+- **`1` — the script itself failed** (bad JSON, missing git ref). Report the error and stop. Fix nothing on the basis of a failed check.
 - **`10` — findings.** Continue below.
 
 ## 3. Read only what the report names
 
-`affectedPaths` is your entire read-set — do not audit beyond it. Per finding:
+`affectedPaths` is your entire read-set. Per finding family:
 
-- **`skills-mirror/differs`** — decide the canonical side: `git status` / `git diff` shows which side carries the uncommitted (newer) change; `cp` it over the other. If both sides are committed and differ, do not guess — present both versions to the user.
-- **`skills-mirror/missing-*`** — `cp` the file into the tree that lacks it (or confirm with the user that it should be deleted from both).
-- **`rules-parity/body-drift`** — reconcile the wording semantically and apply the same sentence to **both** files. The script's header documents which cross-reference spellings are intentional and already mapped.
-- **`rules-parity/glob-mismatch`** — make the sets equal; the Claude `paths:` list is the canonical order.
-- **`agent-twins/model-parity`** — align the model to the parity table in `scripts/repo-audit.mjs`, or — only with the user's explicit approval — record a documented override in its `modelParityOverrides` (and the README convention note).
-- **`registry/*`** — add or remove the registry line; never invent a description — lift it from the twin.
-- **`cost-hygiene/*`** (warnings) — propose narrowed globs or trims in your report; **never** apply them under `--fix`. They change behavior, not just parity, so a human decides.
+- **`manifests/*`** — make the Claude and Copilot manifests agree (name = folder, same version and description); list every `claude-agents/*.md` file in the Claude manifest; fix marketplace entries. `version-bump`: bump the patch version in both manifests of that plugin.
+- **`skills/*`** — frontmatter `name` must equal the folder; add a trigger-style description; remove leftover `paths:` / `applyTo:`. `upstream-drift`: revert local edits to the vendored skill — never "fix" it by editing the hash.
+- **`harness-paths/*`** — replace `.claude/...` / `.github/skills|instructions` / `copilot-instructions.md` references with the skill or agent name.
+- **`agents/*`** — `name` must equal the file stem (`andes-...`); reviewers keep High/Medium only, no handoffs, `agents:`, edit or Agent tools; list exact MCP tools; align models to the parity table in `scripts/repo-audit.mjs`, or — only with the user's explicit approval — record a documented override in `modelParityOverrides`.
+- **`mcp/*`** — pin the server version or image tag; keep the required flags (`--read-only`, `--toolsets=registry`).
+- **`memory/*`** — edit `plugins/andes-core/skills/andes-init/assets/agents-block.md`, then copy it verbatim between the markers in `AGENTS.md` and copy its `## Review loop` section verbatim into the Copilot implementer agents. `budget` is a warning: propose trims, never apply them under `--fix`.
+- **`testing-policy/*`** — rewrite the line to the xUnit + NSubstitute policy, or phrase it as a prohibition.
+- **`registry/*`** — add the missing README or AGENTS.md mention; lift wording from the item itself.
 
 ## 4. Report, or fix mechanically
 
 - **Default (no `--fix`):** output a findings table — severity, finding, proposed exact edit — and stop. Edit nothing.
-- **With `--fix`:** apply **only the mechanical repairs** above (mirror copies, glob-set sync, registry lines, wording drift with a clear canonical side). Everything judgment-shaped stays in the report.
+- **With `--fix`:** apply **only the mechanical repairs** above (manifest sync, name/frontmatter fixes, verbatim block/section copies, version bumps, registry lines). Everything judgment-shaped stays in the report.
 
 ## 5. Confirm
 
