@@ -1,11 +1,9 @@
 ---
 name: ef-core
-description: 'Get best practices for Entity Framework Core'
+description: "Use when writing or reviewing Entity Framework Core code: DbContext and entity design, queries, change tracking, migrations, performance, security, and database testing (Testcontainers first, EF InMemory last)."
 ---
 
 # Entity Framework Core Best Practices
-
-Your goal is to help me follow best practices when working with Entity Framework Core.
 
 ## Data Context Design
 
@@ -66,10 +64,9 @@ Your goal is to help me follow best practices when working with Entity Framework
 
 ## Testing
 
-- Use in-memory database provider for unit tests
-- Create separate testing contexts with SQLite for integration tests
-- Mock DbContext and DbSet for pure unit tests
-- Test migrations in isolated environments
-- Consider snapshot testing for model changes
+- Follow the database ladder in the `csharp-xunit` skill: Testcontainers → SQLite in-memory → dedicated test database → EF Core InMemory provider (last resort; not relational).
+- Never mock `DbContext` or `DbSet` — test queries against a real provider.
+- Apply migrations in the test fixture (`Database.MigrateAsync()`) so tests exercise the schema production uses.
+- Test migrations against the production engine before release.
 
-When reviewing my EF Core code, identify issues and suggest improvements that follow these best practices.
+When reviewing EF Core code, identify issues and suggest improvements that follow these practices.

@@ -1,9 +1,6 @@
 ---
-paths:
-  - "**/*.cs"
-  - "**/host.json"
-  - "**/local.settings.json"
-  - "**/*.csproj"
+name: azure-functions-csharp
+description: "Use when building or reviewing Azure Functions in C# (isolated worker): triggers and bindings, host.json and local.settings.json, DI, retries, observability, scaling, security, testing, and in-process migration."
 ---
 
 # Azure Functions C# Development
@@ -91,9 +88,9 @@ paths:
 
 ## Testing
 
-- Unit-test service classes independently of the function host using standard xUnit/NUnit with mocked dependencies.
+- Unit-test service classes independently of the function host with xUnit + NSubstitute (see the `csharp-xunit` skill).
 - Integration-test functions using `Azurite` (local Azure Storage emulator) and `TestServer` or the Azure Functions Core Tools.
-- Use the `Microsoft.Azure.Functions.Worker.Testing` helpers where available to construct mock `FunctionContext` instances.
+- Use the `Microsoft.Azure.Functions.Worker.Testing` helpers where available to construct `FunctionContext` instances.
 - Avoid testing the trigger plumbing itself; focus tests on the business logic extracted into services.
 
 ## Existing Code Review Guidance

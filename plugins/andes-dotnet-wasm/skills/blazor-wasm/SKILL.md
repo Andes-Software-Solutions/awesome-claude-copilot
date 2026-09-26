@@ -1,8 +1,6 @@
 ---
-paths:
-  - "**/*.razor"
-  - "**/*.razor.cs"
-  - "**/*.razor.css"
+name: blazor-wasm
+description: "Use when writing or reviewing standalone Blazor WebAssembly (.NET 10) code (.razor, .razor.cs, .razor.css): hosting, rendering performance, state, HTTP, PKCE auth, JS interop, AOT/trimming, PWA, forms, and bUnit tests."
 ---
 
 # Standalone Blazor WebAssembly (.NET 10)
@@ -14,7 +12,7 @@ These rules target **standalone Blazor WebAssembly** apps (`blazorwasm` template
 - The "ASP.NET Core Hosted" WASM template was **removed in .NET 8** — never scaffold or suggest the old Client/Server/Shared three-project layout. A standalone WASM app calls its backend as an ordinary web API.
 - Standalone WASM has **no concept of render modes** — `@rendermode`, `InteractiveWebAssembly`, `InteractiveAuto`, prerendering, and `.Client` projects are Blazor Web App concerns. Never suggest them here.
 - Everything shipped to the browser is inspectable: **never put secrets, API keys, or private business logic in the app**. Sensitive work belongs behind a server API.
-- Apply the general C# standards (`.claude/rules/csharp.md`): C# 14, primary constructors with `private readonly` `_camelCase` field capture, collection expressions, `is null` / `is not null`.
+- Apply the general C# standards (the `csharp-standards` skill): C# 14, primary constructors with `private readonly` `_camelCase` field capture, collection expressions, `is null` / `is not null`.
 
 ## Components and rendering performance
 
@@ -87,7 +85,7 @@ These rules target **standalone Blazor WebAssembly** apps (`blazorwasm` template
 
 ## Testing
 
-- Unit test components with **bUnit** + xUnit, run via `dotnet test`: render with `TestContext`, interact via `Find(...)`, assert with `MarkupMatches` (semantic HTML comparison — stable against whitespace churn). Mock `IJSRuntime` and injected services (Moq/NSubstitute).
+- Unit test components with **bUnit** + xUnit, run via `dotnet test`: render with `BunitContext` (`TestContext` before bUnit 2) and `Render<TComponent>()`, interact via `Find(...)`, assert with `MarkupMatches` (semantic HTML comparison — stable against whitespace churn). Use bUnit's built-in `JSInterop` emulation for `IJSRuntime` and NSubstitute for injected services — the `csharp-xunit` policy applies.
 - Use **Playwright for .NET** for end-to-end tests when behavior depends on real DOM manipulation or hard-to-mock JS libraries.
 
 ## Outdated patterns — never suggest these

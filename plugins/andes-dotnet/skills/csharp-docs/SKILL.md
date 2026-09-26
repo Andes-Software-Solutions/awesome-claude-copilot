@@ -1,6 +1,6 @@
 ---
 name: csharp-docs
-description: "Ensure that C# types are documented with XML comments and follow best practices for documentation."
+description: "Use when adding or reviewing XML documentation comments on C# public APIs: summary, param, returns, exception, inheritdoc, remarks, and example conventions."
 ---
 
 # C# Documentation Best Practices

@@ -1,68 +1,52 @@
 ---
 name: csharp-xunit
-description: "Get best practices for XUnit unit testing, including data-driven tests"
+description: "Use when writing or reviewing .NET tests: xUnit v3 + NSubstitute only (no FluentAssertions, Moq, NUnit, or MSTest), naming, theories, fixtures, WebApplicationFactory integration tests, and the Testcontainers → SQLite → test DB → EF InMemory database ladder."
 ---
 
-# XUnit Best Practices
+# .NET testing: xUnit + NSubstitute
 
-Your goal is to help me write effective unit tests with XUnit, covering both standard and data-driven testing approaches.
+## Policy
 
-## Project Setup
+- **Framework:** xUnit v3 (`xunit.v3`, `xunit.runner.visualstudio`, `Microsoft.NET.Test.Sdk`). Never NUnit or MSTest.
+- **Assertions:** xUnit's `Assert` only. Never FluentAssertions, AwesomeAssertions, or Shouldly.
+- **Test doubles:** NSubstitute only, plus `NSubstitute.Analyzers.CSharp` to catch substitutions that silently do nothing. Never Moq or FakeItEasy.
+- **Existing suites:** if a project already uses a banned library, new tests still follow this policy and no banned package is added. Migrate existing tests only when asked.
 
-- Use a separate test project with naming convention `[ProjectName].Tests`
-- Reference Microsoft.NET.Test.Sdk, xunit, and xunit.runner.visualstudio packages
-- Create test classes that match the classes being tested (e.g., `CalculatorTests` for `Calculator`)
-- Use .NET SDK test commands: `dotnet test` for running tests
+## Project and naming
 
-## Test Structure
+- One test project per production project, named `[ProjectName].Tests`; test classes mirror the class under test (`OrderServiceTests`).
+- Name tests `MethodName_Scenario_ExpectedBehavior`.
+- Arrange-Act-Assert structure, with **no** `// Arrange` / `// Act` / `// Assert` comments — blank lines separate the phases.
+- One behavior per test; tests are independent and order-agnostic.
+- Run with `dotnet test`.
 
-- No test class attributes required (unlike MSTest/NUnit)
-- Use fact-based tests with `[Fact]` attribute for simple tests
-- Follow the Arrange-Act-Assert (AAA) pattern
-- Name tests using the pattern `MethodName_Scenario_ExpectedBehavior`
-- Use constructor for setup and `IDisposable.Dispose()` for teardown
-- Use `IClassFixture<T>` for shared context between tests in a class
-- Use `ICollectionFixture<T>` for shared context between multiple test classes
+## xUnit v3
 
-## Standard Tests
+- `[Fact]` for single cases; `[Theory]` with `[InlineData]`, `[MemberData]`, or `TheoryData<T>` for data-driven cases.
+- Setup in the constructor; async setup and teardown via `IAsyncLifetime` (`ValueTask InitializeAsync()` / `DisposeAsync()`).
+- Share expensive state with `IClassFixture<T>` (one class) or `ICollectionFixture<T>` (several classes); assembly-wide via `[assembly: AssemblyFixture(typeof(T))]`.
+- Pass `TestContext.Current.CancellationToken` to async calls so cancelled runs stop promptly.
+- Skip dynamically with `Assert.Skip(reason)`; statically with `Skip = "reason"`.
+- `Assert.Equal`, `Assert.Equivalent` (structural), `Assert.Same`, `Assert.True`/`False`, `Assert.Contains`/`DoesNotContain`, `Assert.Single`, `Assert.Empty`, `Assert.Throws<T>` / `await Assert.ThrowsAsync<T>(...)`.
+- `ITestOutputHelper` (namespace `Xunit`) for diagnostics.
 
-- Keep tests focused on a single behavior
-- Avoid testing multiple behaviors in one test method
-- Use clear assertions that express intent
-- Include only the assertions needed to verify the test case
-- Make tests independent and idempotent (can run in any order)
-- Avoid test interdependencies
+## NSubstitute
 
-## Data-Driven Tests
+- Substitute interfaces (or abstract/virtual members) at the boundary: `var clock = Substitute.For<IClock>();`.
+- Stub with `.Returns(...)`, match with `Arg.Any<T>()` / `Arg.Is<T>(x => ...)`, verify with `.Received(1)` / `.DidNotReceive()`.
+- Async: `.Returns(Task.FromResult(x))` or `.Returns(x)`; throw with `.ThrowsAsync(...)` (`NSubstitute.ExceptionExtensions`).
+- Do not substitute what you own and can construct cheaply (value objects, pure services); do not substitute `DbContext`/`DbSet` (use the database ladder) or `HttpClient` (use a stub `HttpMessageHandler` or `WebApplicationFactory`).
 
-- Use `[Theory]` combined with data source attributes
-- Use `[InlineData]` for inline test data
-- Use `[MemberData]` for method-based test data
-- Use `[ClassData]` for class-based test data
-- Create custom data attributes by implementing `DataAttribute`
-- Use meaningful parameter names in data-driven tests
+## Database ladder
 
-## Assertions
+Pick the first option the environment supports; record in the test fixture why a lower rung was used.
 
-- Use `Assert.Equal` for value equality
-- Use `Assert.Same` for reference equality
-- Use `Assert.True`/`Assert.False` for boolean conditions
-- Use `Assert.Contains`/`Assert.DoesNotContain` for collections
-- Use `Assert.Matches`/`Assert.DoesNotMatch` for regex pattern matching
-- Use `Assert.Throws<T>` or `await Assert.ThrowsAsync<T>` to test exceptions
-- Use fluent assertions library for more readable assertions
+1. **Testcontainers** — the production engine in Docker (`Testcontainers.MsSql`, `Testcontainers.PostgreSql`, …). One container per collection/assembly fixture implementing `IAsyncLifetime`; apply migrations once with `Database.MigrateAsync()`; isolate tests with a transaction rolled back per test.
+2. **SQLite in-memory** — when Docker is unavailable. `Microsoft.EntityFrameworkCore.Sqlite` with `DataSource=:memory:`; keep the `SqliteConnection` open for the context's lifetime and call `EnsureCreated()`. Provider gaps (schemas, some types and SQL translations) mean provider-specific behavior still needs rung 1 or 3.
+3. **Dedicated physical test database** — a real, disposable instance; connection string from user secrets or an environment variable, never production and never committed.
+4. **EF Core InMemory provider** — last resort. It is not relational (no transactions, constraints, or raw SQL), so use it only for logic that does not depend on database behavior.
 
-## Mocking and Isolation
+## Integration tests (ASP.NET Core)
 
-- Consider using Moq or NSubstitute alongside XUnit
-- Mock dependencies to isolate units under test
-- Use interfaces to facilitate mocking
-- Consider using a DI container for complex test setups
-
-## Test Organization
-
-- Group tests by feature or component
-- Use `[Trait("Category", "CategoryName")]` for categorization
-- Use collection fixtures to group tests with shared dependencies
-- Consider output helpers (`ITestOutputHelper`) for test diagnostics
-- Skip tests conditionally with `Skip = "reason"` in fact/theory attributes
+- `WebApplicationFactory<Program>` (`Microsoft.AspNetCore.Mvc.Testing`) hosts the app in memory; replace external dependencies in `ConfigureTestServices` with NSubstitute substitutes and point data access at the database ladder.
+- Assert on status codes and Problem Details bodies, not on internal state.

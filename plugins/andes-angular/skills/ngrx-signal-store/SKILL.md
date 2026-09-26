@@ -5,7 +5,7 @@ description: "Build, review, and test NgRx SignalStore state management in Angul
 
 # NgRx Signal Store
 
-Production guidance for `@ngrx/signals`. Pinned to **21.1.1** (`sources.json`); refresh with `/ngrx-signals-sync`.
+Production guidance for `@ngrx/signals`. Pinned to **21.1.1** (`sources.json`); the andes maintainers refresh it from the upstream docs.
 
 This is not classic NgRx. There are no actions, reducers, effects, or `dispatch` unless you deliberately opt into the Events plugin. If you catch yourself reaching for `createAction` or `createReducer`, you are in the wrong library.
 
@@ -110,6 +110,6 @@ Read these on demand — they are not loaded until you need them.
 
 ## Beyond NgRx
 
-For Angular questions that are not about state — components, zoneless, routing, the CLI — use the `angular-cli` MCP server (`list_projects` → `get_best_practices` → `search_documentation` → `find_examples`) rather than relying on memory.
+For Angular questions that are not about state — components, zoneless, routing, the CLI — use the `angular-developer` skill and the `angular-cli` MCP server (`list_projects` → `get_best_practices` → `search_documentation`, plus `find_examples` on Angular CLI 21) rather than relying on memory.
 
 NgRx's own ESLint rules (`prefer-protected-state`, `enforce-type-call`, `signal-state-no-arrays-at-root-level`, `with-state-no-arrays-at-root-level`, `signal-store-feature-should-use-generic-type`) are the machine-checkable form of the defaults above; recommend them when a project is adopting the library seriously.

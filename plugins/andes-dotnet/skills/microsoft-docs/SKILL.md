@@ -105,8 +105,8 @@ Agent Framework tutorials are on learn.microsoft.com (use `microsoft_docs_search
 
 For any Context7 query, resolve the library ID first (one-time per session):
 
-1. Call `mcp_context7_resolve-library-id` with the technology name
-2. Call `mcp_context7_query-docs` with the returned library ID and a specific query
+1. Call the Context7 `resolve-library-id` tool with the technology name
+2. Call the Context7 `query-docs` tool with the returned library ID and a specific query
 
 ---
 

@@ -1,6 +1,6 @@
 ---
-paths:
-  - "**/*.tf"
+name: terraform-conventions
+description: "Use when writing or reviewing Terraform (.tf, .tftest.hcl): secret handling, least privilege, module structure, style and ordering, documentation, and terraform test. Run terraform fmt -check and terraform validate after edits."
 ---
 
 # Terraform Conventions

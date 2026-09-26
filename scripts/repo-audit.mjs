@@ -91,7 +91,7 @@ const CONFIG = {
   // andes-init detects and removes the old drop-in layout, so it must name those paths.
   harnessPathAllow: ['plugins/andes-core/skills/andes-init/'],
   bannedTestLibs: /\b(FluentAssertions|AwesomeAssertions|Shouldly|Moq|FakeItEasy|NUnit|MSTest|UseInMemoryDatabase)\b|fluent assertions/i,
-  policyLine: /\b(never|not|no|don't|banned|instead of|last resort|avoid|only)\b/i,
+  policyLine: /\b(never|not|no|don't|banned|instead of|last resort|avoid|only|flag)\b/i,
   textExt: /\.(md|json|mjs|js|ts|yml|yaml)$/,
 };
 

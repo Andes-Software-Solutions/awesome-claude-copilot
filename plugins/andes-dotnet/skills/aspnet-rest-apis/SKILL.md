@@ -1,6 +1,6 @@
 ---
-paths:
-  - "**/*.cs"
+name: aspnet-rest-apis
+description: "Use when building or reviewing ASP.NET Core Web APIs (controllers or Minimal APIs): resource design, Entra ID/JWT auth, validation and Problem Details, versioning, OpenAPI, caching, and container deployment."
 ---
 
 # ASP.NET REST API Development
@@ -10,7 +10,7 @@ paths:
 - Build REST APIs on ASP.NET Core 10, using Web API controllers or Minimal APIs.
 - Apply best practices for API design, testing, documentation, and deployment.
 - Note the reasoning behind non-obvious design decisions; no tutorial-style explanations unless asked.
-- General C# standards (naming, formatting, nullability, data access, logging) live in `csharp.md`.
+- General C# standards (naming, formatting, nullability, data access, logging) live in the `csharp-standards` skill.
 
 ## API Design
 
@@ -52,7 +52,7 @@ paths:
 ## Testing
 
 - Unit test controllers, Minimal API endpoints, and services; add integration tests for endpoints.
-- Mock dependencies; test authentication and authorization logic.
+- Substitute external dependencies with NSubstitute and host endpoints with `WebApplicationFactory<Program>` (see the `csharp-xunit` skill); test authentication and authorization logic.
 
 ## Performance
 

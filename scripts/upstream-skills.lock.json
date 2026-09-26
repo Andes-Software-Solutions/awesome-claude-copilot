@@ -5,7 +5,12 @@
       "source": "angular/skills",
       "sourceType": "github",
       "skillPath": "angular-developer/SKILL.md",
-      "computedHash": "62e087c9cf0dc17f4ca4fed9f451f65605f43e4427016eb799409d6da39a0a87"
+      "computedHash": "62e087c9cf0dc17f4ca4fed9f451f65605f43e4427016eb799409d6da39a0a87",
+      "andes": {
+        "path": "plugins/andes-angular/skills/angular-developer",
+        "treeSha256": "22ce08f35f8478380e40c9d6d3288b3dc63137d538f1263bd0fc42bdfdda0a7a",
+        "note": "Vendored byte-for-byte from angular/skills; repo-audit fails if this folder is edited locally."
+      }
     }
   }
 }

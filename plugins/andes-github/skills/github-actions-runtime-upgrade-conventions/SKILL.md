@@ -1,6 +1,6 @@
 ---
 name: github-actions-runtime-upgrade-conventions
-description: "Upgrade GitHub Actions to supported runtimes by selecting safe action versions, preserving workflow behavior, and validating post-upgrade execution."
+description: "Use when upgrading GitHub Actions to supported runtimes (Node deprecations, runner images): pick safe action versions, preserve workflow behavior, and validate after the upgrade."
 ---
 
 # GitHub Actions Runtime Upgrade Conventions

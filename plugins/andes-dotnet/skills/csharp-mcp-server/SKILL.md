@@ -1,7 +1,6 @@
 ---
-paths:
-  - "**/*.cs"
-  - "**/*.csproj"
+name: csharp-mcp-server
+description: "Use when building or reviewing a Model Context Protocol (MCP) server in C# with the ModelContextProtocol SDK: tools, prompts, resources, transports, stderr logging, security, and testing with McpClient."
 ---
 
 # C# MCP Server Development
@@ -26,7 +25,7 @@ paths:
 - Return simple types (string, int, etc.) or complex objects that can be serialized to JSON
 - For fine-grained control, use `McpServerOptions` with custom handlers like `ListToolsHandler` and `CallToolHandler`
 - Use `McpProtocolException` for protocol-level errors with appropriate `McpErrorCode` values
-- Test MCP servers using the `McpClient` from the same SDK or any compliant MCP client
+- Test MCP servers with xUnit and the `McpClient` from the same SDK (or any compliant MCP client)
 - Structure projects with Microsoft.Extensions.Hosting for proper DI and lifecycle management
 
 ## Best Practices
@@ -41,6 +40,21 @@ paths:
 - Use the built-in DI container to manage service lifetimes and dependencies
 - Implement proper error handling and return meaningful error messages
 - Test tools individually before integrating with LLMs
+
+- Write `[Description]` text for the model that will call the tool: when to use it, what it returns, and a follow-up hint (for example, "Use GetComponentDetails(componentName) for more information"); format tool output as Markdown.
+- Treat every tool that touches files, networks, or system resources as a security boundary: validate paths and URLs, and expose the least capability that does the job.
+
+## Prompts
+
+- `[McpServerPromptType]` on the class, `[McpServerPrompt(Name = "prompt_name")]` (snake_case) on the method; one prompt per class.
+- Return `ChatMessage` (not `string`) with `ChatRole.User` for user instructions; describe what the prompt generates with `[Description]`.
+- Accept optional parameters with defaults; build multi-section content with `StringBuilder`, including examples and guidelines inline.
+
+## Resources
+
+- `[McpServerResourceType]` on the class; `[McpServerResource]` with `UriTemplate`, `Name`, `Title`, and `MimeType` (usually `text/markdown` or `application/json`).
+- URI templates with parameters for dynamic resources (`"myapp://component/{name}"`), static URIs for fixed ones (`"myapp://guides"`); group related resources in one class.
+- Return Markdown with navigation hints to related resources; handle missing resources with a helpful error.
 
 ## Common Patterns
 
@@ -86,10 +100,7 @@ public static async Task<string> Analyze(
     [Description("Content to analyze")] string content,
     CancellationToken cancellationToken)
 {
-    var messages = new ChatMessage[]
-    {
-        new(ChatRole.User, $"Analyze this: {content}")
-    };
+    ChatMessage[] messages = [new(ChatRole.User, $"Analyze this: {content}")];
     return await server.AsSamplingChatClient()
         .GetResponseAsync(messages, cancellationToken: cancellationToken);
 }
