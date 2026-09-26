@@ -12,6 +12,14 @@ maintains this file as part of every post-implementation invocation.
 
 ### Added
 
+- **Breaking restructure:** the repository is now the `andes` plugin marketplace for Claude Code and GitHub Copilot. You install plugins instead of copying files, and updates arrive through the marketplace.
+  - **Plugins.** Six plugins, each serving both harnesses from one directory: `andes-core`, `andes-dotnet`, `andes-dotnet-wasm`, `andes-angular`, `andes-github`, and `andes-terraform`. Stack plugins depend on `andes-core`.
+  - **Install.** In Claude Code, run `/plugin marketplace add RorroRojas3/awesome-claude-copilot`, then `/plugin install <plugin>@andes`. Copilot CLI and VS Code use the same marketplace; that path is not yet verified end to end.
+  - **`andes-init`.** A new user-invoked skill writes and refreshes the shared `AGENTS.md` block in your repository and wires `CLAUDE.md` to it. It also offers opt-in settings and cleanup of old drop-in copies.
+  - **`angular-standards`.** A new skill gives Claude Code and Copilot the same Angular rules.
+  - **CI.** A new workflow runs the repo audit and `claude plugin validate --strict` on PRs.
+  - See `docs/2026-09-plugin-architecture.md`.
+
 - Cross-harness repo audit: a zero-dependency `scripts/repo-audit.mjs` plus a `/repo-audit` slash command (Claude Code) and `repo-audit` prompt (Copilot) that verify the two trees still mirror each other — skills content hashes (tolerating Windows line endings), rule/instruction pairs, agent twins with a model-parity table and documented per-harness overrides, registry listings — and lint config cost hygiene (always-on word budgets, broad or overlapping globs, missing model/effort pins). Exit-code contract matches the NgRx sync (`0` clean / `10` findings / `1` failed run); report-only by default, `--fix` applies only mechanical repairs, never commits. See `docs/2026-08-repo-audit.md`.
 
 - PRD generation workflow in both harnesses: a `prd` skill (canonical nine-section template with stable `FR-n`/`EP-n`/`US-xxx` IDs, story-breakdown rules, GitHub-issue recipes — mirrored in `.claude/skills/prd/` and `.github/skills/prd/`) plus a PRD-generator agent that turns a feature request into a PRD under `docs/prd/` — measurable success criteria and epics/user stories with acceptance criteria, P0/P1/P2 priorities, S/M/L estimates, and dependencies — and, only after explicit approval, GitHub issues via `gh`. On Claude Code it is the `prd-generator` subagent with a `PRD-STATUS` report contract (clarifying questions relayed via `NEEDS-INPUT`); on Copilot it is the interactive **PRD Generator** chat mode that interviews the user and hands off to the Planner Expert, which now plans against the PRD's story IDs. The README was reframed as dual-harness to match (concept-mapping table, badges, per-harness getting started). See `docs/2026-08-prd-workflow.md`.
@@ -22,6 +30,16 @@ maintains this file as part of every post-implementation invocation.
 
 ### Changed
 
+- **Breaking:** how the standards load, and how agents behave.
+  - **Shared `AGENTS.md`.** Both harnesses now read a 505-word always-on block in a shared root `AGENTS.md`, down from 1,263 words in `CLAUDE.md` and 995 in `copilot-instructions.md`. `CLAUDE.md` is now just `@AGENTS.md`.
+  - **Rules are now skills.** The path-scoped rules became on-demand skills: `csharp` became `csharp-standards`, `terraform` became `terraform-conventions`, and the others kept their names. A file-type routing table in `AGENTS.md` names the skill to load. A `.cs` edit no longer loads about 2,566 words of rules.
+  - **Agent names.** Every agent is now `andes-<role>`.
+  - **Reviewers.** They report only High and Medium findings with one verdict, and they never edit files. The review loop stops after two rounds, and the full-stack flow now counts rounds per side.
+  - **Who implements.** In Claude Code, the main session writes the code. Copilot keeps its implementer agents.
+  - **MCP.** Servers ship with their plugin. Every agent gets exact tool grants. `angular-cli` runs read-only and `terraform` runs with the registry toolset only.
+  - **.NET tests.** The policy is xUnit v3 + NSubstitute only. Test databases go Testcontainers first and EF Core InMemory last.
+  - **Effort.** `andes-prd-generator` and `andes-se-technical-writer` now run at effort `high`. Reviewers stay at `xhigh`.
+  - **Repo audit.** `scripts/repo-audit.mjs` was rewritten for the plugin layout.
 - Copilot AI-credit cost tuning (see `docs/2026-08-repo-audit.md`): the implementation-agent review loop is capped at two rounds with re-reviews scoped to the files changed since the first round (contract in `copilot-instructions.md`, restated in the C#/Angular/MCP/Full-Stack experts, and a matching re-review-scoping rule in all six reviewer agents plus `CLAUDE.md`'s delegation rules); `aspnet-rest-apis` no longer fires on `**/*.json` in either harness (its body has no JSON guidance); and the Copilot SE Technical Writer moved from Claude Sonnet 5 to Claude Haiku 4.5 under the new model-parity convention — tier parity by default, with per-harness cost overrides recorded in `scripts/repo-audit.mjs` and a docs record (the Claude twin stays Sonnet + `xhigh`).
 - Context-efficiency refactor of both AI-assistant harnesses (`.claude/` and `.github/`), cutting per-session context tokens without changing any standard: deduplicated the sections shared verbatim between the C# and ASP.NET REST API rule/instruction files (each section now lives in exactly one file; globs unchanged); extracted the SE Technical Writer's ~250 lines of document templates into a new mirrored `technical-writing` skill (`SKILL.md` plus six `references/` files, read on demand), shrinking both writer agents to ~110 lines; rewrote `.claude/CLAUDE.md` (1,967 → ~1,220 words) and `.github/copilot-instructions.md` (1,403 → ~975 words) to stop restating rule globs, skill descriptions, and agent frontmatter already loaded elsewhere — copilot-instructions.md now carries a single shared "Implementation-agent contract" section replacing the review/documentation boilerplate previously copy-pasted across five implementation agents; and compressed the reviewer and expert agent bodies that restated their own preloaded skills, plus the `ngrx-signal-store` (122 → ~60 words) and `github-actions-hardening` (119 → ~55 words) skill descriptions, keeping every trigger noun.
 
@@ -34,6 +52,18 @@ maintains this file as part of every post-implementation invocation.
   - CLAUDE.md's MCP section now explains the Claude Code v2.1.196 workspace trust gate and recommends a user-level `enabledMcpjsonServers` allowlist (plus `claude mcp reset-project-choices` for stale rejections) so the repo's servers auto-load everywhere.
 - The Claude Code harness now defaults to extra-high reasoning effort: `"effortLevel": "xhigh"` in `.claude/settings.json` sets the session-wide default, and all four subagents pin `effort: xhigh` in their frontmatter so they stay at extra-high even if the session level changes. The SE Technical Writer moved from Haiku to Sonnet in both harnesses (`.claude/agents/se-technical-writer.md`, `.github/agents/se-technical-writer.agent.md`) because Haiku 4.5 ignores effort settings while Sonnet 5 honors `xhigh`. See `docs/2026-08-effort-defaults.md`.
 - Terser output and minimal code comments, enforced in both harnesses. A new always-on "Communication & comments (always)" section (`.claude/CLAUDE.md`, `.github/copilot-instructions.md`) makes responses lead with the answer — no filler — and limits code comments to what code cannot say (why-decisions, constraints, non-obvious invariants), never narrating what code does; XML docs on public APIs are unaffected. The auto-loaded C# and ASP.NET REST API rules were rewritten from tutorial voice into terse imperative standards and meaningfully shortened to cut per-session context tokens, dropping the per-function comment mandate (`.claude/rules/csharp.md`, `.claude/rules/aspnet-rest-apis.md`, and their `.github/instructions/` twins); the Terraform rules dropped their explain-every-resource comment bullet; and the SE Technical Writer lost its engagement-driven guidance (hooks, failure stories, blog voice) so generated docs are direct and factual (`.claude/agents/se-technical-writer.md`, `.github/agents/se-technical-writer.agent.md`).
+
+### Removed
+
+- **Breaking:** the `.claude/` and `.github/` drop-in trees are gone. That includes:
+  - `.claude/CLAUDE.md` and `.github/copilot-instructions.md`
+  - the rules and instructions files
+  - the per-harness agents
+  - the mirrored `skills/` copies
+  - the root `.mcp.json` and `.vscode/mcp.json`
+  - the separate `csharp-mcp-expert` agent, now part of `andes-csharp-expert`
+
+  Run `andes-init` to find and remove old copies in your repositories. The pre-plugin layout is still available at commit `97943de` on `main`.
 
 ### Fixed
 

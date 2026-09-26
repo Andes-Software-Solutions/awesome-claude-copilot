@@ -1,5 +1,7 @@
 # August 2026 Cross-Harness Audit & Copilot Cost Tuning
 
+> **Superseded in part by [2026-09-plugin-architecture.md](2026-09-plugin-architecture.md)** (2026-09-26): `scripts/repo-audit.mjs` was rewritten for the plugin layout — the skills-mirror and rules-parity checks are gone, replaced by manifest, agent, MCP, `AGENTS.md`-block, and testing-policy checks; model-parity overrides still apply.
+
 **Date**: 2026-08-06
 **Shared tooling**: `scripts/repo-audit.mjs` (new — repo-maintenance tooling, part of neither drop-in tree)
 **Claude Code harness**: `.claude/commands/repo-audit.md` (new), `.claude/rules/aspnet-rest-apis.md`, `.claude/rules/blazor-wasm.md`, `.claude/agents/csharp-code-reviewer.md`, `.claude/agents/angular-code-reviewer.md`, `.claude/agents/github-actions-reviewer.md`, `.claude/CLAUDE.md`, `README.md`
