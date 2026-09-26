@@ -13,8 +13,10 @@ maintains this file as part of every post-implementation invocation.
 ### Added
 
 - **Breaking restructure:** the repository is now the `andes` plugin marketplace for Claude Code and GitHub Copilot. You install plugins instead of copying files, and updates arrive through the marketplace.
-  - **Plugins.** Six plugins, each serving both harnesses from one directory: `andes-core`, `andes-dotnet`, `andes-dotnet-wasm`, `andes-angular`, `andes-github`, and `andes-terraform`. Stack plugins depend on `andes-core`.
-  - **Install.** In Claude Code, run `/plugin marketplace add RorroRojas3/awesome-claude-copilot`, then `/plugin install <plugin>@andes`. Copilot CLI and VS Code use the same marketplace; that path is not yet verified end to end.
+  - **Plugins.** Six plugins: `andes-core`, `andes-dotnet`, `andes-dotnet-wasm`, `andes-angular`, `andes-github`, and `andes-terraform`. Stack plugins depend on `andes-core`.
+  - **One directory, both harnesses.** Each plugin serves both harnesses from one directory with shared skills. Claude Code reads its own manifest. Copilot reads an Agent Plugins 1.0 manifest, which both VS Code and Copilot CLI document.
+  - **Install on Claude Code.** Run `/plugin marketplace add RorroRojas3/awesome-claude-copilot`, then `/plugin install <plugin>@andes`. Dependencies install automatically.
+  - **Install on Copilot.** Copilot CLI and VS Code use the same marketplace, but you install `andes-core` (and `andes-dotnet` before `andes-dotnet-wasm`) yourself. The Copilot path is not yet verified end to end.
   - **`andes-init`.** A new user-invoked skill writes and refreshes the shared `AGENTS.md` block in your repository and wires `CLAUDE.md` to it. It also offers opt-in settings and cleanup of old drop-in copies.
   - **`angular-standards`.** A new skill gives Claude Code and Copilot the same Angular rules.
   - **CI.** A new workflow runs the repo audit and `claude plugin validate --strict` on PRs.

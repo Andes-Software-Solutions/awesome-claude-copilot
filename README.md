@@ -33,6 +33,8 @@ How it fits together:
 | `andes-github` | **Skills:** `github-actions-hardening`, `github-actions-efficiency`, `github-actions-runtime-upgrade-conventions`<br>**Agents:** `andes-github-actions-reviewer` | `andes-core` |
 | `andes-terraform` | **Skills:** `terraform-conventions`<br>**MCP:** `terraform` | `andes-core` |
 
+Claude Code installs dependencies automatically. On Copilot, install them yourself (see [Install](#install)).
+
 When you run `andes-init`, it reports which plugins match your repository (for example, `*.csproj` suggests `andes-dotnet` and `angular.json` suggests `andes-angular`) and which of those are not installed yet.
 
 ---
@@ -70,7 +72,7 @@ copilot plugin install andes-core@andes
 copilot plugin install andes-dotnet@andes
 ```
 
-Install `andes-core` explicitly until Copilot's `dependencies` support is confirmed. For `andes-dotnet-wasm`, install `andes-dotnet` explicitly as well. Then run the `andes-init` skill. The files it writes serve both harnesses, so you can also run it once from Claude Code.
+On Copilot, the plugins use the Agent Plugins 1.0 format, which has no `dependencies` field. That means you install dependencies yourself: always install `andes-core`, and install `andes-dotnet` before `andes-dotnet-wasm`. Then run the `andes-init` skill. The files it writes serve both harnesses, so you can also run it once from Claude Code.
 
 ### VS Code (GitHub Copilot)
 
@@ -84,7 +86,7 @@ Add this to your user or workspace `settings.json`:
 }
 ```
 
-Then search `@agentPlugins` in the Extensions view and install the plugins. VS Code also reads `extraKnownMarketplaces` and `enabledPlugins` from `.claude/settings.json` as workspace recommendations, so the team-rollout setting that `andes-init` offers covers VS Code too. Like the Copilot CLI steps, this is not yet verified end to end.
+Then search `@agentPlugins` in the Extensions view and install the plugins, including `andes-core` (dependencies are not installed automatically, as with Copilot CLI). VS Code also reads `extraKnownMarketplaces` and `enabledPlugins` from `.claude/settings.json` as workspace recommendations, so the team-rollout setting that `andes-init` offers covers VS Code too. Like the Copilot CLI steps, this is not yet verified end to end.
 
 ---
 
@@ -159,6 +161,13 @@ The policy lives in `csharp-xunit`, `csharp-standards`, and `ef-core`. `andes-cs
 | `angular-cli` | `andes-angular` | `npx -y @angular/cli mcp --read-only` | Unpinned on purpose, so `npx` uses your project-local CLI and the tools match your Angular version. `--read-only` drops the `run_target` and devserver tools |
 | `terraform` | `andes-terraform` | `docker run -i --rm hashicorp/terraform-mcp-server:1.3.0 --toolsets=registry` | Pinned image, public-registry toolset only. Requires Docker |
 
+Each plugin declares its servers twice, with the same entries:
+
+- `.mcp.json` for Claude Code.
+- `mcp.json` for Copilot, in Agent Plugins format. There, `microsoft-learn` uses `type: streamable-http`.
+
+The repo audit fails if the two drift.
+
 Tool scoping:
 
 - **Exact grants.** Every agent lists exact MCP tools, never a whole server.
@@ -229,11 +238,12 @@ What was renamed:
 ├── .claude-plugin/marketplace.json     # the andes marketplace
 ├── plugins/andes-<name>/
 │   ├── .claude-plugin/plugin.json      # Claude Code manifest; lists every claude-agents/ file
-│   ├── .github/plugin/plugin.json      # Copilot manifest; "agents": "copilot-agents/", "skills": "skills/"
+│   ├── plugin.json                     # Copilot manifest (Agent Plugins 1.0): $schema + metadata only
 │   ├── skills/                         # shared by both harnesses
 │   ├── claude-agents/                  # Claude Code agents (*.md)
-│   ├── copilot-agents/                 # Copilot agents (*.agent.md)
-│   └── .mcp.json                       # optional MCP servers
+│   ├── com.github.copilot/agents/      # Copilot agents (*.agent.md)
+│   ├── .mcp.json                       # Claude Code MCP servers (optional)
+│   └── mcp.json                        # Copilot MCP servers, Agent Plugins format (optional; same servers)
 ├── AGENTS.md                           # the andes block (= andes-init template) + maintainer notes
 ├── CLAUDE.md                           # exactly "@AGENTS.md"
 ├── .claude/commands/, .github/prompts/ # maintainer-only /repo-audit and /ngrx-signals-sync (not shipped)
@@ -243,6 +253,12 @@ What was renamed:
 ├── scripts/upstream-skills.lock.json   # hash pin for angular-developer
 └── docs/                               # ADRs and change records
 ```
+
+**Why this layout.**
+
+- **Copilot uses Agent Plugins 1.0.** VS Code and Copilot CLI both switch to Agent Plugins 1.0 when a root `plugin.json` declares `"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"`. Skills (`skills/`), MCP (`mcp.json`), and Copilot agents (`com.github.copilot/agents/`) sit at fixed locations, so that manifest has no path fields.
+- **Claude Code uses its own files.** It reads `.claude-plugin/plugin.json`, `.mcp.json`, and the listed `claude-agents/` files.
+- **Neither loads the other's agents.** Neither agent folder is a default `agents/` folder. The audit rejects `agents/`, `commands/`, `hooks/`, and `.github/` folders inside a plugin.
 
 **Develop against live files.** Load a plugin from its folder instead of the marketplace cache:
 
@@ -255,6 +271,7 @@ claude --plugin-dir plugins/andes-<name>
 **Keep copies in sync.**
 
 - **Agent twins.** A Claude agent and its Copilot twin change together.
+- **MCP files.** `.mcp.json` and `mcp.json` list the same servers.
 - **The `AGENTS.md` block.** Edit `plugins/andes-core/skills/andes-init/assets/agents-block.md`, then copy it word for word between the markers in `AGENTS.md`.
 - **The review loop.** Copy its `## Review loop` section word for word into the Copilot implementers.
 

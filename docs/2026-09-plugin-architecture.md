@@ -115,6 +115,11 @@ On Claude Code, the main agent writes code and delegates only review, docs, and 
 - **Versions.**
   - `context7` is pinned to `4.1.1`, and the Terraform image to `hashicorp/terraform-mcp-server:1.3.0` with `--toolsets=registry`.
   - `angular-cli` stays unpinned on purpose. `npx` then resolves the project-local CLI, so the tool set matches the consumer's Angular version.
+- **One server list per harness.** A plugin with servers ships two files that list the same servers:
+  - `.mcp.json` for Claude Code, where `microsoft-learn` is `type: http`.
+  - `mcp.json` for Copilot, holding only `$schema` and `mcpServers`. Here `microsoft-learn` is `type: streamable-http`; the stdio servers are identical.
+
+  The audit fails if the two files drift (`mcp/harness-drift`) or if `mcp.json` is missing (`mcp/copilot-missing`).
 - **No root configs.** The root `.mcp.json` and `.vscode/mcp.json` are removed. Each plugin starts its own servers.
 
 ### 7. Agent names are `andes-<role>` everywhere
@@ -158,6 +163,8 @@ In both harnesses, every agent is named `andes-<role>`: lowercase, and equal to 
 - **Skills load on demand.** A standard now applies only if the model loads its skill. The routing table reduces that risk but does not remove it, the way path-scoped rules did.
 - **Copilot is unverified.** The Copilot side has not been tested end to end yet (see the checklist below).
 - **Version bumps.** Every change needs a bump in two manifests. CI enforces it on PRs.
+- **Two MCP files.** Plugins with MCP servers keep `.mcp.json` and `mcp.json` in step. The audit catches drift.
+- **Manual dependencies on Copilot.** Agent Plugins 1.0 has no `dependencies` field, so Copilot users install `andes-core` (and `andes-dotnet` for `andes-dotnet-wasm`) themselves.
 - **The `ai_tutor` deny is manual.** It depends on the consumer accepting `andes-init`'s offer.
 
 **Neutral:**
@@ -176,7 +183,7 @@ In both harnesses, every agent is named `andes-<role>`: lowercase, and equal to 
 
 - Pros: Each tree has one manifest, so harness selection is never ambiguous.
 - Cons: Skills are duplicated again, and the mirror audit comes back.
-- Kept as the fallback if Copilot picks the wrong manifest.
+- Kept as the fallback if a Copilot client still loads the Claude manifest or agents.
 
 **Keep `.github/copilot-instructions.md` next to `AGENTS.md`.**
 
@@ -231,37 +238,36 @@ Always-on listing cost per plugin (`claude plugin details`, tokens):
 
 ## Not Yet Verified: GitHub Copilot Checklist
 
-Copilot CLI and VS Code were not available in the verification environment. Run these locally, in order. The first two are the riskiest. Notes marked *Docs:* are expectations from GitHub and VS Code documentation fetched on 2026-09-26, not observed results.
+Copilot CLI and VS Code were not available in the verification environment. Run these locally, in order. Notes marked *Docs:* are expectations from GitHub and VS Code documentation fetched on 2026-09-26, not observed results.
 
-1. **Copilot CLI picks `.github/plugin/plugin.json` and loads only `copilot-agents/`.**
-   - Steps: `copilot plugin marketplace add RorroRojas3/awesome-claude-copilot`, then `copilot plugin install andes-dotnet@andes`. Start a session and open `/agent`.
+Both manifest checks (1 and 2) now follow a documented, unambiguous path: each client selects Agent Plugins 1.0 from the root `plugin.json` `$schema`. They carry less risk than the earlier legacy-manifest design, but they are still the first thing to confirm. Copilot has no `dependencies` support in Agent Plugins 1.0, so install `andes-core` (and `andes-dotnet` before `andes-dotnet-wasm`) explicitly throughout.
+
+1. **Copilot CLI uses the root Agent Plugins manifest and loads only `com.github.copilot/agents/`.**
+   - Steps: `copilot plugin marketplace add RorroRojas3/awesome-claude-copilot`, then `copilot plugin install andes-core@andes` and `copilot plugin install andes-dotnet@andes`. Start a session and open `/agent`.
    - Pass: you see `andes-csharp-expert`, `andes-csharp-dotnet-janitor`, and `andes-csharp-code-reviewer` exactly once, with no Claude-format duplicates.
-   - *Docs:* legacy plugins are checked in this order: `.plugin/plugin.json`, `plugin.json`, `.github/plugin/plugin.json`, `.claude-plugin/plugin.json`. So the Copilot manifest should win.
-2. **VS Code picks the Copilot manifest.**
-   - Steps: set `chat.plugins.enabled` and add the repo to `chat.plugins.marketplaces`. Install `andes-dotnet` from the Extensions view (`@agentPlugins`). Check the agents dropdown.
-   - Pass: only the `copilot-agents/` agents appear.
-   - *Docs:* VS Code's format table lists a root `plugin.json` for the Copilot format and `.claude-plugin/plugin.json` for the Claude format, but it does not list `.github/plugin/plugin.json`. VS Code may therefore treat these plugins as Claude-format.
-3. **`.claude-plugin/marketplace.json` is enough.**
-   - Steps: run `copilot plugin marketplace browse andes`.
+   - *Docs:* "The exact `$schema` value `https://agent-plugins.org/schemas/1.0.0/plugin.schema.json` opts a plugin into Agent Plugins 1.0 semantics." Custom agents are read from `com.github.copilot/agents/`.
+2. **VS Code detects Agent Plugins 1.0 (not Claude format) and shows only the Copilot agents.**
+   - Steps: set `chat.plugins.enabled` and add the repo to `chat.plugins.marketplaces`. Install `andes-core` and `andes-dotnet` from the Extensions view (`@agentPlugins`). Check the agents dropdown.
+   - Pass: only the `com.github.copilot/agents/` agents appear, and none of the `claude-agents/` files do.
+   - *Docs:* "A root plugin.json that declares the canonical Agent Plugins $schema uses Agent Plugins semantics." VS Code reads custom agents from the `com.github.copilot` namespace.
+3. **`.claude-plugin/marketplace.json` is enough for marketplace discovery.**
+   - Steps: run `copilot plugin marketplace browse andes`. In VS Code, search `@agentPlugins`.
    - Pass: all six plugins are listed.
-   - *Docs:* Copilot CLI checks `.claude-plugin/marketplace.json` last in its lookup order.
-4. **`dependencies` resolve.**
-   - Steps: in a clean profile, install only `andes-dotnet-wasm@andes`, then run `copilot plugin list`.
-   - Pass: `andes-core` and `andes-dotnet` are installed too.
-5. **Agent IDs and `agents:` resolve across plugins.**
+   - *Docs:* Copilot CLI checks `.claude-plugin/marketplace.json` last in its marketplace lookup order.
+4. **Agent IDs and `agents:` resolve across plugins.**
    - Steps: install `andes-core`, `andes-dotnet`, and `andes-angular`. Ask `andes-csharp-expert` for a small change.
    - Pass: it invokes `andes-csharp-code-reviewer` (from `andes-dotnet`) and `andes-se-technical-writer` (from `andes-core`) by bare name, with no plugin prefix.
    - *Docs:* the agent ID is the file name without `.agent.md`.
-6. **MCP tool IDs use `server/tool`.**
+5. **Plugin MCP servers start from `mcp.json`, and tool IDs use `server/tool`.**
    - Steps: in an Angular workspace, run `andes-angular-code-reviewer`. In a .NET repo, run `andes-csharp-expert`.
-   - Pass: `angular-cli/get_best_practices` and `microsoft-learn/microsoft_docs_search` are callable. If they are missing, the plugin-server ID format differs.
-7. **Plugin skills load from Copilot agents.**
+   - Pass: `angular-cli/get_best_practices` and `microsoft-learn/microsoft_docs_search` (a `streamable-http` server) are callable. If they are missing, the plugin-server ID format differs.
+6. **Plugin skills load from Copilot agents.**
    - Steps: ask `andes-csharp-expert` to add tests for a service.
    - Pass: it loads `csharp-standards` and `csharp-xunit`, and writes xUnit v3 + NSubstitute tests.
-8. **Instructions load once in Copilot CLI.**
+7. **Instructions load once in Copilot CLI.**
    - Steps: in a repo with `AGENTS.md` and the `@AGENTS.md` stub in `CLAUDE.md`, inspect the loaded instructions.
    - Pass: the `andes` block appears once. The stub adds at most its one literal line.
-9. **The `chat.useAgentsMdFile` default in VS Code.**
+8. **The `chat.useAgentsMdFile` default in VS Code.**
    - Steps: record the default value. Confirm that `AGENTS.md` appears in a chat response's references. (`andes-init` offers to set it to `true` explicitly anyway.)
 
 Also open:
@@ -273,15 +279,16 @@ Also open:
 
 | Failing check | Fallback |
 | --- | --- |
-| 1, 2 — wrong manifest or cross-loaded agents | Sibling trees `plugins/claude/andes-*` and `plugins/copilot/andes-*`, each with one manifest. `skills/` stays byte-identical, and the audit enforces it. |
-| 6 — plugin MCP servers or tool IDs misbehave in Copilot | A separate `.github/mcp.json` per plugin (a legacy Copilot MCP location), with tool IDs adjusted to what Copilot reports. |
-| 3 — marketplace not found | Add a Copilot marketplace at `.github/plugin/marketplace.json`. |
-| 4 — `dependencies` ignored | Tell Copilot users in the README to install `andes-core` (and `andes-dotnet` for `andes-dotnet-wasm`) explicitly. |
+| 1, 2 — a Copilot client loads the Claude manifest or agents | Sibling trees `plugins/claude/andes-*` and `plugins/copilot/andes-*`, each with one manifest. `skills/` stays byte-identical, and the audit enforces it. |
+| 3 — marketplace not found | Add a root `marketplace.json`, which is first in Copilot CLI's marketplace lookup order. |
+| 4 — `agents:` targets don't resolve across plugins | Use the plugin-qualified ID Copilot reports in `agents:` and `handoffs`, and update the audit's target check to match. |
+| 5 — tool IDs differ for plugin servers | Adjust the `server/tool` entries in the Copilot agents' `tools:` to the format Copilot reports. |
 
 ## References
 
 - Claude Code plugins and marketplaces: <https://code.claude.com/docs/en/plugin-marketplaces>
-- Copilot CLI plugin reference (manifest and marketplace lookup order, precedence): <https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference>
+- Agent Plugins 1.0 specification: <https://github.com/agentplugins/agent-plugins-spec/blob/main/spec/1.0.0.md>
+- Copilot CLI plugin reference (Agent Plugins 1.0 manifest, `com.github.copilot/` components, marketplace lookup order, precedence): <https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-plugin-reference>
 - Copilot CLI, finding and installing plugins: <https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/plugins-finding-installing>
 - VS Code agent plugins (format detection, `chat.plugins.marketplaces`): <https://code.visualstudio.com/docs/agent-customization/agent-plugins>
 - Branch history: `git log --oneline 97943de..HEAD` on `claude/agent-architecture-plan-vmfbnd`
