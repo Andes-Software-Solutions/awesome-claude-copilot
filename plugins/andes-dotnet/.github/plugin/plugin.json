@@ -17,5 +17,6 @@
     "xunit"
   ],
   "skills": "skills/",
-  "agents": "copilot-agents/"
+  "agents": "copilot-agents/",
+  "mcpServers": ".mcp.json"
 }
