@@ -1,0 +1,65 @@
+name: repo-audit
+
+on:
+  pull_request:
+    paths:
+      - "plugins/**"
+      - "scripts/**"
+      - ".claude-plugin/**"
+      - ".claude/**"
+      - ".github/prompts/**"
+      - ".github/workflows/repo-audit.yml"
+      - ".mcp.json"
+      - ".vscode/mcp.json"
+      - ".github/copilot-instructions.md"
+      - "AGENTS.md"
+      - "CLAUDE.md"
+      - "README.md"
+      - "CHANGELOG.md"
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The version-bump check diffs against the merge base with the target branch.
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      # Errors fail the job; warnings (budgets, README mentions) are judgment calls and stay advisory.
+      - name: Audit plugins
+        id: audit
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          if [ -n "$BASE_REF" ]; then
+            node scripts/repo-audit.mjs "--base=origin/$BASE_REF"
+          else
+            node scripts/repo-audit.mjs
+          fi
+
+      - name: Validate plugin and marketplace manifests
+        if: ${{ success() || steps.audit.outcome == 'failure' }}
+        run: |
+          npm install --global --no-fund --no-audit @anthropic-ai/claude-code@2.1.283
+          rc=0
+          claude plugin validate --strict . || rc=1
+          for plugin in plugins/*/; do
+            claude plugin validate --strict "$plugin" || rc=1
+          done
+          exit "$rc"
