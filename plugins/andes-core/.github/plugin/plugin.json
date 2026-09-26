@@ -1,0 +1,19 @@
+{
+  "name": "andes-core",
+  "version": "1.0.0",
+  "description": "Shared AGENTS.md standards (via andes-init), PRD generation, and technical writing with CHANGELOG ownership.",
+  "author": {
+    "name": "Rodrigo Rojas"
+  },
+  "homepage": "https://github.com/RorroRojas3/awesome-claude-copilot",
+  "repository": "https://github.com/RorroRojas3/awesome-claude-copilot",
+  "license": "MIT",
+  "keywords": [
+    "agents-md",
+    "prd",
+    "documentation",
+    "changelog"
+  ],
+  "skills": "skills/",
+  "agents": "copilot-agents/"
+}

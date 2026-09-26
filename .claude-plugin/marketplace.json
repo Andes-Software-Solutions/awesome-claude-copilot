@@ -1,0 +1,41 @@
+{
+  "name": "andes",
+  "owner": {
+    "name": "Rodrigo Rojas"
+  },
+  "metadata": {
+    "description": "Andes: C#/.NET, Angular, GitHub Actions, and Terraform standards for Claude Code and GitHub Copilot."
+  },
+  "plugins": [
+    {
+      "name": "andes-core",
+      "source": "./plugins/andes-core",
+      "description": "Shared AGENTS.md standards (via andes-init), PRD generation, and technical writing with CHANGELOG ownership."
+    },
+    {
+      "name": "andes-dotnet",
+      "source": "./plugins/andes-dotnet",
+      "description": "C#/.NET standards as on-demand skills (C# 14, ASP.NET Core, Azure Functions, MCP servers, EF Core, xUnit + NSubstitute) and a report-only C# reviewer."
+    },
+    {
+      "name": "andes-dotnet-wasm",
+      "source": "./plugins/andes-dotnet-wasm",
+      "description": "Blazor WebAssembly (standalone, .NET 10) standards as an on-demand skill; builds on andes-dotnet."
+    },
+    {
+      "name": "andes-angular",
+      "source": "./plugins/andes-angular",
+      "description": "Angular and NgRx Signal Store skills, a read-only Angular CLI MCP server, and a report-only Angular reviewer."
+    },
+    {
+      "name": "andes-github",
+      "source": "./plugins/andes-github",
+      "description": "GitHub Actions hardening, CI-efficiency, and runtime-upgrade skills with a report-only workflow reviewer."
+    },
+    {
+      "name": "andes-terraform",
+      "source": "./plugins/andes-terraform",
+      "description": "Terraform conventions as an on-demand skill and the Terraform MCP server limited to the public registry toolset."
+    }
+  ]
+}
