@@ -1,6 +1,6 @@
 ---
 name: ngrx-signal-store
-description: "Build, review, and test NgRx SignalStore state management in Angular, using production patterns pinned to the official @ngrx/signals docs. Use for any Angular state-management task, and on any mention of signalStore, signalState, withState, withComputed, withMethods, withHooks, withProps, patchState, protectedState, withEntities, entityConfig, deepComputed, rxMethod, signalMethod, or rxjs-interop. Prefer this over recalling NgRx from memory: the Signals API changed substantially and pre-v17 habits produce wrong code."
+description: "Use for any Angular state-management task and on any mention of signalStore, signalState, withState, withComputed, withMethods, withHooks, withProps, patchState, withEntities, rxMethod, or signalMethod: NgRx SignalStore patterns pinned to the official @ngrx/signals docs."
 ---
 
 # NgRx Signal Store

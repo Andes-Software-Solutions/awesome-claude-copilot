@@ -1,6 +1,6 @@
 ---
 name: github-actions-hardening
-description: Security hardening reviewer for GitHub Actions workflow files (.github/workflows/*.yml). Use when asked to review, audit, harden, or secure a workflow, when writing a new one, or for requests like "is this workflow safe?", "pin my actions", or "lock down GITHUB_TOKEN permissions". Covers ${{ }} script injection, pull_request_target / workflow_run privilege escalation, SHA pinning of third-party actions, least-privilege tokens, secret exposure, OIDC over long-lived credentials, and self-hosted runner exposure.
+description: "Use when writing, reviewing, or hardening GitHub Actions workflows (.github/workflows/*.yml): script injection, pull_request_target/workflow_run escalation, SHA pinning, least-privilege GITHUB_TOKEN, secret exposure, OIDC, and self-hosted runners."
 ---
 
 # GitHub Actions Hardening

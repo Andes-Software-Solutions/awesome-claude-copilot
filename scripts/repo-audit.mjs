@@ -41,7 +41,7 @@ const CONFIG = {
   // The template andes-init writes into consumer repos; the root AGENTS.md must embed it verbatim.
   agentsTemplate: 'plugins/andes-core/skills/andes-init/assets/agents-block.md',
   agentsBlockBudget: 700,
-  skillDescriptionBudget: 600,
+  skillDescriptionBudget: 400,
   // Folders whose defaults either harness would auto-scan; agents live in claude-agents/ and
   // copilot-agents/ so neither harness loads the other's files.
   forbiddenPluginDirs: ['agents', 'commands', 'hooks'],

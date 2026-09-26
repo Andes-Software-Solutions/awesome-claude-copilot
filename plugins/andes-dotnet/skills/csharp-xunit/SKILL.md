@@ -19,6 +19,7 @@ description: "Use when writing or reviewing .NET tests: xUnit v3 + NSubstitute o
 - Arrange-Act-Assert structure, with **no** `// Arrange` / `// Act` / `// Assert` comments — blank lines separate the phases.
 - One behavior per test; tests are independent and order-agnostic.
 - Run with `dotnet test`.
+- Use the latest stable package versions — check NuGet or the repo's `Directory.Packages.props`, never versions from memory.
 
 ## xUnit v3
 
