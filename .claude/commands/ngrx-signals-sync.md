@@ -59,7 +59,7 @@ This rewrites the shas, the version, and `pinnedAt` from live upstream. Do not h
 
 ## 5. Bump the plugin version
 
-Installed copies of `andes-angular` are cached by version, so an edited skill reaches no one until the version moves. Bump the patch number of `version` in **both** `plugins/andes-angular/.claude-plugin/plugin.json` and `plugins/andes-angular/.github/plugin/plugin.json` (they must stay equal).
+Installed copies of `andes-angular` are cached by version, so an edited skill reaches no one until the version moves. Bump the patch number of `version` in **both** `plugins/andes-angular/.claude-plugin/plugin.json` and `plugins/andes-angular/plugin.json` (they must stay equal).
 
 ## 6. Report, and leave the diff for review
 

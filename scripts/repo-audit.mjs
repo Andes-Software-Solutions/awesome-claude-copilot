@@ -2,7 +2,9 @@
 // Structural audit for the andes plugin marketplace.
 //
 // Every plugin under `plugins/` serves Claude Code and GitHub Copilot from one directory:
-// shared `skills/`, per-harness manifests, and per-harness agent folders. This script
+// shared `skills/`; Claude Code reads `.claude-plugin/plugin.json`, `.mcp.json`, and
+// `claude-agents/`; Copilot (CLI and VS Code) reads the Agent Plugins 1.0 root `plugin.json`,
+// `mcp.json`, and `com.github.copilot/agents/`. This script
 // verifies that those pieces still line up, that agents follow the naming/review/MCP
 // contracts, that the shared AGENTS.md block matches the template `andes-init` installs,
 // and that the .NET testing policy has not regressed.
@@ -43,8 +45,14 @@ const CONFIG = {
   agentsBlockBudget: 700,
   skillDescriptionBudget: 400,
   // Folders whose defaults either harness would auto-scan; agents live in claude-agents/ and
-  // copilot-agents/ so neither harness loads the other's files.
-  forbiddenPluginDirs: ['agents', 'commands', 'hooks'],
+  // com.github.copilot/agents/ so neither harness loads the other's files. A legacy
+  // .github/plugin manifest would compete with the Agent Plugins root manifest.
+  forbiddenPluginDirs: ['agents', 'commands', 'hooks', '.github'],
+  copilotAgentsDir: 'com.github.copilot/agents',
+  agentPluginsSchema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json',
+  agentPluginsMcpSchema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json',
+  // Agent Plugins 1.0 fixes component locations; these manifest fields are ignored there.
+  agentPluginsForbiddenFields: ['agents', 'skills', 'commands', 'hooks', 'mcpServers', 'lspServers'],
   // Claude Code's main session implements code, so these roles exist only for Copilot.
   copilotOnlyAgents: [
     'andes-planner-expert', 'andes-full-stack-expert', 'andes-csharp-expert',
@@ -151,10 +159,13 @@ function fmList(fm, key) {
   const lines = fm.split('\n');
   const i = lines.findIndex((l) => l.startsWith(`${key}:`));
   if (i < 0) return null;
-  const rest = lines[i].slice(key.length + 1).trim();
+  let rest = lines[i].slice(key.length + 1).trim();
+  let start = i + 1;
+  // Prettier-style flow lists open on the line after the key.
+  if (!rest && lines[i + 1]?.trim().startsWith('[')) { rest = lines[i + 1].trim(); start = i + 2; }
   if (rest.startsWith('[')) {
     let buf = rest;
-    for (let j = i + 1; !buf.includes(']') && j < lines.length; j++) buf += lines[j];
+    for (let j = start; !buf.includes(']') && j < lines.length; j++) buf += lines[j];
     return buf.slice(buf.indexOf('[') + 1, buf.lastIndexOf(']')).split(',')
       .map((s) => stripQuotes(s.trim())).filter(Boolean);
   }
@@ -199,8 +210,8 @@ for (const p of plugins) {
     const path = `${P(p)}/claude-agents/${f}`;
     agents.push({ plugin: p, harness: 'claude', stem: f.slice(0, -3), path, ...splitFrontmatter(read(path)) });
   }
-  for (const f of files(`${P(p)}/copilot-agents`, '.agent.md')) {
-    const path = `${P(p)}/copilot-agents/${f}`;
+  for (const f of files(`${P(p)}/${CONFIG.copilotAgentsDir}`, '.agent.md')) {
+    const path = `${P(p)}/${CONFIG.copilotAgentsDir}/${f}`;
     agents.push({ plugin: p, harness: 'copilot', stem: f.slice(0, -'.agent.md'.length), path, ...splitFrontmatter(read(path)) });
   }
 }
@@ -211,14 +222,14 @@ if (runs('manifests')) {
   const seen = new Map();
   for (const p of plugins) {
     const cPath = `${P(p)}/.claude-plugin/plugin.json`;
-    const gPath = `${P(p)}/.github/plugin/plugin.json`;
+    const gPath = `${P(p)}/plugin.json`;
     if (!CONFIG.namePattern.test(p)) {
       add('manifests', 'name-pattern', 'error', `Plugin folder '${p}' does not match ${CONFIG.namePattern}`, [P(p)]);
     }
     for (const d of CONFIG.forbiddenPluginDirs) {
       if (isDir(`${P(p)}/${d}`)) {
         add('manifests', 'default-dir', 'error', `Plugin has a default-named '${d}/' folder that one harness would auto-load for the other`,
-          [`${P(p)}/${d}`], undefined, 'Use claude-agents/ and copilot-agents/ (listed in each manifest) instead.');
+          [`${P(p)}/${d}`], undefined, 'Use claude-agents/ (listed in .claude-plugin/plugin.json) and com.github.copilot/agents/ instead.');
       }
     }
     const missing = [cPath, gPath].filter((x) => !exists(x));
@@ -240,11 +251,11 @@ if (runs('manifests')) {
     const onDisk = files(`${P(p)}/claude-agents`, '.md').map((f) => `claude-agents/${f}`);
     for (const a of onDisk) if (!listed.includes(a)) add('manifests', 'claude-agent-unlisted', 'error', `Claude agent '${a}' is not listed in plugin.json "agents" (Claude loads only listed files)`, [cPath, `${P(p)}/${a}`]);
     for (const a of listed) if (!onDisk.includes(a)) add('manifests', 'claude-agent-ghost', 'error', `plugin.json lists '${a}' but the file does not exist`, [cPath]);
-    if (isDir(`${P(p)}/copilot-agents`) && g.agents !== 'copilot-agents/') {
-      add('manifests', 'copilot-agents-path', 'error', 'Copilot manifest must point "agents" at copilot-agents/', [gPath]);
+    if (g.$schema !== CONFIG.agentPluginsSchema) {
+      add('manifests', 'agent-plugins-schema', 'error', `Copilot manifest must declare $schema ${CONFIG.agentPluginsSchema} (VS Code and Copilot CLI then use Agent Plugins 1.0 semantics)`, [gPath]);
     }
-    if (isDir(`${P(p)}/skills`) && g.skills !== 'skills/') {
-      add('manifests', 'copilot-skills-path', 'error', 'Copilot manifest must point "skills" at skills/', [gPath]);
+    for (const k of CONFIG.agentPluginsForbiddenFields) {
+      if (k in g) add('manifests', 'agent-plugins-field', 'error', `Agent Plugins 1.0 manifests have fixed component locations; remove '${k}'`, [gPath]);
     }
     for (const dep of c.dependencies ?? []) {
       const depName = typeof dep === 'string' ? dep.split('@')[0] : dep.name;
@@ -275,7 +286,7 @@ if (runs('manifests')) {
       try { before = JSON.parse(git('show', `${mergeBase}:${P(p)}/.claude-plugin/plugin.json`)).version; } catch { continue; }
       if (before === seen.get(p)) {
         add('manifests', 'version-bump', 'error', `'${p}' changed since ${BASE} but its version is still ${before} — installed copies are cached by version and will not update`,
-          [`${P(p)}/.claude-plugin/plugin.json`, `${P(p)}/.github/plugin/plugin.json`], undefined, 'Bump the version in both manifests.');
+          [`${P(p)}/.claude-plugin/plugin.json`, `${P(p)}/plugin.json`], undefined, 'Bump the version in both manifests.');
       }
     }
   }
@@ -433,6 +444,26 @@ if (runs('mcp')) {
   for (const p of plugins) {
     const path = `${P(p)}/.mcp.json`;
     if (!exists(path)) continue;
+    const apPath = `${P(p)}/mcp.json`;
+    if (!exists(apPath)) {
+      add('mcp', 'copilot-missing', 'error', 'Plugin ships .mcp.json (Claude Code) but no mcp.json (Agent Plugins, Copilot)', [path]);
+    } else {
+      const ap = readJson(apPath);
+      if (ap.$schema !== CONFIG.agentPluginsMcpSchema || Object.keys(ap).some((k) => !['$schema', 'mcpServers'].includes(k))) {
+        add('mcp', 'agent-plugins-schema', 'error', `mcp.json must hold only $schema (${CONFIG.agentPluginsMcpSchema}) and mcpServers`, [apPath]);
+      }
+      const claudeServers = readJson(path).mcpServers ?? {};
+      const apServers = ap.mcpServers ?? {};
+      const names = new Set([...Object.keys(claudeServers), ...Object.keys(apServers)]);
+      for (const n of names) {
+        const c = claudeServers[n];
+        const a = apServers[n];
+        const same = c && a && (a.type === 'streamable-http' || a.type === 'sse'
+          ? c.type === 'http' && c.url === a.url
+          : a.type === 'stdio' && c.command === a.command && JSON.stringify(c.args ?? []) === JSON.stringify(a.args ?? []));
+        if (!same) add('mcp', 'harness-drift', 'error', `Server '${n}' differs between .mcp.json and mcp.json`, [path, apPath], { claude: c, copilot: a });
+      }
+    }
     for (const [name, s] of Object.entries(readJson(path).mcpServers ?? {})) {
       const argv = s.args ?? [];
       if (s.command === 'npx' && !CONFIG.unpinnedMcpServers.includes(name)) {

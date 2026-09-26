@@ -1,4 +1,5 @@
 {
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "andes-terraform",
   "version": "1.0.0",
   "description": "Terraform conventions as an on-demand skill and the Terraform MCP server limited to the public registry toolset.",
@@ -11,7 +12,5 @@
   "keywords": [
     "terraform",
     "iac"
-  ],
-  "skills": "skills/",
-  "mcpServers": ".mcp.json"
+  ]
 }

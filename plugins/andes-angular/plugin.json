@@ -1,4 +1,5 @@
 {
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "andes-angular",
   "version": "1.0.0",
   "description": "Angular and NgRx Signal Store skills, a read-only Angular CLI MCP server, and a report-only Angular reviewer.",
@@ -12,8 +13,5 @@
     "angular",
     "ngrx",
     "signals"
-  ],
-  "skills": "skills/",
-  "agents": "copilot-agents/",
-  "mcpServers": ".mcp.json"
+  ]
 }

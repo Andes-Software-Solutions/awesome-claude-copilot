@@ -1,4 +1,5 @@
 {
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "andes-dotnet",
   "version": "1.0.0",
   "description": "C#/.NET standards as on-demand skills (C# 14, ASP.NET Core, Azure Functions, MCP servers, EF Core, xUnit + NSubstitute) and a report-only C# reviewer.",
@@ -15,8 +16,5 @@
     "azure-functions",
     "ef-core",
     "xunit"
-  ],
-  "skills": "skills/",
-  "agents": "copilot-agents/",
-  "mcpServers": ".mcp.json"
+  ]
 }

@@ -43,7 +43,7 @@ After changing code, run the matching reviewer on the diff: `andes-csharp-code-r
 
 This repository is the `andes` plugin marketplace; the block above is also what `andes-init` installs in consumer repositories.
 
-- Plugins live in `plugins/andes-<name>/`: shared `skills/`, `claude-agents/` (each file listed in `.claude-plugin/plugin.json`), `copilot-agents/` (`.github/plugin/plugin.json`), and an optional `.mcp.json`. The marketplace is `.claude-plugin/marketplace.json`.
+- Plugins live in `plugins/andes-<name>/`: shared `skills/`; Claude Code reads `.claude-plugin/plugin.json` (each `claude-agents/*.md` listed), `.mcp.json`, and `claude-agents/`; Copilot reads the Agent Plugins 1.0 root `plugin.json`, `mcp.json`, and `com.github.copilot/agents/`. The marketplace is `.claude-plugin/marketplace.json`.
 - Edit the block in `plugins/andes-core/skills/andes-init/assets/agents-block.md`, then copy it verbatim between the markers above. The `## Review loop` section is also copied verbatim into the Copilot implementer agents.
 - A Claude agent and its Copilot twin change together. Bump `version` in both manifests of every plugin you change — installs are cached by version.
 - Never edit `plugins/andes-angular/skills/angular-developer/` (vendored upstream, hash-pinned in `scripts/upstream-skills.lock.json`). Refresh `ngrx-signal-store` with `/ngrx-signals-sync`.
