@@ -105,7 +105,7 @@ Every research and implementer agent is granted exact MCP tools for its stack â€
 Models and reasoning effort:
 
 - **Claude.** Reviewers and the PRD and writer agents run on Sonnet. `andes-github-actions-reviewer` runs on Opus. Reviewers use `effort: xhigh`, and `andes-prd-generator` and `andes-se-technical-writer` use `high`.
-- **Copilot.** Agents run on Claude Sonnet 5. `andes-se-technical-writer` is the exception: it runs on Claude Haiku 4.5 to save cost.
+- **Copilot.** Agents run on Claude Sonnet 5.5. `andes-planner-expert` and `andes-full-stack-expert` run on Claude Opus 5.5. `andes-se-technical-writer` runs on Claude Haiku 4.5 to save cost.
 
 ---
 

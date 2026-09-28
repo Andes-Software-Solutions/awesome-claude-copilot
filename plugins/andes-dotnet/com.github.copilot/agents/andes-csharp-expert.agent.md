@@ -2,7 +2,7 @@
 name: andes-csharp-expert
 target: github-copilot
 description: "C#/.NET implementation agent — services, ASP.NET Core APIs, Azure Functions, MCP servers, Blazor WebAssembly, and EF Core. Loads the Andes .NET skills before coding, tests with xUnit + NSubstitute, and self-reviews through andes-csharp-code-reviewer (two rounds max)."
-model: Claude Sonnet 5 (copilot)
+model: Claude Sonnet 5.5 (copilot)
 tools:
   [
     read,

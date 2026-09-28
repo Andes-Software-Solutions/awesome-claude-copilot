@@ -49,7 +49,8 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 - **Maintainer commands are skills** in `.claude/skills/` (`/repo-audit`, `/ngrx-signals-sync`, `/release`), read by Claude Code and Copilot CLI.
 - **Root `AGENTS.md`** is the andes block (`v1.1.0`: C# non-negotiables in the `*.cs` row, xUnit v3, `context7` from `andes-core`, no changelog entry for `docs/plans/`) followed by this repository's own About / Layout / Working conventions / Commands sections.
 - **`ngrx-signal-store`** synced to `@ngrx/signals` 22.0.1: `SignalStoreFeatureType`, the 22.0 `DeepSignal` union-slice behavior, and the Angular 22 peer.
-- **Plugin versions:** `andes-core` 1.1.0, `andes-dotnet` 1.1.0, `andes-dotnet-wasm` 1.0.1, `andes-angular` 1.1.0, `andes-github` 1.0.1; `andes-terraform` unchanged at 1.0.0.
+- **Copilot agents run on Claude Sonnet 5.5 and Opus 5.5.** The Copilot agents that pinned `Claude Sonnet 5 (copilot)` now pin `Claude Sonnet 5.5 (copilot)`, except `andes-planner-expert` and `andes-full-stack-expert`, which now pin `Claude Opus 5.5 (copilot)`. `andes-se-technical-writer` stays on Claude Haiku 4.5, and Claude Code agents are unchanged. The model-parity map in `scripts/repo-audit.mjs` now maps `sonnet` to `Claude Sonnet 5.5 (copilot)` and `opus` to `Claude Opus 5.5 (copilot)`, replacing the retired Claude Opus 4.6. The `andes-github-actions-reviewer` cost override now expects Sonnet 5.5 on Copilot.
+- **Plugin versions:** `andes-core` 1.1.1, `andes-dotnet` 1.1.1, `andes-dotnet-wasm` 1.0.1, `andes-angular` 1.1.1, `andes-github` 1.0.2; `andes-terraform` unchanged at 1.0.0.
 
 ### Removed
 

@@ -2,7 +2,7 @@
 name: andes-angular-expert
 target: github-copilot
 description: "Angular implementation agent — components, signals, forms, routing, SSR, and NgRx Signal Store state. Grounds every change in the workspace's Angular version via the angular-cli MCP, codes to the Andes Angular standards, and self-reviews through andes-angular-code-reviewer (two rounds max)."
-model: Claude Sonnet 5 (copilot)
+model: Claude Sonnet 5.5 (copilot)
 tools:
   [
     read,

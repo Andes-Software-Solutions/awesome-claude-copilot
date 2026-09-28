@@ -2,7 +2,7 @@
 name: andes-prd-generator
 description: "Product requirements specialist. Use when the user asks to write a PRD, spec a feature, define requirements, or break a feature into epics/user stories with acceptance criteria. Analyzes the codebase, writes the PRD under docs/prd/, and can create GitHub issues once the user approves. Returns clarifying questions instead of a PRD when requirements are critically ambiguous."
 target: github-copilot
-model: Claude Sonnet 5 (copilot)
+model: Claude Sonnet 5.5 (copilot)
 tools:
   [
     read,
