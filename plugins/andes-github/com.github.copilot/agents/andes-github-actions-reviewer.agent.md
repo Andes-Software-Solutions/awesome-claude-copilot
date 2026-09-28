@@ -1,7 +1,7 @@
 ---
 name: andes-github-actions-reviewer
+target: github-copilot
 description: "GitHub Actions workflow reviewer. Use immediately after writing or modifying workflow files (.github/workflows/*.yml) or composite actions. Checks security hardening (script injection, privileged triggers, action pinning, least-privilege tokens), CI efficiency (caching, concurrency, trigger scoping), and runtime/action-version currency. Reports High and Medium findings only; never edits files or hands work back."
-argument-hint: "Paste a diff, workflow file paths, or a snippet to review"
 model: Claude Sonnet 5 (copilot)
 tools: [read, search, web, execute]
 ---

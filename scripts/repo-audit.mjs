@@ -3,7 +3,7 @@
 //
 // Every plugin under `plugins/` serves Claude Code and GitHub Copilot from one directory:
 // shared `skills/`; Claude Code reads `.claude-plugin/plugin.json`, `.mcp.json`, and
-// `claude-agents/`; Copilot (CLI and VS Code) reads the Agent Plugins 1.0 root `plugin.json`,
+// `claude-agents/`; Copilot (CLI and cloud agent) reads the Agent Plugins 1.0 root `plugin.json`,
 // `mcp.json`, and `com.github.copilot/agents/`. This script
 // verifies that those pieces still line up, that agents follow the naming/review/MCP
 // contracts, that the shared AGENTS.md block matches the template `andes-init` installs,
@@ -85,10 +85,44 @@ const CONFIG = {
       reason: 'template-driven docs; ~2x cheaper on AI Credits; Copilot has no effort key',
     },
   },
-  copilotBuiltinAgents: ['agent', 'Explore', 'Plan', 'ask'],
-  // Only these MCP servers may run without a version pin: npx resolves the consumer's
-  // project-local Angular CLI first, so the MCP tool set matches their Angular version.
-  unpinnedMcpServers: ['angular-cli'],
+  // Copilot agents target only the github-copilot harness (Copilot CLI, coding agent, github.com).
+  // VS Code is not a supported surface, so its frontmatter keys and tool-set ids are forbidden.
+  copilotTarget: 'github-copilot',
+  copilotToolAliases: ['read', 'edit', 'search', 'execute', 'agent', 'web', 'todo'],
+  copilotVscodeOnlyKeys: ['handoffs', 'argument-hint'],
+  // MCP tools each research or implementer agent must be granted, in Copilot `server/tool` form.
+  // A Claude twin is checked through the plugin that ships the server. This is what guarantees the
+  // planner and the writers ground version-specific answers in the right server, not in memory.
+  requiredMcpGrants: {
+    'andes-planner-expert': [
+      'microsoft-learn/microsoft_docs_search', 'microsoft-learn/microsoft_docs_fetch',
+      'angular-cli/get_best_practices', 'angular-cli/search_documentation',
+      'context7/resolve-library-id', 'context7/query-docs',
+    ],
+    'andes-prd-generator': [
+      'microsoft-learn/microsoft_docs_search', 'microsoft-learn/microsoft_docs_fetch',
+      'context7/resolve-library-id', 'context7/query-docs',
+    ],
+    'andes-se-technical-writer': [
+      'microsoft-learn/microsoft_docs_search', 'microsoft-learn/microsoft_docs_fetch',
+      'context7/resolve-library-id', 'context7/query-docs',
+    ],
+    'andes-csharp-expert': [
+      'microsoft-learn/microsoft_docs_search', 'microsoft-learn/microsoft_code_sample_search', 'microsoft-learn/microsoft_docs_fetch',
+      'context7/resolve-library-id', 'context7/query-docs',
+    ],
+    'andes-csharp-dotnet-janitor': [
+      'microsoft-learn/microsoft_docs_search', 'microsoft-learn/microsoft_code_sample_search', 'microsoft-learn/microsoft_docs_fetch',
+      'context7/resolve-library-id', 'context7/query-docs',
+    ],
+    'andes-angular-expert': [
+      'angular-cli/get_best_practices', 'angular-cli/search_documentation', 'angular-cli/find_examples',
+      'context7/resolve-library-id', 'context7/query-docs',
+    ],
+  },
+  // npx servers that deliberately float instead of pinning; the package must carry exactly this
+  // suffix so the MCP tool set tracks the latest CLI release.
+  floatingMcpServers: { 'angular-cli': '@latest' },
   requiredMcpArgs: { 'angular-cli': ['--read-only'], terraform: ['--toolsets=registry'] },
   // Exposed by the Angular CLI MCP server but never granted to an agent.
   forbiddenMcpTools: ['ai_tutor'],
@@ -99,6 +133,8 @@ const CONFIG = {
   // andes-init detects and removes the old drop-in layout, so it must name those paths.
   harnessPathAllow: ['plugins/andes-core/skills/andes-init/'],
   bannedTestLibs: /\b(FluentAssertions|AwesomeAssertions|Shouldly|Moq|FakeItEasy|NUnit|MSTest|UseInMemoryDatabase)\b|fluent assertions/i,
+  // C# non-negotiables: Minimal APIs and FluentValidation only. Lines phrased as prohibitions pass.
+  bannedCsharpPatterns: /\[ApiController\]|AddControllers\(|MapControllers\(|DataAnnotationsValidator|DataAnnotations|--use-controllers/,
   policyLine: /\b(never|not|no|don't|banned|instead of|last resort|avoid|only|flag)\b/i,
   textExt: /\.(md|json|mjs|js|ts|yml|yaml)$/,
 };
@@ -179,17 +215,6 @@ function fmList(fm, key) {
   return items;
 }
 const hasKey = (fm, key) => new RegExp(`^${key}:`, 'm').test(fm);
-function handoffTargets(fm) {
-  const lines = fm.split('\n');
-  const i = lines.findIndex((l) => l.startsWith('handoffs:'));
-  if (i < 0) return [];
-  const out = [];
-  for (let j = i + 1; j < lines.length && /^\s/.test(lines[j]); j++) {
-    const m = lines[j].match(/^\s+(?:-\s+)?agent:\s*(.+)$/);
-    if (m) out.push(stripQuotes(m[1].trim()));
-  }
-  return out;
-}
 function section(body, heading) {
   const lines = body.split('\n');
   const i = lines.findIndex((l) => l.trim() === heading);
@@ -277,7 +302,8 @@ if (runs('manifests')) {
   }
 
   if (BASE) {
-    const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8' });
+    // stderr is dropped: `git show` on a plugin that did not exist at the merge base is expected noise.
+    const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
     const mergeBase = git('merge-base', BASE, 'HEAD').trim();
     const changed = git('diff', '--name-only', mergeBase, '--', CONFIG.pluginsDir).split('\n').filter(Boolean);
     for (const p of plugins) {
@@ -310,6 +336,9 @@ if (runs('skills')) {
       }
       for (const k of ['paths', 'applyTo']) {
         if (hasKey(fm, k)) add('skills', 'rule-frontmatter', 'error', `SKILL.md still carries rule frontmatter '${k}:' (plugins cannot ship path-scoped rules)`, [path]);
+      }
+      if (fmScalar(fm, 'disable-model-invocation') === 'true') {
+        add('skills', 'cli-unreachable', 'error', "'disable-model-invocation: true' makes a skill unreachable on Copilot CLI (github/copilot-cli#4438); guard in the body instead", [path]);
       }
       if (!owners.has(s)) owners.set(s, []);
       owners.get(s).push(p);
@@ -348,8 +377,10 @@ if (runs('harness-paths')) {
 
 // --- agents ------------------------------------------------------------------
 if (runs('agents')) {
-  const copilotNames = new Set(agents.filter((a) => a.harness === 'copilot').map((a) => fmScalar(a.fm, 'name')));
-  const mcpServers = new Set(plugins.flatMap((p) => (exists(`${P(p)}/.mcp.json`) ? Object.keys(readJson(`${P(p)}/.mcp.json`).mcpServers ?? {}) : [])));
+  // server name → plugin that ships it; drives the mcp-wildcard, mcp-owner, and required-mcp rules.
+  const mcpOwners = new Map(plugins.flatMap((p) => (exists(`${P(p)}/.mcp.json`) ? Object.keys(readJson(`${P(p)}/.mcp.json`).mcpServers ?? {}).map((s) => [s, p]) : [])));
+  const aliasSubtool = new RegExp(`^(${CONFIG.copilotToolAliases.join('|')})/`);
+  const normDesc = (d) => (d ?? '').replace(/\bUse PROACTIVELY\b/g, 'Use').replace(/\s+/g, ' ').trim();
 
   for (const a of agents) {
     if (a.harness === 'claude') stats.claudeAgents++; else stats.copilotAgents++;
@@ -361,7 +392,7 @@ if (runs('agents')) {
     if (!fmScalar(a.fm, 'description')) add('agents', 'no-description', 'error', 'Agent has no description', [a.path]);
 
     for (const t of tools) {
-      if (t.endsWith('*') || (a.harness === 'claude' ? t.startsWith('mcp__') && !t.slice(5).includes('__') : mcpServers.has(t))) {
+      if (t.endsWith('*') || (a.harness === 'claude' ? t.startsWith('mcp__') && !t.slice(5).includes('__') : mcpOwners.has(t))) {
         add('agents', 'mcp-wildcard', 'error', `Tool grant '${t}' exposes a whole server or toolset; list exact tools`, [a.path]);
       }
       if (CONFIG.forbiddenMcpTools.some((f) => t.endsWith(`__${f}`) || t.endsWith(`/${f}`))) {
@@ -373,10 +404,20 @@ if (runs('agents')) {
       const effort = fmScalar(a.fm, 'effort');
       const want = isReviewer(a) ? CONFIG.effort.reviewer : CONFIG.effort.other;
       if (effort !== want) add('agents', 'effort', 'error', `Claude agent effort is '${effort}', expected '${want}'`, [a.path]);
+      for (const t of tools) {
+        const m = t.match(/^mcp__plugin_([^_]+)_([^_]+)__/);
+        if (m && mcpOwners.get(m[2]) !== m[1]) {
+          add('agents', 'mcp-owner', 'error', `Tool '${t}' names plugin '${m[1]}', but server '${m[2]}' is shipped by '${mcpOwners.get(m[2]) ?? 'no plugin'}'`, [a.path]);
+        }
+      }
+      for (const req of CONFIG.requiredMcpGrants[a.stem] ?? []) {
+        const [server, toolName] = req.split('/');
+        const want = `mcp__plugin_${mcpOwners.get(server)}_${server}__${toolName}`;
+        if (!tools.includes(want)) add('agents', 'required-mcp', 'error', `Agent must be granted '${want}'`, [a.path]);
+      }
     }
 
     if (isReviewer(a)) {
-      if (hasKey(a.fm, 'handoffs')) add('agents', 'reviewer-handoff', 'error', 'Reviewer declares handoffs — reviewers report to their caller and never hand work back', [a.path]);
       if (hasKey(a.fm, 'agents')) add('agents', 'reviewer-agents', 'error', 'Reviewer declares agents: — reviewers never invoke other agents', [a.path]);
       const writeTools = a.harness === 'claude' ? ['Write', 'Edit', 'NotebookEdit', 'Agent', 'Task'] : ['edit', 'agent'];
       for (const t of tools) {
@@ -396,10 +437,31 @@ if (runs('agents')) {
     }
 
     if (a.harness === 'copilot') {
-      for (const t of [...(fmList(a.fm, 'agents') ?? []), ...handoffTargets(a.fm)]) {
-        if (!copilotNames.has(t) && !CONFIG.copilotBuiltinAgents.includes(t)) {
-          add('agents', 'target-ghost', 'error', `Agent references '${t}', which is not a Copilot agent in this marketplace`, [a.path]);
+      if (fmScalar(a.fm, 'target') !== CONFIG.copilotTarget) {
+        add('agents', 'target', 'error', `Copilot agent must declare 'target: ${CONFIG.copilotTarget}' (VS Code is not a supported surface)`, [a.path]);
+      }
+      for (const k of CONFIG.copilotVscodeOnlyKeys) {
+        if (hasKey(a.fm, k)) add('agents', 'vscode-key', 'error', `'${k}:' is VS Code-only frontmatter, unsupported on Copilot CLI and the cloud agent; remove it`, [a.path]);
+      }
+      for (const t of tools) {
+        if (t.startsWith('vscode/')) add('agents', 'vscode-tool', 'error', `'${t}' is a VS Code-only tool with no equivalent on Copilot CLI or the cloud agent`, [a.path]);
+        else if (aliasSubtool.test(t)) add('agents', 'alias-subtool', 'error', `'${t}' is a VS Code tool-set member; grant the plain alias '${t.split('/')[0]}'`, [a.path]);
+      }
+      const subagents = fmList(a.fm, 'agents') ?? [];
+      if ((subagents.length > 0) !== tools.includes('agent')) {
+        add('agents', 'agent-tool-mismatch', 'error', subagents.length
+          ? "'agents:' lists subagents but the 'agent' tool is not granted, so the agent cannot delegate"
+          : "the 'agent' tool is granted without an 'agents:' allowlist", [a.path]);
+      }
+      for (const t of subagents) {
+        const target = agents.find((x) => x.harness === 'copilot' && x.stem === t);
+        if (!target) add('agents', 'target-ghost', 'error', `Agent references '${t}', which is not a Copilot agent in this marketplace`, [a.path]);
+        else if (fmScalar(target.fm, 'disable-model-invocation') === 'true') {
+          add('agents', 'target-not-invocable', 'error', `'${t}' declares disable-model-invocation: true and cannot be invoked as a subagent`, [a.path, target.path]);
         }
+      }
+      for (const req of CONFIG.requiredMcpGrants[a.stem] ?? []) {
+        if (!tools.includes(req)) add('agents', 'required-mcp', 'error', `Agent must be granted '${req}'`, [a.path]);
       }
     }
   }
@@ -414,6 +476,9 @@ if (runs('agents')) {
     }
     if (twin.plugin !== a.plugin) add('agents', 'twin-plugin', 'error', 'Agent twins live in different plugins', [twin.path, a.path]);
     stats.agentTwins++;
+    if (normDesc(fmScalar(twin.fm, 'description')) !== normDesc(fmScalar(a.fm, 'description'))) {
+      add('agents', 'description-parity', 'error', 'Twin descriptions differ beyond the word PROACTIVELY (the description drives auto-delegation on both harnesses)', [twin.path, a.path]);
+    }
     const cModel = fmScalar(twin.fm, 'model');
     const gModel = fmScalar(a.fm, 'model');
     const override = CONFIG.modelParityOverrides[a.stem];
@@ -458,7 +523,8 @@ if (runs('mcp')) {
       for (const n of names) {
         const c = claudeServers[n];
         const a = apServers[n];
-        const same = c && a && (a.type === 'streamable-http' || a.type === 'sse'
+        const meta = (s) => JSON.stringify([s?.headers ?? null, s?.env ?? null]);
+        const same = c && a && meta(c) === meta(a) && (a.type === 'streamable-http' || a.type === 'sse'
           ? c.type === 'http' && c.url === a.url
           : a.type === 'stdio' && c.command === a.command && JSON.stringify(c.args ?? []) === JSON.stringify(a.args ?? []));
         if (!same) add('mcp', 'harness-drift', 'error', `Server '${n}' differs between .mcp.json and mcp.json`, [path, apPath], { claude: c, copilot: a });
@@ -466,9 +532,14 @@ if (runs('mcp')) {
     }
     for (const [name, s] of Object.entries(readJson(path).mcpServers ?? {})) {
       const argv = s.args ?? [];
-      if (s.command === 'npx' && !CONFIG.unpinnedMcpServers.includes(name)) {
+      if (s.command === 'npx') {
         const pkg = argv.find((x) => !x.startsWith('-'));
-        if (!pkg || !/@\d/.test(pkg.replace(/^@/, ''))) add('mcp', 'unpinned', 'error', `npx server '${name}' is not version-pinned`, [path], { pkg });
+        const floating = CONFIG.floatingMcpServers[name];
+        if (floating) {
+          if (!pkg?.endsWith(floating)) add('mcp', 'floating-suffix', 'error', `npx server '${name}' must float with '${floating}'`, [path], { pkg });
+        } else if (!pkg || !/@\d/.test(pkg.replace(/^@/, ''))) {
+          add('mcp', 'unpinned', 'error', `npx server '${name}' is not version-pinned`, [path], { pkg });
+        }
       }
       if (s.command === 'docker') {
         const image = argv.find((x) => x.includes('/') && !x.startsWith('-'));
@@ -531,19 +602,42 @@ if (runs('testing-policy')) {
   }
 }
 
+// --- csharp-policy -----------------------------------------------------------
+if (runs('csharp-policy')) {
+  const scan = [...walkFiles(CONFIG.pluginsDir), ...(exists('AGENTS.md') ? ['AGENTS.md'] : [])];
+  for (const f of scan) {
+    if (!f.endsWith('.md')) continue;
+    read(f).split('\n').forEach((line, i) => {
+      if (CONFIG.bannedCsharpPatterns.test(line) && !CONFIG.policyLine.test(line)) {
+        add('csharp-policy', 'banned-pattern', 'error', 'A banned C# pattern is recommended (Minimal APIs + FluentValidation only)', [`${f}:${i + 1}`],
+          { line: line.trim().slice(0, 200) }, 'Rewrite the line to Minimal APIs / FluentValidation, or phrase it as a prohibition.');
+      }
+    });
+  }
+}
+
 // --- registry ----------------------------------------------------------------
 if (runs('registry')) {
-  const commands = files('.claude/commands', '.md').map((f) => f.slice(0, -3));
-  const prompts = files('.github/prompts', '.prompt.md').map((f) => f.slice(0, -'.prompt.md'.length));
-  for (const c of commands) if (!prompts.includes(c)) add('registry', 'command-prompt-twin', 'error', `Command '/${c}' has no Copilot prompt twin`, [`.claude/commands/${c}.md`]);
-  for (const p of prompts) if (!commands.includes(p)) add('registry', 'command-prompt-twin', 'error', `Prompt '${p}' has no Claude command twin`, [`.github/prompts/${p}.prompt.md`]);
-  for (const c of commands.filter((x) => prompts.includes(x))) {
-    const cDesc = fmScalar(splitFrontmatter(read(`.claude/commands/${c}.md`)).fm, 'description');
-    const pDesc = fmScalar(splitFrontmatter(read(`.github/prompts/${c}.prompt.md`)).fm, 'description');
-    if (cDesc !== pDesc) add('registry', 'command-prompt-description', 'warn', `Command/prompt twin '${c}' descriptions differ`, [`.claude/commands/${c}.md`, `.github/prompts/${c}.prompt.md`]);
+  // Maintainer commands are skills in .claude/skills/, which Claude Code and Copilot CLI both read.
+  // .claude/commands and .github/prompts are single-harness surfaces (prompt files never load in the CLI).
+  for (const legacy of ['.claude/commands', '.github/prompts']) {
+    if (isDir(legacy)) add('registry', 'legacy-commands', 'error', `${legacy}/ is a single-harness command surface; maintainer commands live in .claude/skills/`, [legacy]);
+  }
+  const pluginSkills = new Set(plugins.flatMap((p) => dirs(`${P(p)}/skills`)));
+  const maintainerSkills = dirs('.claude/skills');
+  for (const s of maintainerSkills) {
+    const path = `.claude/skills/${s}/SKILL.md`;
+    if (!exists(path)) { add('registry', 'maintainer-skill', 'error', `Maintainer skill '${s}' has no SKILL.md`, [`.claude/skills/${s}`]); continue; }
+    const { fm } = splitFrontmatter(read(path));
+    if (fmScalar(fm, 'name') !== s) add('registry', 'maintainer-skill', 'error', `Maintainer skill name '${fmScalar(fm, 'name')}' does not match its folder '${s}'`, [path]);
+    if (!fmScalar(fm, 'description')) add('registry', 'maintainer-skill', 'error', 'Maintainer skill has no description', [path]);
+    if (fmScalar(fm, 'disable-model-invocation') === 'true') {
+      add('registry', 'maintainer-skill', 'error', "'disable-model-invocation: true' makes the skill unreachable on Copilot CLI (github/copilot-cli#4438); guard in the body instead", [path]);
+    }
+    if (pluginSkills.has(s)) add('registry', 'maintainer-skill', 'error', `Maintainer skill '${s}' shadows the plugin skill of the same name (project skills win in Copilot CLI)`, [path]);
   }
   const readme = exists('README.md') ? read('README.md') : '';
-  const names = [...plugins, ...new Set(agents.map((a) => a.stem)), ...plugins.flatMap((p) => dirs(`${P(p)}/skills`))];
+  const names = [...plugins, ...new Set(agents.map((a) => a.stem)), ...pluginSkills, ...maintainerSkills.map((s) => `/${s}`)];
   for (const n of names) if (!readme.includes(n)) add('registry', 'readme-mention', 'warn', `'${n}' is not mentioned in README.md`, ['README.md']);
   if (exists(CONFIG.agentsTemplate)) {
     const tpl = read(CONFIG.agentsTemplate);
@@ -563,7 +657,7 @@ if (runs('changelog')) {
 // --- report ------------------------------------------------------------------
 const errors = findings.filter((f) => f.severity === 'error');
 const warnings = findings.filter((f) => f.severity === 'warn');
-const checkNames = ['manifests', 'skills', 'harness-paths', 'agents', 'mcp', 'memory', 'testing-policy', 'registry', 'changelog'];
+const checkNames = ['manifests', 'skills', 'harness-paths', 'agents', 'mcp', 'memory', 'testing-policy', 'csharp-policy', 'registry', 'changelog'];
 const report = {
   status: errors.length || (STRICT && warnings.length) ? 'findings' : 'clean',
   generatedAt: new Date().toISOString(),

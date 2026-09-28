@@ -1,7 +1,7 @@
-<!-- andes:begin v1.0.0 -->
+<!-- andes:begin v1.1.0 -->
 # Andes engineering standards
 
-Shared by Claude Code and GitHub Copilot. The `andes-init` skill manages this block and replaces it on refresh — put project-specific instructions outside the `andes` markers.
+Shared by Claude Code and GitHub Copilot. The `andes-init` skill manages this block and replaces it on refresh — put project-specific instructions after the `andes:end` marker (`andes-init` scaffolds those sections on first install).
 
 ## Communication & comments
 
@@ -14,15 +14,15 @@ Detailed standards live in skills that load on demand. Load the matching skill b
 
 | Working on | Load |
 | --- | --- |
-| Any `*.cs` | `csharp-standards`, plus `aspnet-rest-apis` (web APIs), `azure-functions-csharp` (Functions), `csharp-mcp-server` (MCP servers), `ef-core` (EF Core), `csharp-async`, `csharp-docs` (public APIs) as the change needs |
-| .NET tests | `csharp-xunit` — xUnit + NSubstitute only; never FluentAssertions, Shouldly, Moq, NUnit, or MSTest. Test databases: Testcontainers → SQLite in-memory → dedicated test database → EF Core InMemory as a last resort |
+| Any `*.cs` | `csharp-standards`, plus `aspnet-rest-apis` (web APIs), `azure-functions-csharp` (Functions), `csharp-mcp-server` (MCP servers), `ef-core` (EF Core), `csharp-async`, `csharp-docs` (public APIs) as the change needs. Non-negotiables: Minimal APIs only (no controllers), FluentValidation only (no DataAnnotations), primary constructors, collection expressions, `var`, and the `csharp-standards` file layout |
+| .NET tests | `csharp-xunit` — xUnit v3 + NSubstitute only; never FluentAssertions, Shouldly, Moq, NUnit, or MSTest. Test databases: Testcontainers → SQLite in-memory → dedicated test database → EF Core InMemory as a last resort |
 | `*.razor`, `*.razor.cs` | `blazor-wasm` |
 | Angular code | `angular-standards`; `ngrx-signal-store` for any state; `angular-developer` references for depth |
 | `*.tf` | `terraform-conventions` |
 | `.github/workflows/*.yml`, `action.yml` | `github-actions-hardening`, plus `github-actions-efficiency` / `github-actions-runtime-upgrade-conventions` when relevant |
 | Microsoft Agent Framework | `microsoft-agent-framework` |
 
-Ground version-specific answers in the MCP servers when they are installed — `microsoft-learn` (.NET, Azure), `angular-cli` (Angular), `context7` (other libraries), `terraform` (providers, modules) — instead of memory.
+Ground version-specific answers in the MCP servers when they are installed — `microsoft-learn` (.NET, Azure), `angular-cli` (Angular), `context7` (any other library; ships with `andes-core`), `terraform` (providers, modules) — instead of memory.
 
 ## Review loop
 
@@ -36,5 +36,5 @@ After changing code, run the matching reviewer on the diff: `andes-csharp-code-r
 ## Docs, changelog & requirements
 
 - `andes-se-technical-writer` owns `docs/` and the root `CHANGELOG.md` ([Keep a Changelog](https://keepachangelog.com/en/1.1.0/)): one reader-facing entry per PR under `## [Unreleased]` in the matching subsection. Routine cleanups with no behavior change still get a one-line entry.
-- To write a PRD, spec a feature, or break it into epics and user stories, delegate to `andes-prd-generator` (writes `docs/prd/`). If its report starts `PRD-STATUS: NEEDS-INPUT`, show its questions to the user verbatim and re-invoke it with the answers. It creates GitHub issues only after the user explicitly approves. PRDs get no changelog entry; implementation plans reference their story IDs (`US-xxx`).
+- To write a PRD, spec a feature, or break it into epics and user stories, delegate to `andes-prd-generator` (writes `docs/prd/`). If its report starts `PRD-STATUS: NEEDS-INPUT`, show its questions to the user verbatim and re-invoke it with the answers. It creates GitHub issues only after the user explicitly approves. PRDs and the implementation plans under `docs/plans/` get no changelog entry; plans reference story IDs (`US-xxx`).
 <!-- andes:end -->

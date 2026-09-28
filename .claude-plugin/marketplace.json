@@ -15,7 +15,7 @@
     {
       "name": "andes-dotnet",
       "source": "./plugins/andes-dotnet",
-      "description": "C#/.NET standards as on-demand skills (C# 14, ASP.NET Core, Azure Functions, MCP servers, EF Core, xUnit + NSubstitute) and a report-only C# reviewer."
+      "description": "C#/.NET standards as on-demand skills (C# 14, ASP.NET Core Minimal APIs, FluentValidation, Azure Functions, MCP servers, EF Core, xUnit v3 + NSubstitute) and a report-only C# reviewer."
     },
     {
       "name": "andes-dotnet-wasm",

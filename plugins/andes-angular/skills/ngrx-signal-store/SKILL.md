@@ -5,7 +5,7 @@ description: "Use for any Angular state-management task and on any mention of si
 
 # NgRx Signal Store
 
-Production guidance for `@ngrx/signals`. Pinned to **21.1.1** (`sources.json`); the andes maintainers refresh it from the upstream docs.
+Production guidance for `@ngrx/signals`. Pinned to **22.0.1** (`sources.json`); the andes maintainers refresh it from the upstream docs.
 
 This is not classic NgRx. There are no actions, reducers, effects, or `dispatch` unless you deliberately opt into the Events plugin. If you catch yourself reaching for `createAction` or `createReducer`, you are in the wrong library.
 

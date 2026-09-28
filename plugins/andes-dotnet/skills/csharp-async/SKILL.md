@@ -22,7 +22,7 @@ description: "Use when writing or reviewing asynchronous C# code: async/await, T
 - Use try/catch blocks around await expressions
 - Avoid swallowing exceptions in async methods
 - Use `ConfigureAwait(false)` when appropriate to prevent deadlocks in library code
-- Propagate exceptions with `Task.FromException()` instead of throwing in async Task returning methods
+- In non-`async` Task-returning methods, return `Task.FromException(...)` rather than throwing synchronously; inside `async` methods, just throw
 
 ## Performance
 
@@ -44,4 +44,4 @@ description: "Use when writing or reviewing asynchronous C# code: async/await, T
 - Use async streams (IAsyncEnumerable<T>) for processing sequences asynchronously
 - Consider the task-based asynchronous pattern (TAP) for public APIs
 
-When reviewing my C# code, identify these issues and suggest improvements that follow these best practices.
+When reviewing C# code, identify these issues and suggest improvements that follow these best practices.

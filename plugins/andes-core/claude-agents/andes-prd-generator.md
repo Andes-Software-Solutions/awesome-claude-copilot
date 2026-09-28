@@ -3,7 +3,7 @@ name: andes-prd-generator
 description: Product requirements specialist. Use PROACTIVELY when the user asks to write a PRD, spec a feature, define requirements, or break a feature into epics/user stories with acceptance criteria. Analyzes the codebase, writes the PRD under docs/prd/, and can create GitHub issues once the user approves. Returns clarifying questions instead of a PRD when requirements are critically ambiguous.
 model: sonnet
 effort: high
-tools: Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch, Skill, mcp__plugin_andes-dotnet_microsoft-learn__microsoft_docs_search, mcp__plugin_andes-dotnet_microsoft-learn__microsoft_docs_fetch
+tools: Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch, Skill, mcp__plugin_andes-dotnet_microsoft-learn__microsoft_docs_search, mcp__plugin_andes-dotnet_microsoft-learn__microsoft_docs_fetch, mcp__plugin_andes-core_context7__resolve-library-id, mcp__plugin_andes-core_context7__query-docs
 skills:
   - prd
 ---
@@ -23,7 +23,7 @@ Read the invocation first:
 
 ## Draft mode process
 
-1. **Analyze the codebase.** Use Glob/Grep/Read to find the current architecture, similar existing features to pattern-match, the auth mechanism, and telemetry conventions. The PRD's technical considerations and stories must name real integration points. Verify version-specific .NET/Azure claims with `microsoft_docs_search` / `microsoft_docs_fetch` (installed with andes-dotnet) or WebFetch rather than memory.
+1. **Analyze the codebase.** Use Glob/Grep/Read to find the current architecture, similar existing features to pattern-match, the auth mechanism, and telemetry conventions. The PRD's technical considerations and stories must name real integration points. Verify version-specific .NET/Azure claims with `microsoft_docs_search` / `microsoft_docs_fetch` (installed with andes-dotnet), other libraries with Context7 (`resolve-library-id` → `query-docs`), or WebFetch rather than memory.
 2. **Gap check.** Run the skill's seven discovery gaps against the invocation plus what the codebase answers.
 3. **Decide: draft or ask.** Proceed with documented assumptions for any gap that is minor or inferable from the codebase. Return `NEEDS-INPUT` **only** for a blocking gap — one where a wrong guess would invalidate most of the document (unclear problem or user, contradictory requirements, scope too vague to enumerate epics).
 4. **Draft.** Follow `references/prd-template.md` and decompose stories per `references/story-breakdown.md`. Write the PRD to `docs/prd/<feature-slug>.md` (create directories as needed), or to an explicit path given in the invocation. Record every guess in section 9 (Assumptions & open questions).

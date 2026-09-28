@@ -1,12 +1,23 @@
 # ADR-001: Ship the Standards as the `andes` Plugin Marketplace
 
 **Status**: Accepted — verified on Claude Code; GitHub Copilot checks pending ([checklist](#not-yet-verified-github-copilot-checklist))
+**Amended by**: [2026-09-copilot-harness-and-release.md](2026-09-copilot-harness-and-release.md) (2026-09-27)
 **Date**: 2026-09-26
 **Deciders**: Rodrigo Rojas
 **Supersedes in part**: [2026-08-effort-defaults.md](2026-08-effort-defaults.md), [2026-08-repo-audit.md](2026-08-repo-audit.md), [2026-08-prd-workflow.md](2026-08-prd-workflow.md), [2026-08-standards-refresh.md](2026-08-standards-refresh.md)
 **Pre-plugin layout**: commit `97943de` on `main`
 
 The manifests, `AGENTS.md`, and `scripts/repo-audit.mjs` are the source of truth. This record explains why they look the way they do. If a value here disagrees with a file, trust the file.
+
+## Amendments (2026-09-27)
+
+[ADR-002](2026-09-copilot-harness-and-release.md) supersedes the points below. The rest of this record stands as written.
+
+- **§1 (and the `andes-init` VS Code settings in §2) — VS Code as a Copilot client.** VS Code is no longer a target. Copilot agents declare `target: github-copilot` (Copilot CLI, the coding agent, github.com), carry no `handoffs`, `argument-hint`, or `vscode/*` tools, and `andes-init` no longer offers `chat.plugins.*` or `chat.useAgentsMdFile`.
+- **§4 — the planner.** `andes-planner-expert` now invokes `andes-prd-generator` when a feature has no PRD and its requirements are unclear, writes the plan to `docs/plans/`, and ends with `**Recommended agent**` / `**Next step**` lines instead of handoffs. The PRD generator never hands off to the planner.
+- **§6 — MCP versions and owners.** `context7` moved from `andes-dotnet` to `andes-core` as a remote, anonymous HTTP server (`https://mcp.context7.com/mcp`, no pin). `angular-cli` runs `@angular/cli@latest` on purpose instead of resolving the project-local CLI.
+- **§9 — "Maintainer-only commands … stay in `.claude/commands/` and `.github/prompts/`".** They are skills in `.claude/skills/` now (`/repo-audit`, `/ngrx-signals-sync`, and the new `/release`); both folders are deleted.
+- **Copilot checklist.** Items 2 and 8 (VS Code) are void. Items 1 and 3–7 remain open.
 
 ## Context
 

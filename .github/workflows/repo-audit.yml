@@ -7,6 +7,8 @@ on:
       - "scripts/**"
       - ".claude-plugin/**"
       - ".claude/**"
+      # .github/prompts and .vscode/mcp.json must not exist; they stay listed so a PR that
+      # recreates them runs the audit (registry/legacy-commands, mcp/root-config) before merge.
       - ".github/prompts/**"
       - ".github/workflows/repo-audit.yml"
       - ".mcp.json"

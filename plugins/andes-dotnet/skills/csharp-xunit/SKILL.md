@@ -1,16 +1,16 @@
 ---
 name: csharp-xunit
-description: "Use when writing or reviewing .NET tests: xUnit v3 + NSubstitute only (no FluentAssertions, Moq, NUnit, or MSTest), naming, theories, fixtures, WebApplicationFactory integration tests, and the Testcontainers → SQLite → test DB → EF InMemory database ladder."
+description: "Use when writing or reviewing .NET tests: xUnit v3 (latest, Microsoft Testing Platform) + NSubstitute only (no FluentAssertions, Moq, NUnit, or MSTest), naming, theories, fixtures, WebApplicationFactory integration tests, and the Testcontainers → SQLite → test DB → EF InMemory database ladder."
 ---
 
-# .NET testing: xUnit + NSubstitute
+# .NET testing: xUnit v3 + NSubstitute
 
 ## Policy
 
-- **Framework:** xUnit v3 (`xunit.v3`, `xunit.runner.visualstudio`, `Microsoft.NET.Test.Sdk`). Never NUnit or MSTest.
+- **Framework:** xUnit v3, latest stable (`xunit.v3`), on Microsoft Testing Platform: the test project is an executable (`<OutputType>Exe</OutputType>`) with `<TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>`; scaffold with `dotnet new xunit3`. Add `xunit.runner.visualstudio` and `Microsoft.NET.Test.Sdk` only when VSTest / Test Explorer compatibility is required. Never NUnit or MSTest, and never xUnit v2 (`xunit`) in a new project.
 - **Assertions:** xUnit's `Assert` only. Never FluentAssertions, AwesomeAssertions, or Shouldly.
 - **Test doubles:** NSubstitute only, plus `NSubstitute.Analyzers.CSharp` to catch substitutions that silently do nothing. Never Moq or FakeItEasy.
-- **Existing suites:** if a project already uses a banned library, new tests still follow this policy and no banned package is added. Migrate existing tests only when asked.
+- **Existing suites:** if a project already uses a banned library or xUnit v2, new tests still follow this policy and no banned package is added. Migrate existing tests only when asked.
 
 ## Project and naming
 
@@ -18,7 +18,8 @@ description: "Use when writing or reviewing .NET tests: xUnit v3 + NSubstitute o
 - Name tests `MethodName_Scenario_ExpectedBehavior`.
 - Arrange-Act-Assert structure, with **no** `// Arrange` / `// Act` / `// Assert` comments — blank lines separate the phases.
 - One behavior per test; tests are independent and order-agnostic.
-- Run with `dotnet test`.
+- Test code follows `csharp-standards`: fixtures arrive through a primary constructor (`public sealed class OrderServiceTests(DbFixture fixture) : IClassFixture<DbFixture>`), locals use `var`, `TheoryData` rows and expected collections use collection expressions, and private helpers sit in the `Private methods` region.
+- Run with `dotnet test` (Microsoft Testing Platform; `dotnet run --project X.Tests -- --filter-method "*Scenario*"` for one test).
 - Use the latest stable package versions — check NuGet or the repo's `Directory.Packages.props`, never versions from memory.
 
 ## xUnit v3
@@ -49,5 +50,5 @@ Pick the first option the environment supports; record in the test fixture why a
 
 ## Integration tests (ASP.NET Core)
 
-- `WebApplicationFactory<Program>` (`Microsoft.AspNetCore.Mvc.Testing`) hosts the app in memory; replace external dependencies in `ConfigureTestServices` with NSubstitute substitutes and point data access at the database ladder.
-- Assert on status codes and Problem Details bodies, not on internal state.
+- `WebApplicationFactory<Program>` (`Microsoft.AspNetCore.Mvc.Testing`; the package name is historical — it hosts Minimal API apps) runs the app in memory; replace external dependencies in `ConfigureTestServices` with NSubstitute substitutes and point data access at the database ladder.
+- Assert on status codes and Problem Details bodies (`ValidationProblemDetails.Errors` for FluentValidation failures), not on internal state.

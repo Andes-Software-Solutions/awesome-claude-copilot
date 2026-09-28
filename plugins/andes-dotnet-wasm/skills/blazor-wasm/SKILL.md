@@ -12,7 +12,7 @@ These rules target **standalone Blazor WebAssembly** apps (`blazorwasm` template
 - The "ASP.NET Core Hosted" WASM template was **removed in .NET 8** — never scaffold or suggest the old Client/Server/Shared three-project layout. A standalone WASM app calls its backend as an ordinary web API.
 - Standalone WASM has **no concept of render modes** — `@rendermode`, `InteractiveWebAssembly`, `InteractiveAuto`, prerendering, and `.Client` projects are Blazor Web App concerns. Never suggest them here.
 - Everything shipped to the browser is inspectable: **never put secrets, API keys, or private business logic in the app**. Sensitive work belongs behind a server API.
-- Apply the general C# standards (the `csharp-standards` skill): C# 14, primary constructors with `private readonly` `_camelCase` field capture, collection expressions, `is null` / `is not null`.
+- Apply the general C# standards from the `csharp-standards` skill to `.razor.cs` and service code: its file layout with regions, primary constructors with `private readonly` `_camelCase` field capture, collection expressions, `var`, `[LoggerMessage]` logging, `is null` / `is not null`.
 
 ## Components and rendering performance
 
@@ -78,9 +78,9 @@ These rules target **standalone Blazor WebAssembly** apps (`blazorwasm` template
 
 ## Forms and validation
 
-- `EditForm` + `Model` (or `EditContext` for advanced control) + `DataAnnotationsValidator` + `ValidationSummary`/`ValidationMessage`; prefer `OnValidSubmit`.
-- For FluentValidation or other third-party systems, use a custom validator component that manages a `ValidationMessageStore` against the cascaded `EditContext` in place of `DataAnnotationsValidator`.
-- .NET 10 opt-in nested/collection validation: `builder.Services.AddValidation()` + `[ValidatableType]` on the root model; **model classes must live in `.cs` files, not `.razor`** (source-generator limitation); `[SkipValidation]` to exclude members.
+- `EditForm` + `Model` (or `EditContext` for advanced control) + a **FluentValidation** validator component + `ValidationSummary`/`ValidationMessage`; prefer `OnValidSubmit`.
+- The validator component (own it, or use a maintained package) resolves `IValidator<TModel>` from DI and writes results into a `ValidationMessageStore` against the cascaded `EditContext` on field change and on submit. Validators live in `.cs` files next to the model and are shared with the API.
+- Never use `DataAnnotationsValidator`, `builder.Services.AddValidation()`, or `[ValidatableType]` — validation is FluentValidation only, per `csharp-standards`.
 - Client validation is UX, not security — the server API re-validates everything it receives.
 
 ## Testing

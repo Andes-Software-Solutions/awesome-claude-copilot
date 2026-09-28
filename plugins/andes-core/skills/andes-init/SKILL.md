@@ -1,20 +1,21 @@
 ---
 name: andes-init
-description: "Install or refresh the shared Andes standards in this repository: writes the managed block in the root AGENTS.md (read by Claude Code and GitHub Copilot), wires CLAUDE.md to it, and offers opt-in settings and cleanup of old drop-in copies. Run on request only."
-disable-model-invocation: true
+description: "Install or refresh the shared Andes standards in this repository: writes the managed block in the root AGENTS.md (read by Claude Code and GitHub Copilot), scaffolds the project's own sections on first install, wires CLAUDE.md to it, and offers opt-in settings and cleanup of old drop-in copies. Run on request only."
 ---
 
 # andes-init
 
+Run only when the user asked for `andes-init` (for example `/andes-core:andes-init` in Claude Code or `/andes-init` in Copilot CLI). Never start it on your own.
+
 Installs the Andes always-on standards into the current repository and keeps them current. Safe to re-run: a second run with nothing new changes nothing.
 
-The template is `assets/agents-block.md` in this skill's own directory (resolve it relative to this `SKILL.md`, not the user's repo). Work from the repository root (`git rev-parse --show-toplevel`). Never touch text outside the `andes` markers, and never delete a file without the user's explicit yes.
+The template is `assets/agents-block.md` in this skill's own directory (resolve it relative to this `SKILL.md`, not the user's repo); `assets/project-section.md` next to it is the scaffold for the project's own sections. Work from the repository root (`git rev-parse --show-toplevel`). Never touch text outside the `andes` markers, and never delete a file without the user's explicit yes.
 
 ## 1. AGENTS.md
 
 Read the template. Then, in the repo root:
 
-- **No `AGENTS.md`** → create it with the template as its entire content.
+- **No `AGENTS.md`** → create it with the template, a blank line, and the contents of `assets/project-section.md` (placeholder sections — About this repository, Layout, Build/test/run, Conventions — that the team fills in; tell the user they are placeholders). Only a first install adds the scaffold.
 - **Exactly one `<!-- andes:begin … -->` … `<!-- andes:end -->` pair** → replace everything from the begin marker through the end marker with the template. If it is already identical, report "AGENTS.md is up to date".
 - **No markers** → append a blank line and the template to the end of the file.
 - **Anything else** (one marker without the other, several pairs, nested markers) → stop, show the user the marker lines found, and ask how to proceed. Do not guess.
@@ -40,7 +41,8 @@ Plugins cannot ship settings, so offer these **one at a time**, show the exact d
    - `enabledPlugins`: `"<plugin>@andes": true` for each detected plugin
    - when `andes-angular` is enabled: `permissions.deny` gains `"mcp__plugin_andes-angular_angular-cli__ai_tutor"` (the Angular CLI server has no flag to drop its tutor tool; a bare-name deny removes it from context)
 2. `.claude/settings.json` — `"effortLevel": "xhigh"` (the Andes default; costs more per turn — ask separately).
-3. `.vscode/settings.json` — for Copilot in VS Code: `"chat.useAgentsMdFile": true`, `"chat.plugins.enabled": true`, and the marketplace `"RorroRojas3/awesome-claude-copilot"` added to `"chat.plugins.marketplaces"`.
+
+Do not offer VS Code settings (`chat.plugins.*`, `chat.useAgentsMdFile`): the plugins target the `github-copilot` harness (Copilot CLI, coding agent, github.com), not VS Code.
 
 ## 5. Old drop-in copies
 
@@ -56,4 +58,4 @@ These load the same guidance twice or contradict the plugins. Offer to delete th
 
 ## 6. Report
 
-End with a short list: files created or changed, settings applied or declined, leftovers kept, and plugins still to install (`/plugin install <name>@andes` in Claude Code; the marketplace in Copilot CLI or VS Code).
+End with a short list: files created or changed (name the placeholder sections if you scaffolded them), settings applied or declined, leftovers kept, and plugins still to install (`/plugin install <name>@andes` in Claude Code; `copilot plugin install <name>@andes` in Copilot CLI).

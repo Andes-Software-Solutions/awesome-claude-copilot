@@ -2,10 +2,7 @@
   "permissions": {
     "allow": []
   },
-  "model": "fable",
-  "availableModels": [
-    "fable"
-  ],
+  "model": "opus",
   "effortLevel": "xhigh",
   "extraKnownMarketplaces": {
     "andes": {

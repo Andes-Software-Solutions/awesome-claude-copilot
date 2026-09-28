@@ -12,7 +12,7 @@ description: "Use when building or reviewing Azure Functions in C# (isolated wor
 - Decorate function methods with `[Function("FunctionName")]` and use strongly typed trigger and binding attributes.
 - Keep function methods focused — each function should do one thing and delegate business logic to injected services.
 - Never put business logic directly inside the function method body; extract it into testable service classes registered via DI.
-- Use `ILogger<T>` injected through the constructor, not `ILogger` passed as a function parameter, for consistent structured logging.
+- Inject `ILogger<T>` through the class's primary constructor (captured into `_logger`), not as a function parameter; log through `[LoggerMessage]` methods in the class's Logging region, per `csharp-standards`.
 - Always use `async/await` for all I/O-bound operations; never block with `.Result` or `.Wait()`.
 - Prefer `CancellationToken` parameters where supported to enable graceful shutdown.
 
@@ -29,7 +29,7 @@ description: "Use when building or reviewing Azure Functions in C# (isolated wor
 
 ## Triggers
 
-- **HttpTrigger**: Use `AuthorizationLevel.Function` or higher for production endpoints; reserve `AuthorizationLevel.Anonymous` only for public-facing APIs with explicit justification. Use ASP.NET Core integration (`UseMiddleware`, `IActionResult` returns) when using the ASP.NET Core integration model.
+- **HttpTrigger**: Use `AuthorizationLevel.Function` or higher for production endpoints; reserve `AuthorizationLevel.Anonymous` only for public-facing APIs with explicit justification. Use ASP.NET Core integration (`UseMiddleware`, `IActionResult` returns) when using the ASP.NET Core integration model — `IActionResult` here is the Functions HTTP result type, not an MVC controller, and is allowed.
 - **TimerTrigger**: Use NCRONTAB expressions (`"0 */5 * * * *"`) for schedules; avoid `RunOnStartup = true` in production as it executes immediately on every cold start.
 - **QueueTrigger / ServiceBusTrigger**: Configure `MaxConcurrentCalls`, dead-letter policies, and `MaxDeliveryCount` in `host.json` and Azure portal; handle `ServiceBusReceivedMessage` directly for advanced message control (complete, abandon, dead-letter).
 - **BlobTrigger**: Prefer Event Grid-based blob triggers (`Microsoft.Azure.Functions.Worker.Extensions.EventGrid`) over polling-based blob triggers for lower latency and reduced storage transaction costs.
@@ -62,7 +62,7 @@ description: "Use when building or reviewing Azure Functions in C# (isolated wor
 
 ## Observability and Logging
 
-- Use `ILogger<T>` with structured log properties: `_logger.LogInformation("Processing message {MessageId}", messageId)`.
+- Log with `[LoggerMessage]`-generated methods carrying structured properties (`LogProcessingMessage(_logger, messageId)` declared as `private static partial void LogProcessingMessage(ILogger logger, string messageId)`), never direct `_logger.LogInformation(...)` calls.
 - Configure Application Insights via `builder.Services.AddApplicationInsightsTelemetryWorkerService()` and `builder.Logging.AddApplicationInsights()` in `Program.cs`.
 - Use `TelemetryClient` for custom events, metrics, and dependency tracking beyond what is automatically collected.
 - Set appropriate log levels in `host.json` under `"logging"` to avoid excessive telemetry costs in production.
@@ -80,7 +80,7 @@ description: "Use when building or reviewing Azure Functions in C# (isolated wor
 
 ## Security
 
-- Always validate and sanitize HTTP trigger inputs before processing; use FluentValidation or Data Annotations.
+- Always validate and sanitize HTTP trigger inputs before processing with FluentValidation (`IValidator<T>` resolved from DI); never DataAnnotations.
 - Use `AuthorizationLevel.Function` with function keys stored in Key Vault for internal API-to-API calls.
 - Integrate Azure API Management (APIM) in front of HTTP-triggered functions for public-facing APIs to handle auth, rate limiting, and routing.
 - Restrict inbound access using App Service networking features (IP restrictions, Private Endpoints) for sensitive functions.

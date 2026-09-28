@@ -1,9 +1,9 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/mcp.schema.json",
   "mcpServers": {
-    "microsoft-learn": {
+    "context7": {
       "type": "streamable-http",
-      "url": "https://learn.microsoft.com/api/mcp"
+      "url": "https://mcp.context7.com/mcp"
     }
   }
 }

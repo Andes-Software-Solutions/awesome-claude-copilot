@@ -13,7 +13,8 @@ description: "Use when building or reviewing a Model Context Protocol (MCP) serv
 - Always configure logging to stderr using `LogToStandardErrorThreshold = LogLevel.Trace` to avoid interfering with stdio transport
 - Use the `[McpServerToolType]` attribute on classes containing MCP tools
 - Use the `[McpServerTool]` attribute on methods to expose them as tools
-- Use the `[Description]` attribute from `System.ComponentModel` to document tools and parameters
+- Use the `[Description]` attribute from `System.ComponentModel` to document tools and parameters (the SDK requires it; it is not DataAnnotations)
+- Tool classes are `public static` by SDK design and are exempt from the `csharp-standards` file layout; hosts, services, and everything else follow it
 - Support dependency injection in tool methods - inject `McpServer`, `HttpClient`, or other services as parameters
 - Use `McpServer.AsSamplingChatClient()` to make sampling requests back to the client from within tools
 - Expose prompts using `[McpServerPromptType]` on classes and `[McpServerPrompt]` on methods
@@ -61,7 +62,7 @@ description: "Use when building or reviewing a Model Context Protocol (MCP) serv
 ### Basic Server Setup
 ```csharp
 var builder = Host.CreateApplicationBuilder(args);
-builder.Logging.AddConsole(options => 
+builder.Logging.AddConsole(options =>
     options.LogToStandardErrorThreshold = LogLevel.Trace);
 builder.Services
     .AddMcpServer()
@@ -77,7 +78,7 @@ public static class MyTools
 {
     [McpServerTool, Description("Description of what the tool does")]
     public static string ToolName(
-        [Description("Parameter description")] string param) => 
+        [Description("Parameter description")] string param) =>
         $"Result: {param}";
 }
 ```

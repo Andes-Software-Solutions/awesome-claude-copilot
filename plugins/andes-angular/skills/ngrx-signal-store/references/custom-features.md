@@ -176,6 +176,36 @@ export function withBaz<Foo extends string | number>() {
 
 `withBaz` compiles only in a store that already defines the `foo` prop and the `bar` method.
 
+### Deriving the input from another feature: `SignalStoreFeatureType`
+
+Instead of spelling out the required state, props, and methods by hand, `SignalStoreFeatureType`
+extracts them from an existing feature factory. A feature can then require "whatever
+`withRequestStatus` contributes" and stay in sync when that feature changes:
+
+```ts
+import { SignalStoreFeatureType } from '@ngrx/signals';
+
+export type RequestStatusFeature = SignalStoreFeatureType<typeof withRequestStatus>;
+```
+
+```ts
+import { signalStoreFeature, type, withComputed } from '@ngrx/signals';
+import { RequestStatusFeature } from './with-request-status';
+
+export function withStatusMessage() {
+  return signalStoreFeature(
+    type<RequestStatusFeature>(), // 👈 requires everything `withRequestStatus` provides
+    withComputed(({ isPending, error }) => ({
+      statusMessage: () => (isPending() ? 'Loading...' : (error() ?? 'Ready')),
+    }))
+  );
+}
+```
+
+Note the shape: the whole feature type goes straight into `type<...>()` as the first argument, not
+under `{ state: ... }` / `{ props: ... }`. Use it whenever a feature builds on another feature you own;
+keep the explicit `{ state, props, methods }` form for requirements that are not one feature's output.
+
 ## `withFeature` — reading what came before
 
 Feature inputs demand that the host store expose members with *exactly* the expected names.

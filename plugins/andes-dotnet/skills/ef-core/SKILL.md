@@ -8,7 +8,7 @@ description: "Use when writing or reviewing Entity Framework Core code: DbContex
 ## Data Context Design
 
 - Keep DbContext classes focused and cohesive
-- Use constructor injection for configuration options
+- Take options through a primary constructor: `public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)`
 - Override OnModelCreating for fluent API configuration
 - Separate entity configurations using IEntityTypeConfiguration
 - Consider using DbContextFactory pattern for console apps or tests
@@ -17,7 +17,7 @@ description: "Use when writing or reviewing Entity Framework Core code: DbContex
 
 - Use meaningful primary keys (consider natural vs surrogate keys)
 - Implement proper relationships (one-to-one, one-to-many, many-to-many)
-- Use data annotations or fluent API for constraints and validations
+- Configure keys, constraints, and mappings with the fluent API in `IEntityTypeConfiguration<T>` classes only; never put DataAnnotations mapping attributes on entities, and never validate with them (validation is FluentValidation on request types)
 - Implement appropriate navigational properties
 - Consider using owned entity types for value objects
 

@@ -41,6 +41,7 @@ description: "Use when adding or reviewing XML documentation comments on C# publ
 ## Constructors
 
 - The summary wording should be "Initializes a new instance of the <Class> class [or struct].".
+- Primary constructors have no separate doc block: document each parameter with a `<param>` tag on the type's own XML comment, after its `<summary>`.
 
 ## Properties
 

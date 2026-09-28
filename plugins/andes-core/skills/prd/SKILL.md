@@ -18,7 +18,7 @@ Produce production-grade PRDs that bridge business vision and technical executio
 - Building a backlog or creating GitHub issues from requirements
 - Stakeholders need a unified "source of truth" for project scope
 
-**Not for implementation plans.** A PRD says *what* to build and *why*. How to build it — file-level steps, architecture choices, task sequencing — belongs to the planning flow (plan mode, Planner Expert), which should reference the PRD's story IDs.
+**Not for implementation plans.** A PRD says *what* to build and *why*. How to build it — file-level steps, architecture choices, task sequencing — belongs to the planning flow (Claude Code plan mode, or `andes-planner-expert` on Copilot), which should reference the PRD's story IDs.
 
 ## Workflow
 

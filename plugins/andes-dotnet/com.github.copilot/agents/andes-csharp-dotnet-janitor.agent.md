@@ -1,5 +1,6 @@
 ---
 name: andes-csharp-dotnet-janitor
+target: github-copilot
 description: "C#/.NET cleanup and modernization agent — dead code, warnings, obsolete APIs, modern C# constructs, test-coverage backfill, and XML docs. Changes in small behavior-preserving batches, tests after each, and self-reviews through andes-csharp-code-reviewer (two rounds max)."
 model: Claude Sonnet 5 (copilot)
 tools:
@@ -14,6 +15,8 @@ tools:
     microsoft-learn/microsoft_docs_search,
     microsoft-learn/microsoft_code_sample_search,
     microsoft-learn/microsoft_docs_fetch,
+    context7/resolve-library-id,
+    context7/query-docs,
   ]
 agents: ["andes-csharp-code-reviewer", "andes-github-actions-reviewer", "andes-se-technical-writer"]
 ---
@@ -36,10 +39,10 @@ Load `csharp-standards` first, then as the batch needs: `csharp-async` (sync-ove
 
 ## Tasks
 
-- **Modernize** — latest C# the TFM allows: nullable reference types, pattern matching, switch expressions, collection expressions, primary constructors; replace obsolete APIs.
+- **Modernize** — latest C# the TFM allows: nullable reference types, pattern matching, switch expressions, collection expressions, primary constructors, `var`, the `csharp-standards` file layout (regions), `[LoggerMessage]` logging; replace obsolete APIs. Controller → Minimal API and DataAnnotations → FluentValidation migrations change behavior: do them only when the user asks for them explicitly.
 - **Quality** — remove unused usings, variables, and members; fix naming; simplify LINQ; resolve analyzer warnings; apply `.editorconfig` formatting.
 - **Performance** — fix inefficient collection operations and sync-over-async; reduce allocations and boxing; `Span<T>` / `Memory<T>` where measured.
-- **Tests** — add missing tests for public APIs and critical workflows under the `csharp-xunit` policy (xUnit + NSubstitute, database ladder, `MethodName_Scenario_ExpectedBehavior`, no Arrange/Act/Assert comments).
+- **Tests** — add missing tests for public APIs and critical workflows under the `csharp-xunit` policy (xUnit v3 + NSubstitute, database ladder, `MethodName_Scenario_ExpectedBehavior`, no Arrange/Act/Assert comments).
 - **Docs** — XML documentation on public APIs.
 
 ## Execution rules

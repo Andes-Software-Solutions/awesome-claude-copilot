@@ -24,8 +24,8 @@ ng add @ngrx/signals@latest
 
 `ng add` updates `package.json` and installs the dependency. Manual install (`npm i @ngrx/signals`) works too.
 
-- Current version: **21.1.1**
-- Peer dependency: `@angular/core` **^21**
+- Current version: **22.0.1**
+- Peer dependency: `@angular/core` **^22**
 - `rxjs` is an **optional** peer dependency — needed only if you import from `@ngrx/signals/rxjs-interop`. A store built entirely on `withMethods` + promises + `signalMethod` pulls in no RxJS.
 - `@ngrx/operators` (`tapResponse`, `mapResponse`) is a separate package, not part of `@ngrx/signals`.
 
@@ -71,7 +71,7 @@ Tests can bypass protection without disabling it — see `unprotected` below.
 | `signalState(initialState)` | Lightweight signal-based state for a component/service; returns a read-only signal that also exposes a signal per property. State type must be a record. |
 | `SignalState<State>` | Type of a `signalState` instance. |
 | `deepComputed(computation)` | `computed` that returns a `DeepSignal` when the result is an object literal, giving nested computed signals per property. |
-| `DeepSignal<T>` | A read-only signal that also carries a signal for each property of `T`; nested signals are created lazily on first access. |
+| `DeepSignal<T>` | A read-only signal that also carries a signal for each property of `T`; nested signals are created lazily on first access. **Since 22.0:** a state slice or computed result whose type is a union containing an object literal (`{ name: string } \| null`) yields a `DeepSignal` for the object member — `DeepSignal<{ name: string }> \| Signal<null>`, i.e. `DeepSignalOf<T>` — instead of one `Signal` of the whole union, so nested property signals exist on union slices too. |
 | `DeepSignalOf<T>` | Type helper resolving the deep-signal shape for `T`. |
 | `signalMethod<Input>(processor, config?)` | Creates a processor function accepting a static value, a `Signal`, or a computation function; tracks signal inputs via an internal `effect`. RxJS-free counterpart to `rxMethod`. `config` accepts an `injector`. |
 | `SignalMethod<Input>` | Type of a `signalMethod` instance; exposes `destroy()`. |
@@ -94,6 +94,7 @@ Tests can bypass protection without disabling it — see `unprotected` below.
 | Symbol | One-liner |
 | --- | --- |
 | `SignalStoreFeature<Input, Output>` | Type of a store feature — what `signalStoreFeature` returns. |
+| `SignalStoreFeatureType<typeof withX>` | **Since 22.0.** Extracts the `{ state, props, methods }` a custom feature factory contributes, so another feature can require it as input: `signalStoreFeature(type<SignalStoreFeatureType<typeof withRequestStatus>>(), ...)`. See `references/custom-features.md`. |
 | `SignalStoreFeatureResult` | The `{ state, props, methods }` shape a feature contributes. |
 | `EmptyFeatureResult` | A `SignalStoreFeatureResult` contributing nothing; the base for features that add no members. |
 | `StateSignals<State>` | The signal dictionary generated from a state type (`DeepSignal` for object slices, `Signal` otherwise). |
