@@ -1,5 +1,7 @@
 # August 2026 PRD Workflow
 
+> **Superseded in part by [2026-09-plugin-architecture.md](2026-09-plugin-architecture.md)** (2026-09-26): the agents are now `andes-prd-generator` and `andes-planner-expert` (effort `high` for the PRD generator), shipped in the `andes-core` plugin; the `prd` skill lives once in `plugins/andes-core/skills/prd/`.
+
 **Date**: 2026-08-04
 **Claude Code harness**: `.claude/skills/prd/` (`SKILL.md` + `references/`), `.claude/agents/prd-generator.md`, `.claude/CLAUDE.md`
 **GitHub Copilot harness**: `.github/skills/prd/` (content-identical mirror), `.github/agents/prd-generator.agent.md`, `.github/agents/planner-expert.agent.md`, `.github/copilot-instructions.md`

@@ -7,206 +7,344 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/RorroRojas3/awesome-claude-copilot/pulls)
 
-A curated, reusable **AI-assistant configuration** for **C#/.NET back ends and Angular front ends** — one set of standards, shipped for **two harnesses**: [Claude Code](https://code.claude.com) and [GitHub Copilot](https://github.com/features/copilot). Drop the tree for your harness (or both) into your repository and stop re-explaining your team's standards in every prompt.
+This repository is the **`andes` plugin marketplace**. It packages engineering standards for C#/.NET, Angular, GitHub Actions, and Terraform as plugins for [Claude Code](https://code.claude.com) and [GitHub Copilot](https://github.com/features/copilot) on the `github-copilot` harness (Copilot CLI, Copilot coding agent, github.com). Each plugin lives in one directory that serves both harnesses. You install only the stacks you use, and updates arrive through the marketplace instead of by re-copying files.
 
-There is no application source code here. This repo is purely portable assistant configuration: project memory, path-scoped rules, skills, subagents/custom agents, reusable prompts, and MCP servers.
+It contains no application code, only assistant configuration: skills, agents, MCP servers, and a shared `AGENTS.md` block.
 
-The two trees are parallel and **self-contained** — nothing in `.github/` references `.claude/`:
+How it fits together:
 
-| Concept | Claude Code (`.claude/`) | GitHub Copilot (`.github/`) |
+- **A short always-on block.** An `AGENTS.md` block of about 560 words, installed by `andes-init`, is the only text loaded every session. Both harnesses read it. On a first install `andes-init` also scaffolds the project's own sections after it.
+- **Standards load on demand.** The detailed standards are skills. A file-type → skill routing table in `AGENTS.md` tells the model which ones to load.
+- **Reviewers only report.** They report High and Medium findings with a verdict. The review loop is capped at two rounds, and then the technical writer documents the change.
+- **MCP servers ship with their plugin.** Each server is pinned (or floats on `@latest` by design) and scoped, every agent is granted exact tools, and the audit checks that each research agent holds the grants it needs.
+
+> **Breaking change (2026-09):** this replaces the old `.claude/` + `.github/` drop-in trees. See [Migrating from the drop-in trees](#migrating-from-the-drop-in-trees). The design record is [docs/2026-09-plugin-architecture.md](docs/2026-09-plugin-architecture.md).
+
+---
+
+## Plugins
+
+| Plugin | Ships | Depends on |
 | --- | --- | --- |
-| Always-on standards | `CLAUDE.md` | `copilot-instructions.md` |
-| Path-scoped standards | `rules/*.md` | `instructions/*.instructions.md` |
-| Skills | `skills/` | `skills/` — content-identical mirror of `.claude/skills/` (verified at the git-blob level; working-tree line endings may differ on Windows) |
-| Agents | `agents/*.md` (subagents) | `agents/*.agent.md` (custom agents) |
-| Reusable commands | `commands/*.md` (slash commands) | `prompts/*.prompt.md` |
-| MCP servers | `.mcp.json` | `.vscode/mcp.json` |
+| `andes-core` | **Skills:** `andes-init`, `prd`, `technical-writing`<br>**Agents:** `andes-prd-generator`, `andes-se-technical-writer`<br>**Copilot-only agents:** `andes-planner-expert`, `andes-full-stack-expert`<br>**MCP:** `context7` | — |
+| `andes-dotnet` | **Skills:** `csharp-standards`, `aspnet-rest-apis`, `azure-functions-csharp`, `csharp-mcp-server`, `csharp-async`, `csharp-docs`, `csharp-xunit`, `ef-core`, `microsoft-agent-framework`, `microsoft-docs`<br>**Agents:** `andes-csharp-code-reviewer`<br>**Copilot-only agents:** `andes-csharp-expert`, `andes-csharp-dotnet-janitor`<br>**MCP:** `microsoft-learn` | `andes-core` |
+| `andes-dotnet-wasm` | **Skills:** `blazor-wasm` (standalone Blazor WebAssembly, .NET 10) | `andes-core`, `andes-dotnet` |
+| `andes-angular` | **Skills:** `angular-standards`, `ngrx-signal-store`, `angular-developer` (official Angular team skill, vendored)<br>**Agents:** `andes-angular-code-reviewer`<br>**Copilot-only agents:** `andes-angular-expert`<br>**MCP:** `angular-cli` | `andes-core` |
+| `andes-github` | **Skills:** `github-actions-hardening`, `github-actions-efficiency`, `github-actions-runtime-upgrade-conventions`<br>**Agents:** `andes-github-actions-reviewer` | `andes-core` |
+| `andes-terraform` | **Skills:** `terraform-conventions`<br>**MCP:** `terraform` | `andes-core` |
+
+Claude Code installs dependencies automatically. On Copilot, install them yourself (see [Install](#install)).
+
+When you run `andes-init`, it reports which plugins match your repository (for example, `*.csproj` suggests `andes-dotnet` and `angular.json` suggests `andes-angular`) and which of those are not installed yet.
 
 ---
 
-## Repository structure
-
-```
-.
-├── .claude/                      # ── Claude Code harness ──
-│   ├── CLAUDE.md                 # Always-loaded project memory: C# + Angular standards, delegation rules
-│   ├── rules/                    # Path-scoped rules (auto-apply when a matching file is edited)
-│   │   ├── csharp.md                       → **/*.cs
-│   │   ├── aspnet-rest-apis.md             → **/*.cs
-│   │   ├── azure-functions-csharp.md       → **/*.cs, **/host.json, **/local.settings.json, **/*.csproj
-│   │   ├── blazor-wasm.md                  → **/*.razor, **/*.razor.cs, **/*.razor.css
-│   │   ├── csharp-mcp-server.md            → **/*.cs, **/*.csproj
-│   │   └── terraform.md                    → **/*.tf
-│   ├── skills/                   # Invokable skills (Skill tool)
-│   │   ├── angular-developer/              # official Angular team skill (pinned via skills-lock.json)
-│   │   ├── csharp-async/SKILL.md
-│   │   ├── csharp-docs/SKILL.md
-│   │   ├── csharp-xunit/SKILL.md
-│   │   ├── ef-core/SKILL.md
-│   │   ├── github-actions-efficiency/      # CI-minutes and cost audits
-│   │   ├── github-actions-hardening/       # workflow security review
-│   │   ├── github-actions-runtime-upgrade-conventions/SKILL.md
-│   │   ├── microsoft-agent-framework/      # + references/dotnet.md
-│   │   ├── microsoft-docs/SKILL.md         # Learn MCP first; Context7 for the rest
-│   │   ├── ngrx-signal-store/    # Progressive-disclosure, self-updating (see below)
-│   │   │   ├── SKILL.md
-│   │   │   ├── sources.json                # pinned upstream doc shas + @ngrx/signals version
-│   │   │   ├── scripts/check-updates.mjs   # drift check against the live NgRx docs
-│   │   │   └── references/                 # read on demand, not loaded up front
-│   │   ├── prd/                  # PRDs + feature → epics/stories breakdown (see below)
-│   │   │   ├── SKILL.md
-│   │   │   └── references/                 # prd-template, story-breakdown, github-issues
-│   │   └── technical-writing/              # doc-type templates + writing process, read on demand by se-technical-writer
-│   ├── agents/                   # Subagents
-│   │   ├── csharp-code-reviewer.md         # Sonnet (xhigh), read-only C#/.NET review
-│   │   ├── angular-code-reviewer.md        # Sonnet (xhigh), read-only Angular review
-│   │   ├── github-actions-reviewer.md      # Opus (xhigh), read-only workflow review
-│   │   ├── prd-generator.md                # Sonnet (xhigh), writes PRDs under docs/prd/
-│   │   └── se-technical-writer.md          # Sonnet (xhigh), writes docs under docs/
-│   ├── commands/                 # Slash commands
-│   │   ├── ngrx-signals-sync.md            # refresh the NgRx skill from upstream docs
-│   │   └── repo-audit.md                   # audit cross-harness parity + cost hygiene
-│   ├── settings.json             # Model, effort (xhigh) + MCP defaults
-│   └── skills-lock.json          # pin for the installed angular-developer skill
-│
-├── .github/                      # ── GitHub Copilot harness (self-contained) ──
-│   ├── copilot-instructions.md   # Repository instructions: standards + agent/skill registry
-│   ├── instructions/             # Path-scoped instructions (applyTo globs) — twins of .claude/rules/
-│   ├── agents/                   # Custom agents (planner, experts, reviewers, PRD generator, writer)
-│   ├── prompts/                  # Reusable prompts (ngrx-signals-sync, repo-audit)
-│   └── skills/                   # Content-identical mirror of .claude/skills/
-│
-├── .vscode/mcp.json              # MCP servers for GitHub Copilot in VS Code
-├── .mcp.json                     # MCP servers for Claude Code
-├── scripts/repo-audit.mjs        # repo-maintenance tooling — not part of either drop-in tree
-└── LICENSE                       # MIT
-```
-
----
-
-## What's covered
-
-**C#/.NET** (latest C# / C# 14): file-scoped namespaces, pattern matching, `nameof`; PascalCase/camelCase and `I`-prefixed interfaces; nullable reference types with `is null` / `is not null`; async (`Async` suffix, no `.Result`/`.Wait()`/`async void`, `CancellationToken`, `ConfigureAwait(false)`); validation (FluentValidation/DataAnnotations) and Problem Details (RFC 9457); `ILogger<T>` structured logging, never logging PII/secrets, `DefaultAzureCredential` + Key Vault; XML doc comments; xUnit conventions.
-
-Framework specifics live in `.claude/rules/` (Claude Code) and `.github/instructions/` (Copilot), which auto-load when you edit a matching file:
-
-| Topic | Claude Code rule | Copilot instructions |
-| --- | --- | --- |
-| General C# | `csharp.md` | `csharp.instructions.md` |
-| ASP.NET Core REST APIs | `aspnet-rest-apis.md` | `aspnet-rest-apis.instructions.md` |
-| Azure Functions (isolated worker) | `azure-functions-csharp.md` | `azure-functions-csharp.instructions.md` |
-| Blazor WebAssembly (standalone) | `blazor-wasm.md` | `blazor-wasm.instructions.md` |
-| MCP servers in C# | `csharp-mcp-server.md` | `csharp-mcp-server.instructions.md` |
-| Terraform | `terraform.md` | `terraform.instructions.md` |
-
-**Angular**: general implementation guidance via the official `angular-developer` skill; NgRx Signal Store state management — see below.
-
-**GitHub Actions**: workflow security hardening, CI-efficiency audits, and runtime/version upgrades — three skills preloaded by the read-only `github-actions-reviewer` (Opus), each also invokable on its own.
-
-**Feature specs & backlog breakdown**: the `prd` skill plus a PRD-generator agent turn a feature request into a Product Requirements Document — measurable success criteria and a breakdown into epics and user stories with acceptance criteria, priorities (P0/P1/P2), t-shirt estimates, and dependencies — written to `docs/prd/`, with optional GitHub-issue creation (`gh`) after you approve. On Claude Code the main session delegates to the `prd-generator` subagent; on Copilot the **PRD Generator** chat mode interviews you directly and hands off to the **Planner Expert**, which plans against the PRD's story IDs.
-
-**Skills** (both harnesses): `angular-developer`, `csharp-async`, `csharp-docs`, `csharp-xunit`, `ef-core`, `github-actions-efficiency`, `github-actions-hardening`, `github-actions-runtime-upgrade-conventions`, `microsoft-agent-framework`, `microsoft-docs`, `ngrx-signal-store`, `prd`, `technical-writing`.
-
----
-
-## Angular / NgRx Signal Store
-
-`ngrx-signal-store` is the most involved skill here, and the only self-updating one.
-
-It uses **progressive disclosure**. `SKILL.md` is short and loads whenever the skill triggers: the mental model, the production defaults (keep `protectedState` on, inject via default parameters, standalone state updaters), the decision rules that are easiest to get wrong (`signalState` vs `signalStore`; `rxMethod` vs `signalMethod` vs a plain method; when a custom feature or the Events plugin is actually warranted), and the traps — including that `withDevtools` is *not* part of core NgRx, a common hallucination.
-
-Everything else sits in `references/` and is read only when the task calls for it:
-
-| Reference | Read when |
-| --- | --- |
-| `store-composition.md` | Authoring or reshaping a store's structure |
-| `async-and-rxjs.md` | The store talks to HTTP or any async source |
-| `entity-management.md` | State holds a keyed collection |
-| `custom-features.md` | Logic repeats across stores |
-| `testing.md` | Writing or fixing store tests |
-| `events-plugin.md` | Event-based state, or several stores reacting to one event |
-| `recipes.md` | Starting a new store from a known-good shape |
-| `api-reference.md` | Checking a signature, import path, or entry point |
-
-### Keeping it current
-
-NgRx guidance goes stale, and a skill that confidently teaches last year's API is worse than no skill. So the skill is **pinned** to a snapshot of the upstream docs in `sources.json` — a blob sha per doc page, the `@ngrx/signals` version it was written against, and a `mapsTo` list saying which reference file each upstream page feeds.
-
-```bash
-# Is the skill still current? Exit 0 = yes, 10 = drifted, 1 = check failed.
-node .claude/skills/ngrx-signal-store/scripts/check-updates.mjs
-```
-
-The check costs a handful of unauthenticated HTTP requests (set `GITHUB_TOKEN` to raise the 60/hour limit; a weekly cadence never approaches it). Run the whole refresh through the slash command:
-
-```
-/ngrx-signals-sync              # check, and update the skill if upstream moved
-/ngrx-signals-sync --check-only # report drift without editing anything
-```
-
-When nothing has changed it prints one line and stops. When something has, it fetches only the changed pages, propagates the substantive differences into the reference files named by `mapsTo`, re-pins the shas, and **leaves the edits in the working tree for you to review** — it never commits. This repo *is* the guidance, and there are no tests that would catch a bad semantic diff, so a human approves it.
-
-To run it on a schedule, drive the command from a loop:
-
-```
-/loop 7d /ngrx-signals-sync
-```
-
-A `/loop` only fires while a Claude Code session is open, so treat it as a convenience rather than a guarantee. Because all the logic lives in the command and the script, the same refresh can be driven by `/schedule` as a real cron routine, or by CI (fail the job on exit code 10), without changing the skill. On the Copilot side, the same refresh is available as the `ngrx-signals-sync` prompt.
-
-> The docs are fetched from the markdown behind `ngrx.io` (`ngrx/platform`, `projects/www/src/app/pages/guide/signals/`). `ngrx.io` itself is a JavaScript SPA and cannot be scraped — fetching it returns an empty nav shell, which is why the pipeline points at the source repo.
-
----
-
-## Keeping the two trees in sync
-
-Parity between `.claude/` and `.github/` is enforced by an audit, not by memory:
-
-```
-/repo-audit                    # Claude Code — report drift; --fix applies mechanical repairs
-node scripts/repo-audit.mjs    # the same check directly (CI: fail on exit 10)
-```
-
-It verifies the mirrored `skills/` trees (tolerating Windows CRLF noise), every rule/instruction pair, agent twins and their model parity, the registries, and a few cost-hygiene lints. Exit `0` is clean, `10` is findings, `1` is a failed run — the same contract as the NgRx sync. On the Copilot side the same flow is the `repo-audit` prompt. Like everything else here, it never commits: findings become working-tree edits for a human to review.
-
----
-
-## MCP servers
-
-Configured in `.mcp.json` for Claude Code (`.claude/settings.json` sets `enableAllProjectMcpServers: true`) and in [`.vscode/mcp.json`](.vscode/mcp.json) for GitHub Copilot in VS Code — the same four servers in both:
-
-| Server | Transport | Use |
-| --- | --- | --- |
-| `microsoft-learn` | HTTP (`https://learn.microsoft.com/api/mcp`) | Ground .NET/Azure answers in official Microsoft Learn docs |
-| `angular-cli` | stdio (`npx @angular/cli mcp`) | Ground Angular answers in the installed Angular version |
-| `terraform` | stdio (Docker: `hashicorp/terraform-mcp-server`) | Infrastructure-as-code |
-| `context7` | stdio (`npx @upstash/context7-mcp`) | Docs outside learn.microsoft.com (VS Code, GitHub, Aspire) — used by the `microsoft-docs` skill |
-
----
-
-## Getting started
+## Install
 
 ### Claude Code
 
-1. Copy [`.claude/`](.claude/) and [`.mcp.json`](.mcp.json) into the root of your repository.
-2. Start Claude Code there. It loads `.claude/CLAUDE.md` every session, and the matching `.claude/rules/*.md` whenever you edit a relevant file.
-3. The skills, the subagents (`csharp-code-reviewer`, `angular-code-reviewer`, `github-actions-reviewer`, `prd-generator`, `se-technical-writer`), and the `/ngrx-signals-sync` command become available. Delegation is described in `CLAUDE.md`: asking to spec a feature or break it into stories routes to `prd-generator` (writes PRDs under `docs/prd/`); after changing C#, `csharp-code-reviewer` reviews it (read-only); after changing Angular, `angular-code-reviewer`; after changing GitHub Actions workflows, `github-actions-reviewer`; implemented features go to `se-technical-writer`, which writes Markdown under `docs/` and maintains `CHANGELOG.md`.
+```text
+/plugin marketplace add RorroRojas3/awesome-claude-copilot
+/plugin install andes-dotnet@andes
+/andes-core:andes-init
+```
 
-### GitHub Copilot
+Install each stack plugin you need. Its dependencies install with it, so `andes-dotnet` brings in `andes-core`. Then run `andes-init` once per repository. It asks before it changes anything except the `andes` block and the `CLAUDE.md` import:
 
-1. Copy [`.github/`](.github/) and [`.vscode/mcp.json`](.vscode/mcp.json) into the root of your repository.
-2. Copilot loads `.github/copilot-instructions.md` automatically; the path-scoped `instructions/*.instructions.md` apply via their `applyTo` globs.
-3. The custom agents appear in the VS Code agents dropdown. Intended flow: (optional) spec with **PRD Generator** → plan with **Planner Expert** → hand off to the recommended implementation expert (C#, Angular, MCP Server, Full-Stack, Janitor) → its reviewer subagent checks the work → **SE Technical Writer** documents it and updates `CHANGELOG.md`.
+1. **`AGENTS.md`.** Writes or refreshes the managed block between `<!-- andes:begin … -->` and `<!-- andes:end -->`. Text outside the markers is never touched. When it creates the file, it also appends placeholder sections (About this repository, Layout, Build/test/run, Conventions) for the team to fill in.
+2. **`CLAUDE.md`.** Adds an `@AGENTS.md` import, or creates `CLAUDE.md` with just that line. The import matters: a `CLAUDE.local.md` silently turns off Claude Code's native `AGENTS.md` loading, and the import still works when one exists.
+3. **Opt-in settings**, offered one at a time, each shown as a diff first:
+   - the `andes` marketplace and `enabledPlugins` for a team rollout
+   - a `permissions.deny` for the Angular CLI `ai_tutor` tool
+   - `"effortLevel": "xhigh"`
+4. **Cleanup.** Offers to delete old drop-in copies.
 
-Requirements: Node 18+ for the NgRx sync and repo-audit scripts (both use only Node built-ins and have no dependencies); the [`gh` CLI](https://cli.github.com) if you want PRD stories turned into GitHub issues.
+Re-run `andes-init` after you update the plugins. A run with nothing new changes nothing. Plugin agents appear as `andes-<plugin>:andes-<role>`, for example `andes-dotnet:andes-csharp-code-reviewer`. Verified with Claude Code 2.1.283.
+
+### GitHub Copilot CLI
+
+These commands follow GitHub's Copilot CLI plugin docs. They have **not yet been verified end to end** with these plugins; see the [Copilot checklist](docs/2026-09-plugin-architecture.md#not-yet-verified-github-copilot-checklist).
+
+```shell
+copilot plugin marketplace add RorroRojas3/awesome-claude-copilot
+copilot plugin install andes-core@andes
+copilot plugin install andes-dotnet@andes
+```
+
+On Copilot, the plugins use the Agent Plugins 1.0 format, which has no `dependencies` field. That means you install dependencies yourself: always install `andes-core`, and install `andes-dotnet` before `andes-dotnet-wasm`. Then run the `andes-init` skill (`/andes-init`). The files it writes serve both harnesses, so you can also run it once from Claude Code.
+
+The Copilot agents declare `target: github-copilot`, so they also load for the Copilot coding agent and on github.com once the plugins are installed there.
+
+### Not supported: VS Code (local Copilot)
+
+Do **not** add this marketplace to `chat.plugins.marketplaces` or install the plugins from the `@agentPlugins` view in VS Code. The plugins target the `github-copilot` harness only: every Copilot agent is `target: github-copilot`, none uses VS Code tools (`vscode/askQuestions`, `vscode/memory`) or handoff buttons, and the maintainer commands are skills rather than VS Code prompt files. `andes-init` no longer offers VS Code settings. Use Copilot CLI, the Copilot coding agent, or github.com.
 
 ---
 
-## Conventions for contributors
+## Agents
 
-- **Both harnesses, always:** a change to standards, skills, or agents lands in `.claude/` **and** its `.github/` twin in the same PR. Sync points: `CLAUDE.md` ↔ `copilot-instructions.md` registries, the two `skills/` trees (keep the mirrored files content-identical — verify with `/repo-audit`, or `node scripts/repo-audit.mjs` directly), and this README's structure diagram and lists.
-- **Rules / instructions:** a `.claude/rules/*.md` file with a `paths:` block list applies only to matching files; without `paths:` it loads at launch for every session. The Copilot twin is an `applyTo:`-scoped `.github/instructions/*.instructions.md`.
-- **Subagents (Claude):** `.claude/agents/*.md` frontmatter uses `name`, `description`, a `model` (`opus`/`sonnet`/`haiku`/`inherit`), an `effort` level (`low`/`medium`/`high`/`xhigh`/`max` — this repo pins every agent to `xhigh`, matching the `"effortLevel": "xhigh"` default in `settings.json`), and either a comma-separated `tools` list or a `skills:` list.
-- **Custom agents (Copilot):** `.github/agents/*.agent.md` frontmatter uses a display-case `name`, `description`, `model` (kept in **tier parity** with the Claude twin by default; a per-harness cost override is allowed when it is recorded in `modelParityOverrides` in `scripts/repo-audit.mjs` **and** in a docs record — see `docs/2026-08-repo-audit.md`), lowercase `tools` ids, and optional `argument-hint`, `handoffs`, and `agents`. There is no effort key — Copilot has no equivalent yet.
-- **Skills:** one folder per skill containing `SKILL.md` with `name` and `description` frontmatter. Keep `SKILL.md` under ~500 lines; anything longer belongs in `references/`, pointed to from a table that says *when* to read each file.
-- **Never hand-edit the shas in `sources.json`.** They are machine-maintained — run `node .claude/skills/ngrx-signal-store/scripts/check-updates.mjs --pin`.
+In Claude Code, the main session writes the code and delegates review, docs, and PRDs to agents. Copilot also has implementer agents.
+
+| Agent | Plugin | Claude Code | Copilot | Role |
+| --- | --- | --- | --- | --- |
+| `andes-csharp-code-reviewer` | `andes-dotnet` | yes | yes | Report-only C#/.NET review, including Blazor |
+| `andes-angular-code-reviewer` | `andes-angular` | yes | yes | Report-only Angular and NgRx review |
+| `andes-github-actions-reviewer` | `andes-github` | yes | yes | Report-only workflow review: security, efficiency, runtime currency |
+| `andes-prd-generator` | `andes-core` | yes | yes | Writes PRDs under `docs/prd/` with the `PRD-STATUS` report contract on both harnesses; creates GitHub issues only after you approve |
+| `andes-se-technical-writer` | `andes-core` | yes | yes | Writes `docs/` and owns `CHANGELOG.md` |
+| `andes-planner-expert` | `andes-core` | — | yes | Researches and plans; invokes `andes-prd-generator` first when a feature needs requirements; writes the plan to `docs/plans/` and names the implementer to run next |
+| `andes-full-stack-expert` | `andes-core` | — | yes | Writes the API contract, delegates the back end and front end in parallel, documents once. Needs `andes-dotnet` and `andes-angular` |
+| `andes-csharp-expert` | `andes-dotnet` | — | yes | Implements C#/.NET code: APIs, Functions, MCP servers, Blazor, EF Core |
+| `andes-csharp-dotnet-janitor` | `andes-dotnet` | — | yes | Cleanup and modernization in small, tested batches |
+| `andes-angular-expert` | `andes-angular` | — | yes | Implements Angular code: components, signals, forms, routing, Signal Store |
+
+The typical Copilot flow is `andes-planner-expert` (which invokes `andes-prd-generator` when a feature has no PRD and its requirements are unclear) → implementer → reviewer → `andes-se-technical-writer`. You can also run `andes-prd-generator` directly. The PRD generator never invokes the planner. Plans live under `docs/plans/` and, like PRDs, get no changelog entry.
+
+Every research and implementer agent is granted exact MCP tools for its stack — `microsoft-learn` for .NET, `angular-cli` for Angular, `context7` (from `andes-core`) for any other library — and the repo audit fails if a required grant is missing.
+
+Models and reasoning effort:
+
+- **Claude.** Reviewers and the PRD and writer agents run on Sonnet. `andes-github-actions-reviewer` runs on Opus. Reviewers use `effort: xhigh`, and `andes-prd-generator` and `andes-se-technical-writer` use `high`.
+- **Copilot.** Agents run on Claude Sonnet 5. `andes-se-technical-writer` is the exception: it runs on Claude Haiku 4.5 to save cost.
+
+---
+
+## Review loop
+
+After a code change, the implementer runs the matching reviewer on the diff:
+
+| Change | Reviewer |
+| --- | --- |
+| C#, including Blazor | `andes-csharp-code-reviewer` |
+| Angular | `andes-angular-code-reviewer` |
+| Workflows and composite actions | `andes-github-actions-reviewer` |
+| Terraform | No reviewer. Run `terraform fmt -check` and `terraform validate` |
+
+The loop works like this:
+
+1. **Report.** Reviewers report only **High** and **Medium** findings, plus a verdict. They never edit files and never hand work back.
+2. **Fix and re-review.** The implementer fixes every finding, then reruns the reviewer once, on only the files changed since round 1.
+3. **Stop after two rounds.** If High findings remain after round 2, the implementer stops and reports them to you. Open Medium findings go in the final summary.
+4. **Document.** After a passing verdict (**Approve** or **Approve with changes**), `andes-se-technical-writer` updates `docs/` and adds the `CHANGELOG.md` entry.
+
+`andes-full-stack-expert` counts rounds per side, so neither the back end nor the front end gets more than two. The loop text lives in `AGENTS.md`. It is also copied word for word into the Copilot implementers, because Copilot subagents do not receive `AGENTS.md`.
+
+---
+
+## Testing policy (.NET)
+
+- **Libraries.** Use xUnit v3 (latest, on Microsoft Testing Platform: `dotnet new xunit3`) with xUnit's `Assert`, and NSubstitute for test doubles. Never use FluentAssertions, AwesomeAssertions, Shouldly, Moq, FakeItEasy, NUnit, or MSTest.
+- **Test databases.** Try these in order:
+  1. Testcontainers
+  2. SQLite in-memory
+  3. A dedicated physical test database
+  4. EF Core InMemory, only as a last resort
+- **Existing suites.** New tests follow the policy, and no banned package gets added. Existing tests are migrated only when you ask.
+
+The policy lives in `csharp-xunit`, `csharp-standards`, and `ef-core`. `andes-csharp-code-reviewer` enforces it, and the repo audit fails if any plugin text recommends a banned library.
+
+---
+
+## C# non-negotiables
+
+These apply to every new or changed C# file. Existing code is migrated only when you ask.
+
+- **Minimal APIs only.** No MVC controllers, no `[ApiController]`, no `AddControllers()`. Endpoint groups per resource, `TypedResults`, endpoint filters (`aspnet-rest-apis`).
+- **FluentValidation only.** One `AbstractValidator<T>` per request type, run from a shared endpoint filter. No DataAnnotations, no `AddValidation()`, not in Blazor forms either.
+- **File layout.** Fields and properties, then interface implementations, then `#region Private methods`, `#region Public static methods`, and `#region Logging` (the `[LoggerMessage]` methods), in that order and always last (`csharp-standards`).
+- **Primary constructors**, **collection expressions**, and **`var`** wherever the initializer has a type; logging only through `[LoggerMessage]` source-generated methods.
+
+`andes-csharp-code-reviewer` reports new controllers or DataAnnotations as High and layout, `var`, or logging violations as Medium. The repo audit (`csharp-policy`) fails if any plugin text recommends controllers or DataAnnotations.
+
+---
+
+## MCP servers and tool scoping
+
+| Server | Plugin | Launch | Why it is configured this way |
+| --- | --- | --- | --- |
+| `microsoft-learn` | `andes-dotnet` | HTTP `https://learn.microsoft.com/api/mcp` | Grounds .NET and Azure answers in official docs |
+| `context7` | `andes-core` | HTTP `https://mcp.context7.com/mcp` | Remote and anonymous (no API key; anonymous rate limit). Ships with `andes-core` so every research agent can ground any other library's docs |
+| `angular-cli` | `andes-angular` | `npx -y @angular/cli@latest mcp --read-only` | Floats on `@latest` on purpose, so the MCP tool set (including `find_examples`) tracks the current CLI. `--read-only` drops the `run_target` and devserver tools |
+| `terraform` | `andes-terraform` | `docker run -i --rm hashicorp/terraform-mcp-server:1.3.0 --toolsets=registry` | Pinned image, public-registry toolset only. Requires Docker |
+
+Each plugin declares its servers twice, with the same entries:
+
+- `.mcp.json` for Claude Code.
+- `mcp.json` for Copilot, in Agent Plugins format. There, the remote servers (`microsoft-learn`, `context7`) use `type: streamable-http`.
+
+The repo audit fails if the two drift (URL, command, args, headers, or env), and if a Claude tool name credits the wrong plugin for a server (`mcp__plugin_andes-core_context7__query-docs`, never `andes-dotnet`).
+
+Tool scoping:
+
+- **Exact grants.** Every agent lists exact MCP tools, never a whole server.
+  - Claude tool names look like `mcp__plugin_andes-angular_angular-cli__get_best_practices`.
+  - Copilot tool names look like `angular-cli/get_best_practices`.
+- **Unknown names are ignored.** So `find_examples` (which exists only on Angular CLI 21) can be granted safely. The same goes for the `microsoft-learn` tools granted to the `andes-core` agents when `andes-dotnet` is not installed.
+- **`ai_tutor`.** The Angular CLI server has no flag to remove its `ai_tutor` tool. No agent is granted it, and `andes-init` offers a `permissions.deny` for Claude's main session.
+- **Node version.** Angular CLI 22.2 requires Node ≥ 22.22.3.
+
+---
+
+## Context and cost
+
+| Measure | Old drop-in trees | Plugins |
+| --- | --- | --- |
+| Always-on standards | `CLAUDE.md` 1,263 words; `copilot-instructions.md` 995 words | `AGENTS.md` block, about 560 words |
+| Loaded automatically on a `.cs` edit (Claude Code) | 4 rules, about 2,566 words | Nothing. Only the skills the change needs |
+
+Skill descriptions are the always-on price of each installed plugin. Measured with `claude plugin details`:
+
+| Plugin | Tokens |
+| --- | --- |
+| `andes-core` | ~301 |
+| `andes-dotnet` | ~963 |
+| `andes-dotnet-wasm` | ~126 |
+| `andes-angular` | ~364 |
+| `andes-github` | ~278 |
+| `andes-terraform` | ~98 |
+
+Claude Code limits the skill listing to about 1% of context, and when that overflows it drops the descriptions of rarely used skills. The routing table in `AGENTS.md` names skills by file type, so the right skill still loads without its description.
+
+`effortLevel: xhigh` for the main session costs more per turn. That is why `andes-init` asks about it separately.
+
+---
+
+## Migrating from the drop-in trees
+
+The pre-plugin layout is commit [`97943de`](https://github.com/RorroRojas3/awesome-claude-copilot/tree/97943de) on `main`.
+
+1. **Install the plugins.** Follow the [Install](#install) steps for your harness.
+2. **Run `andes-init`.** It lists leftovers from the old layout and offers to delete them as one batch:
+   - `.claude/rules/*.md` and `.github/instructions/*.instructions.md`
+   - `.claude/agents/*` and `.github/agents/*`
+   - `.claude/skills/<name>` and `.github/skills/<name>` for any skill a plugin now ships
+   - the MCP servers in `.mcp.json` and `.vscode/mcp.json`
+   - `microsoft-docs@claude-plugins-official`, which starts a second Microsoft Learn server
+3. **Move project-specific text** from `.github/copilot-instructions.md` into `AGENTS.md`, outside the markers. Copilot loads both files, so `andes-init` offers to delete it afterward.
+
+Why cleanup matters: in Copilot CLI, project-level agents and skills win over plugin ones (first found wins). An old `.claude/skills/csharp-async` would silently shadow the plugin's `csharp-async`.
+
+What was renamed:
+
+| Old | New |
+| --- | --- |
+| `csharp-code-reviewer`, `angular-code-reviewer`, `github-actions-reviewer`, `prd-generator`, `se-technical-writer` | The same roles with an `andes-` prefix |
+| `planner-expert`, `csharp-expert`, `angular-expert`, `full-stack-expert`, `csharp-dotnet-janitor` | The same roles with an `andes-` prefix (Copilot only) |
+| `csharp-mcp-expert` | Merged into `andes-csharp-expert` |
+| Rule `csharp` | Skill `csharp-standards` |
+| Rule `terraform` | Skill `terraform-conventions` |
+| Rules `aspnet-rest-apis`, `azure-functions-csharp`, `csharp-mcp-server`, `blazor-wasm` | Skills with the same names |
+
+---
+
+## Maintaining this repository
+
+```text
+.
+├── .claude-plugin/marketplace.json     # the andes marketplace
+├── plugins/andes-<name>/
+│   ├── .claude-plugin/plugin.json      # Claude Code manifest; lists every claude-agents/ file
+│   ├── plugin.json                     # Copilot manifest (Agent Plugins 1.0): $schema + metadata only
+│   ├── skills/                         # shared by both harnesses
+│   ├── claude-agents/                  # Claude Code agents (*.md)
+│   ├── com.github.copilot/agents/      # Copilot agents (*.agent.md)
+│   ├── .mcp.json                       # Claude Code MCP servers (optional)
+│   └── mcp.json                        # Copilot MCP servers, Agent Plugins format (optional; same servers)
+├── AGENTS.md                           # the andes block (= andes-init template) + this repo's own sections
+├── CLAUDE.md                           # exactly "@AGENTS.md"
+├── .claude/skills/                     # maintainer-only /repo-audit, /ngrx-signals-sync, /release (not shipped)
+├── .claude/settings.json               # maintainer settings (enables andes-core, andes-github)
+├── .github/workflows/repo-audit.yml    # CI
+├── scripts/repo-audit.mjs              # structural audit
+├── scripts/release.mjs                 # release: CHANGELOG roll, tag, GitHub Release
+├── scripts/upstream-skills.lock.json   # hash pin for angular-developer
+└── docs/                               # ADRs and change records
+```
+
+**Why this layout.**
+
+- **Copilot uses Agent Plugins 1.0.** Copilot switches to Agent Plugins 1.0 when a root `plugin.json` declares `"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"`. Skills (`skills/`), MCP (`mcp.json`), and Copilot agents (`com.github.copilot/agents/`) sit at fixed locations, so that manifest has no path fields.
+- **Maintainer commands are skills.** `.claude/skills/` is read by Claude Code and by Copilot CLI (which also scans `.github/skills` and `.agents/skills`), so each command exists once. VS Code prompt files (`.github/prompts/`) never load in the CLI and are gone. No skill sets `disable-model-invocation: true`: Copilot CLI cannot invoke such a skill at all ([copilot-cli#4438](https://github.com/github/copilot-cli/issues/4438)), so skills guard in their body instead.
+- **Claude Code uses its own files.** It reads `.claude-plugin/plugin.json`, `.mcp.json`, and the listed `claude-agents/` files.
+- **Neither loads the other's agents.** Neither agent folder is a default `agents/` folder. The audit rejects `agents/`, `commands/`, `hooks/`, and `.github/` folders inside a plugin.
+
+**Develop against live files.** Load a plugin from its folder instead of the marketplace cache:
+
+```shell
+claude --plugin-dir plugins/andes-<name>
+```
+
+**Bump versions on every change.** Installs are cached by version, so bump `version` in *both* manifests of every plugin you change. CI enforces this on PRs with `--base`.
+
+**Keep copies in sync.**
+
+- **Agent twins.** A Claude agent and its Copilot twin change together, and their descriptions match apart from the word PROACTIVELY.
+- **Copilot agents.** `target: github-copilot`; plain tool aliases (`read`, `edit`, `search`, `execute`, `agent`, `web`, `todo`) and exact `server/tool` MCP grants; no `handoffs`, `argument-hint`, or `vscode/*` tools; an `agents:` list only together with the `agent` tool, and never pointing at an agent that has `disable-model-invocation: true`.
+- **MCP files.** `.mcp.json` and `mcp.json` list the same servers.
+- **The `AGENTS.md` block.** Edit `plugins/andes-core/skills/andes-init/assets/agents-block.md`, then copy it word for word between the markers in `AGENTS.md`.
+- **The review loop.** Copy its `## Review loop` section word for word into the Copilot implementers.
+
+**Never edit `angular-developer`.** `plugins/andes-angular/skills/angular-developer/` is vendored from upstream and hash-pinned in `scripts/upstream-skills.lock.json`. The audit fails on any local edit.
+
+**Conventions.**
+
+- **Skills.** The folder name equals the `name` field. Descriptions are trigger-style ("Use when …") and at most 400 characters. No `paths:` or `applyTo:` frontmatter. Refer to other skills and agents by name, never by a `.claude/` or `.github/` path, because those paths don't exist once a plugin is installed.
+- **Agents.** Each is named `andes-<role>`, equal to its file stem, and pins a model. Claude `effort` is `xhigh` for reviewers and `high` for everything else.
+  - **Model parity.** Copilot models follow the parity table in `scripts/repo-audit.mjs`. Per-harness overrides must be recorded there and in `docs/`.
+  - **Reviewers.** They keep High/Medium only and get no edit or agent tools.
+
+**Audit.** Run the audit before committing:
+
+```shell
+node scripts/repo-audit.mjs                     # human-readable report
+node scripts/repo-audit.mjs --strict            # warnings also fail
+node scripts/repo-audit.mjs --base=origin/main  # also require version bumps for changed plugins
+claude plugin validate .                        # marketplace manifest
+```
+
+- **Checks:** `manifests`, `skills`, `harness-paths`, `agents`, `mcp`, `memory`, `testing-policy`, `csharp-policy`, `registry`, `changelog`.
+- **Exit codes:** `0` clean, `10` findings, `1` the script failed.
+- **`/repo-audit`** runs the same checks inside Claude Code or Copilot CLI (it is a skill in `.claude/skills/`). It is report-only unless you pass `--fix`, which applies only mechanical repairs and never commits.
+
+**Release.** Plugins are versioned per change; a release is the marketplace event. From a clean, up-to-date `main`:
+
+```text
+/release minor            # dry run first, then asks for a yes
+node scripts/release.mjs minor --dry-run   # the script underneath
+```
+
+`scripts/release.mjs` checks the branch, tree, `gh` login, audit, and `claude plugin validate`, then moves `## [Unreleased]` in `CHANGELOG.md` under `## [X.Y.Z] - <date>` (keeping the compare links), commits `chore(release): vX.Y.Z`, tags `vX.Y.Z`, pushes with the tag, and creates the GitHub Release with that section plus a table of the plugin versions it ships. Exit codes: `0` released or dry run, `2` a precondition failed, `1` the script failed. It never touches plugin versions.
+
+**CI.** `.github/workflows/repo-audit.yml` runs on PRs that touch plugin or config paths, and on pushes to `main`.
+
+- Audit errors fail the job. Warnings stay advisory.
+- `claude plugin validate --strict` runs on the marketplace and on every plugin.
+- Actions are SHA-pinned and kept current by Dependabot.
+
+**NgRx sync.** `ngrx-signal-store` is pinned to upstream NgRx doc snapshots in its `sources.json`. Check and refresh it with:
+
+```text
+/ngrx-signals-sync              # check, and update the skill if upstream moved
+/ngrx-signals-sync --check-only # report drift only
+```
+
+The underlying check is `node plugins/andes-angular/skills/ngrx-signal-store/scripts/check-updates.mjs`, with exit codes `0` current, `10` drifted, `1` failed. Set `GITHUB_TOKEN` to raise the API rate limit. Never hand-edit the shas in `sources.json`; use `--pin`. A sync leaves edits in the working tree for review and bumps `andes-angular`.
+
+**Requirements:**
+
+- **Node.** 18 or later runs the audit and sync scripts, which use only built-ins. CI uses Node 22.
+- **Docker** for the `terraform` MCP server.
+- **The [`gh` CLI](https://cli.github.com)** for turning PRD stories into GitHub issues.
+
+---
+
+## Docs
+
+- [docs/2026-09-plugin-architecture.md](docs/2026-09-plugin-architecture.md) is the ADR for this layout. It covers verification results, the Copilot checklist, and fallbacks.
+- [docs/2026-09-copilot-harness-and-release.md](docs/2026-09-copilot-harness-and-release.md) records the move to the `github-copilot` harness, the planner → PRD direction, Context7 in `andes-core`, the C# non-negotiables, maintainer skills, and the release process.
+- The `docs/2026-08-*.md` files record earlier decisions. Parts of them are superseded by the ADR.
+- [CHANGELOG.md](CHANGELOG.md)
+
+## License
+
+[MIT](LICENSE)

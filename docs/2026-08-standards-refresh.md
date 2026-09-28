@@ -1,5 +1,7 @@
 # August 2026 Standards Refresh
 
+> **Superseded in part by [2026-09-plugin-architecture.md](2026-09-plugin-architecture.md)** (2026-09-26): the rules are now on-demand skills (`csharp-standards`, `blazor-wasm`, …) routed from `AGENTS.md`, the .NET testing policy is xUnit v3 + NSubstitute only, and plugins ship their own MCP servers (the trust-gate advice for root `.mcp.json` no longer applies).
+
 **Date**: 2026-08-01
 **Claude Code harness**: `.claude/rules/csharp.md`, `.claude/rules/blazor-wasm.md` (renamed from `blazor.md`), `.claude/CLAUDE.md`, `.claude/agents/csharp-code-reviewer.md`
 **GitHub Copilot harness**: `.github/instructions/csharp.instructions.md`, `.github/instructions/blazor-wasm.instructions.md` (renamed from `blazor.instructions.md`), `.github/copilot-instructions.md`, `.github/agents/csharp-code-reviewer.agent.md`
