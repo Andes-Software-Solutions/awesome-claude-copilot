@@ -112,6 +112,20 @@ test('finds missing files, missing anchors, and case mismatches; accepts valid o
   } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
+test('reports links that leave the repository even when the target exists', () => {
+  const root = fixture({
+    'outside.md': '# Out\n',
+    'repo/.git/HEAD': '',
+    'repo/docs/a.md': '[up](../../outside.md)\n[rooted](/../outside.md)\n[ok](../README.md)\n',
+    'repo/README.md': '# Readme\n',
+  });
+  try {
+    const broken = findBrokenLinks(join(root, 'repo/docs/a.md'));
+    assert.deepEqual(broken.map((b) => [b.line, b.target]), [[1, '../../outside.md'], [2, '/../outside.md']]);
+    assert.match(broken[0].reason, /^outside the repository/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
 test('reads Claude, Copilot (object and string toolArgs), and VS Code payloads', () => {
   assert.deepEqual(readPayload({ cwd: '/r', tool_name: 'Write', tool_input: { file_path: '/r/a.md', content: 'x' } }),
     { file: '/r/a.md', cwd: '/r', newText: 'x', partial: false, failed: false });

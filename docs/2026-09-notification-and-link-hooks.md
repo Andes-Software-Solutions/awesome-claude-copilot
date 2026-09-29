@@ -32,7 +32,7 @@ In this repository only: the audit's `hooks` and `links` checks, `node:test` sui
 
 **`check-links.mjs`**
 
-- **Checks.** Relative files and images, `<dest>` links, reference definitions, HTML `href` and `src`, `/`-rooted links (from the repository root), and `#anchors` by GitHub's slug rules: duplicates get `-1`, setext headings count, and so do explicit `id` / `name` attributes. Letter case must match, because github.com is case-sensitive.
+- **Checks.** Relative files and images, `<dest>` links, reference definitions, HTML `href` and `src`, `/`-rooted links (from the repository root), and `#anchors` by GitHub's slug rules: duplicates get `-1`, setext headings count, and so do explicit `id` / `name` attributes. Letter case must match, because github.com is case-sensitive. Inside a git checkout, a link that climbs out of the repository is broken even if its target exists on disk.
 - **Skips.** Code fences, inline code, HTML comments, front matter, and external schemes.
 - **Hook mode.** Silent for non-Markdown files, files outside the session's working directory, `node_modules`, files over 1 MB, failed Copilot tool calls, and `ANDES_LINK_CHECK=off`. It fails open: exit 0 on any error.
 - **CLI mode.** `node check-links.mjs <files>` prints `file:line` findings and exits `0` clean, `10` findings, `1` error.

@@ -21,6 +21,8 @@ on:
       - "CHANGELOG.md"
       # links/broken checks every Markdown file in the repository.
       - "**/*.md"
+      - "**/*.mdx"
+      - "**/*.markdown"
   push:
     branches: [main]
 

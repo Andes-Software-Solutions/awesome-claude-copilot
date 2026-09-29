@@ -267,6 +267,8 @@ export function findBrokenLinks(absFile, { root = findRoot(dirname(absFile)) ?? 
     return cache.anchors.get(file);
   };
   const source = text ?? readFileSync(absFile, 'utf8');
+  // Only a git checkout has a boundary GitHub enforces; without one, root is a best guess.
+  const bounded = existsSync(join(root, '.git'));
   const broken = [];
   for (const { target, line } of extractLinks(source)) {
     const dest = target.trim();
@@ -277,6 +279,11 @@ export function findBrokenLinks(absFile, { root = findRoot(dirname(absFile)) ?? 
     let file = absFile;
     if (pathPart) {
       file = pathPart.startsWith('/') ? join(root, pathPart) : resolve(dirname(absFile), pathPart);
+      const fromRoot = relative(root, file);
+      if (bounded && (fromRoot.split(sep)[0] === '..' || isAbsolute(fromRoot))) {
+        broken.push({ line, target, reason: 'outside the repository; GitHub cannot resolve it' });
+        continue;
+      }
       if (!existsExact(file, root, cache.dirs)) {
         broken.push({ line, target, reason: missingReason(file) });
         continue;
