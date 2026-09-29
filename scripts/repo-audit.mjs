@@ -66,9 +66,9 @@ const CONFIG = {
   // Reviewers find defects, so they keep the deepest effort; everything else runs at high.
   effort: { reviewer: 'xhigh', other: 'high' },
   modelParity: {
-    sonnet: 'Claude Sonnet 5 (copilot)',
+    sonnet: 'Claude Sonnet 5.5 (copilot)',
     haiku: 'Claude Haiku 4.5 (copilot)',
-    opus: 'Claude Opus 4.6 (copilot)',
+    opus: 'Claude Opus 5.5 (copilot)',
     fable: 'Claude Fable 5 (copilot)',
   },
   // Documented per-harness cost overrides. Each states the Claude model it was recorded
@@ -76,7 +76,7 @@ const CONFIG = {
   modelParityOverrides: {
     'andes-github-actions-reviewer': {
       claude: 'opus',
-      copilot: 'Claude Sonnet 5 (copilot)',
+      copilot: 'Claude Sonnet 5.5 (copilot)',
       reason: 'deliberate: deepest review tier on Claude; Opus pricing not justified on Copilot AI Credits',
     },
     'andes-se-technical-writer': {

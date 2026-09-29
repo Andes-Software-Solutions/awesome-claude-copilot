@@ -3,7 +3,7 @@ name: andes-planner-expert
 description: "Implementation planner. Use when a change needs research and a step-by-step plan before coding. Explores the codebase, invokes andes-prd-generator first when a feature has no PRD and its requirements are unclear, plans against the PRD's story IDs (US-xxx), writes the plan to docs/plans/, and names the Andes implementer to run next. Never implements."
 target: github-copilot
 disable-model-invocation: true
-model: Claude Sonnet 5 (copilot)
+model: Claude Opus 5.5 (copilot)
 tools:
   [
     read,
@@ -68,7 +68,7 @@ Skip this step for bug fixes, cleanup or modernization (janitor work), documenta
 
 Explore the codebase yourself with `search` and `read`: analogous existing features to use as implementation templates, the conventions in play, potential blockers and ambiguities. Split large tasks by area (front end, back end, infrastructure) and explore each in turn.
 
-Name the relevant installed Andes skills in the plan (for example `csharp-standards`, `aspnet-rest-apis`, `ef-core`, `csharp-xunit`, `blazor-wasm`, `angular-standards`, `ngrx-signal-store`, `terraform-conventions`, `github-actions-hardening`) so the implementing agent loads them before coding. You may load a skill yourself to ground design decisions. Ground version-specific questions per <mcp_grounding>.
+Name the relevant installed Andes skills in the plan (for example `csharp-standards`, `dotnet-api-architecture`, `aspnet-rest-apis`, `ef-core`, `csharp-xunit`, `blazor-wasm`, `angular-standards`, `angular-ui-architecture`, `ngrx-signal-store`, `terraform-conventions`, `github-actions-hardening`) so the implementing agent loads them before coding. You may load a skill yourself to ground design decisions. Ground version-specific questions per <mcp_grounding>.
 
 Carry findings into the plan.
 

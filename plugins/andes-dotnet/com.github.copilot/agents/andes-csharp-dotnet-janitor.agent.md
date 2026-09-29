@@ -2,7 +2,7 @@
 name: andes-csharp-dotnet-janitor
 target: github-copilot
 description: "C#/.NET cleanup and modernization agent — dead code, warnings, obsolete APIs, modern C# constructs, test-coverage backfill, and XML docs. Changes in small behavior-preserving batches, tests after each, and self-reviews through andes-csharp-code-reviewer (two rounds max)."
-model: Claude Sonnet 5 (copilot)
+model: Claude Sonnet 5.5 (copilot)
 tools:
   [
     read,
@@ -27,7 +27,7 @@ Perform janitorial work on C#/.NET codebases: cleanup, modernization, and techni
 
 ## Skills
 
-Load `csharp-standards` first, then as the batch needs: `csharp-async` (sync-over-async fixes), `csharp-xunit` (coverage backfill), `csharp-docs` (documentation passes), `ef-core` (data-access cleanup). Ground current .NET guidance and migration paths in `microsoft_docs_search` → `microsoft_code_sample_search` / `microsoft_docs_fetch`.
+Load `csharp-standards` first, then as the batch needs: `csharp-async` (sync-over-async fixes), `csharp-xunit` (coverage backfill), `csharp-docs` (documentation passes), `ef-core` (data-access cleanup), `dotnet-api-architecture` (moving or renaming files, folders, or registrations). Ground current .NET guidance and migration paths in `microsoft_docs_search` → `microsoft_code_sample_search` / `microsoft_docs_fetch`.
 
 ## Analysis order
 

@@ -10,7 +10,7 @@ description: "Use when building or reviewing ASP.NET Core Web APIs (Minimal APIs
 - Build REST APIs on ASP.NET Core 10 with **Minimal APIs only**. Never add MVC controllers, `[ApiController]`, `AddControllers()`, or `MapControllers()`; scaffold with `dotnet new webapi` (its default is Minimal APIs — never pass `--use-controllers`).
 - Apply best practices for API design, testing, documentation, and deployment.
 - Note the reasoning behind non-obvious design decisions; no tutorial-style explanations unless asked.
-- General C# standards (file layout, primary constructors, `var`, logging, nullability) live in the `csharp-standards` skill.
+- General C# standards (file layout, primary constructors, `var`, logging, nullability) live in the `csharp-standards` skill; solution and folder layout (which project and folder a type belongs in, and its name) in `dotnet-api-architecture`.
 
 ## API Design
 
@@ -41,7 +41,7 @@ description: "Use when building or reviewing ASP.NET Core Web APIs (Minimal APIs
 ## Versioning and Documentation
 
 - Version with `Asp.Versioning.Http`: `NewVersionedApi()` + `.HasApiVersion(1.0)` on the group and a URL segment (`/api/v{version:apiVersion}/...`).
-- Document with the built-in `AddOpenApi()` / `MapOpenApi()` (`Microsoft.AspNetCore.OpenApi`) plus the endpoint metadata above; add a UI (Scalar or Swagger UI) in development only.
+- Document with the built-in `AddOpenApi()` / `MapOpenApi()` (`Microsoft.AspNetCore.OpenApi`) plus the endpoint metadata above; render it with Scalar (`Scalar.AspNetCore`, `MapScalarApiReference()`) in development only. Never `Swashbuckle.AspNetCore`, `AddSwaggerGen`, `UseSwagger`, or `UseSwaggerUI`; migrate any project still on it.
 
 ## Testing
 
