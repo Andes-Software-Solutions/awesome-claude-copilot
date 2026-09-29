@@ -9,7 +9,7 @@ Run only when the user asked for `andes-init` (for example `/andes-core:andes-in
 
 Installs the Andes always-on standards into the current repository and keeps them current. Safe to re-run: a second run with nothing new changes nothing.
 
-The template is `assets/agents-block.md` in this skill's own directory (resolve it relative to this `SKILL.md`, not the user's repo); `assets/project-section.md` next to it is the scaffold for the project's own sections. Work from the repository root (`git rev-parse --show-toplevel`). Never touch text outside the `andes` markers, and never delete a file without the user's explicit yes.
+The template is `assets/agents-block.md` in this skill's own directory (resolve it relative to this `SKILL.md`, not the user's repo); `assets/project-section.md` next to it is the scaffold for the project's own sections; `assets/copilot-hooks.json` and `../../scripts/check-links.mjs` are the repo-level link-check hook and the script it runs. Work from the repository root (`git rev-parse --show-toplevel`). Never touch text outside the `andes` markers, and never delete a file without the user's explicit yes.
 
 ## 1. AGENTS.md
 
@@ -41,6 +41,7 @@ Plugins cannot ship settings, so offer these **one at a time**, show the exact d
    - `enabledPlugins`: `"<plugin>@andes": true` for each detected plugin
    - when `andes-angular` is enabled: `permissions.deny` gains `"mcp__plugin_andes-angular_angular-cli__ai_tutor"` (the Angular CLI server has no flag to drop its tutor tool; a bare-name deny removes it from context)
 2. `.claude/settings.json` — `"effortLevel": "xhigh"` (the Andes default; costs more per turn — ask separately).
+3. `.github/hooks/` — the broken-link check for the Copilot cloud agent. The cloud agent never loads plugins, so the `andes-core` hooks do not run there; it reads only the repository's `.github/hooks/*.json`. On a yes, copy `assets/copilot-hooks.json` to `.github/hooks/andes-links.json` and `../../scripts/check-links.mjs` to `.github/hooks/andes/check-links.mjs` with a file copy (`cp`, `Copy-Item`), never by retyping the script. On a re-run, refresh either file when it differs from the plugin's copy. Never touch other files in `.github/hooks/`. Tell the user the hook needs Node.js 18 or later on the agent's `PATH` (GitHub-hosted runners include it; a custom `copilot-setup-steps.yml` environment may not), and that Copilot CLI then runs this repository copy while the plugin's own link-check hook stands down.
 
 Do not offer VS Code settings (`chat.plugins.*`, `chat.useAgentsMdFile`): the agents load in VS Code, but installing and configuring the plugins there is untested.
 
@@ -58,4 +59,4 @@ These load the same guidance twice or contradict the plugins. Offer to delete th
 
 ## 6. Report
 
-End with a short list: files created or changed (name the placeholder sections if you scaffolded them), settings applied or declined, leftovers kept, and plugins still to install (`/plugin install <name>@andes` in Claude Code; `copilot plugin install <name>@andes` in Copilot CLI).
+End with a short list: files created or changed (name the placeholder sections if you scaffolded them), settings applied or declined, the cloud-agent link-check hook installed, refreshed, or declined, leftovers kept, and plugins still to install (`/plugin install <name>@andes` in Claude Code; `copilot plugin install <name>@andes` in Copilot CLI).

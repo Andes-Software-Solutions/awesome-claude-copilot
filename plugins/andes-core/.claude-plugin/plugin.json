@@ -1,7 +1,7 @@
 {
   "name": "andes-core",
-  "version": "1.5.0",
-  "description": "Shared AGENTS.md standards (via andes-init), PRD generation, and technical writing with CHANGELOG ownership.",
+  "version": "1.6.0",
+  "description": "Shared AGENTS.md standards (via andes-init), PRD generation, technical writing with CHANGELOG ownership, and desktop-notification and Markdown link-check hooks.",
   "author": {
     "name": "Rodrigo Rojas"
   },
@@ -12,10 +12,13 @@
     "agents-md",
     "prd",
     "documentation",
-    "changelog"
+    "changelog",
+    "hooks",
+    "notifications"
   ],
   "agents": [
     "./claude-agents/andes-prd-generator.md",
     "./claude-agents/andes-se-technical-writer.md"
-  ]
+  ],
+  "hooks": "./claude-hooks/hooks.json"
 }
