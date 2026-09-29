@@ -13,23 +13,23 @@ Three abstract classes give every table the same key, soft delete, audit stamps,
 public abstract class BaseEntity
 {
     public Guid Id { get; set; }
-    public DateTime? DateDeleted { get; set; }        // UTC; null = live. The timestamp is the soft-delete flag.
+    public DateTimeOffset? DateDeleted { get; set; }  // offset zero; null = live. The timestamp is the soft-delete flag.
 }
 
 public abstract class BaseCreatedEntity : BaseEntity
 {
-    public DateTime DateCreated { get; set; }         // UTC, set once by AuditTimestampInterceptor
+    public DateTimeOffset DateCreated { get; set; }   // offset zero, set once by AuditTimestampInterceptor
 }
 
 public abstract class BaseModifiedEntity : BaseCreatedEntity
 {
-    public DateTime? DateModified { get; set; }       // UTC, set on every update by AuditTimestampInterceptor
+    public DateTimeOffset? DateModified { get; set; } // offset zero, set on every update by AuditTimestampInterceptor
     public byte[] Version { get; set; } = [];         // concurrency token; rowversion on SQL Server
 }
 ```
 
 - Derive from the shallowest class that fits: an append-only ledger row is `BaseCreatedEntity`; anything a user edits is `BaseModifiedEntity`.
-- Every timestamp is UTC and is written only by the interceptors — a service or repository never sets them.
+- Every timestamp is a `DateTimeOffset` at offset zero (`TimeProvider.GetUtcNow()`) and is written only by the interceptors — a service never sets them. Never `DateTime`: its `Kind` does not survive the round trip, so a read-back value is ambiguous. The column is `datetimeoffset` on SQL Server and `timestamp with time zone` on PostgreSQL, where Npgsql rejects any non-zero offset.
 - Enum reference tables do not derive from these; they use `BaseEnumEntity<TEnum>`.
 
 ## The configurations — `Repository/<Provider>/Configurations/Base/`, one per file
@@ -113,7 +113,7 @@ internal sealed class AuditTimestampInterceptor(TimeProvider time) : SaveChanges
 
     private void Stamp(DbContext ctx)
     {
-        var now = _time.GetUtcNow().UtcDateTime;
+        var now = _time.GetUtcNow();
         foreach (var entry in ctx.ChangeTracker.Entries<BaseCreatedEntity>())
         {
             switch (entry.State)
@@ -145,12 +145,12 @@ services.AddDbContext<ContosoDbContext>((sp, options) => options
 
 - Interceptors are stateless singletons resolved from the container, so `TimeProvider` is injected and a test replaces it. They run in registration order: `SoftDeleteInterceptor` first, so the entry it flips to `Modified` receives its `DateModified`.
 - Both overrides call one private method so `SaveChanges` and `SaveChangesAsync` behave the same; production code stays async end to end (`csharp-async`).
-- `ExecuteDeleteAsync` / `ExecuteUpdateAsync` bypass the change tracker, so no interceptor sees them. A hard delete is therefore one explicit repository method named for it — `PurgeAsync`: `_ctx.Orders.IgnoreQueryFilters(["SoftDelete"]).Where(o => o.DateDeleted < cutoff).ExecuteDeleteAsync(ct)`. Restore is `RestoreAsync`: read with `IgnoreQueryFilters`, set `DateDeleted = null`, save.
+- `ExecuteDeleteAsync` / `ExecuteUpdateAsync` bypass the change tracker, so no interceptor sees them. A hard delete is therefore one explicit service method named for it — `PurgeAsync`: `_ctx.Orders.IgnoreQueryFilters(["SoftDelete"]).Where(o => o.DateDeleted < cutoff).ExecuteDeleteAsync(ct)`. Restore is `RestoreAsync`: read with `IgnoreQueryFilters`, set `DateDeleted = null`, save.
 
 ## Concurrency
 
 ```csharp
-// Service/Orders/OrderRepository.cs (excerpt)
+// Service/Orders/OrderService.cs (excerpt)
 _ctx.Entry(order).Property(o => o.Version).OriginalValue = expectedVersion;   // what the client last saw
 try
 {
@@ -162,21 +162,22 @@ catch (DbUpdateConcurrencyException)
 }
 ```
 
-- The response DTO carries `Version` (base64 string); the update action DTO sends it back; the repository sets it as the `OriginalValue` before saving so the `UPDATE … WHERE` compares against the client's copy.
-- `ConflictException` lives in `Service/Exceptions/` beside `NotFoundException` and `ForbiddenException`; `Api/ExceptionHandlers/ConflictExceptionHandler.cs` maps it to a 409 Problem Details. `DbUpdateConcurrencyException` never reaches Api, and a conflict is never resolved by re-reading and overwriting silently.
+- The response DTO carries `Version` (base64 string); the update action DTO sends it back; the service sets it as the `OriginalValue` before saving so the `UPDATE … WHERE` compares against the client's copy.
+- `ConflictException` lives in `Service/Exceptions/` beside `NotFoundException` and `ForbiddenException`; `Api/ExceptionHandlers/GlobalExceptionHandler.cs` maps it to a 409 Problem Details. `DbUpdateConcurrencyException` never reaches Api, and a conflict is never resolved by re-reading and overwriting silently.
 
 ## Testing
 
 - Inject `FakeTimeProvider` (`Microsoft.Extensions.TimeProvider.Testing`) into the interceptors, `Advance(...)` between saves, and assert `DateCreated` / `DateModified` exactly. xUnit v3 + NSubstitute per `csharp-xunit`; the fake is the double, no substitute for `TimeProvider` is needed.
-- Database through the `csharp-xunit` ladder: `rowversion` and `ExecuteDelete` exist only on the real engine, so concurrency and purge tests run on Testcontainers or the dedicated test database; SQLite in-memory covers stamps and the soft-delete filter; the EF Core InMemory provider is a last resort and generates no row version.
-- Interceptor tests live under `tests/<Root>.Unit.Test/Repository/<Provider>/Interceptors/`; repository behaviour (translation to `ConflictException`, purge, restore) under `tests/<Root>.Unit.Test/Service/<Feature>/`.
+- Database through the `csharp-xunit` ladder: `rowversion` and `ExecuteDelete` exist only on the real engine, so concurrency and purge tests run on Testcontainers or the dedicated test database; SQLite in-memory covers stamps and the soft-delete filter (`== null` is an equality test), but it cannot compare or order `DateTimeOffset` in SQL, so anything that filters or sorts by a stamp (`DateDeleted < cutoff`) needs rung 1 or 3; the EF Core InMemory provider is a last resort and generates no row version.
+- Interceptor tests live under `tests/<Root>.Unit.Test/Repository/<Provider>/Interceptors/`; service behaviour (translation to `ConflictException`, purge, restore) under `tests/<Root>.Unit.Test/Service/<Feature>/`.
 
 ## Never
 
 - No `[Timestamp]`, `[Key]`, `[ConcurrencyCheck]`, or any DataAnnotations on an entity — fluent only, in `Configurations/Base/`.
-- No `DateTime.UtcNow` in interceptors, repositories, or services — `TimeProvider` only, so tests control the clock.
+- No `DateTime` stamp on a base entity — `DateTimeOffset` at offset zero only.
+- No `DateTime.UtcNow` or `DateTimeOffset.UtcNow` in interceptors or services — `TimeProvider` only, so tests control the clock.
 - No `IsDeleted` bool beside `DateDeleted`; the timestamp is the flag.
-- No `IgnoreQueryFilters` outside a repository method whose name says so (`PurgeAsync`, `RestoreAsync`, `GetDeletedAsync`).
+- No `IgnoreQueryFilters` outside a service method whose name says so (`PurgeAsync`, `RestoreAsync`, `GetDeletedAsync`).
 - No `SaveChanges` override on the DbContext for stamps or soft delete — one interceptor per concern.
 - No `DateModified` as a concurrency token; the row version is.
 - No unnamed query filter on a `BaseEntity`: a second filter could then not be lifted without the first.

@@ -31,7 +31,7 @@ description: "Use when building or reviewing ASP.NET Core Web APIs (Minimal APIs
 - **FluentValidation only.** One `AbstractValidator<TRequest>` per request type; register with `services.AddValidatorsFromAssemblyContaining<Program>()`.
 - Validate in a shared endpoint filter (`ValidationFilter<TRequest> : IEndpointFilter`) that resolves `IValidator<TRequest>`, runs `ValidateAsync`, and returns `TypedResults.ValidationProblem(result.ToDictionary())` on failure; add it to the group or endpoint with `.AddEndpointFilter<ValidationFilter<CreateOrderRequest>>()`.
 - Never use DataAnnotations (`[Required]`, `[Range]`, …), `builder.Services.AddValidation()`, or `[ValidatableType]` — not on requests, not on options.
-- Handle exceptions globally with `AddProblemDetails()` + `UseExceptionHandler()` (an `IExceptionHandler` per exception family); every error is Problem Details (RFC 9457). Add `UseStatusCodePages()` so bare status codes carry a body.
+- Handle every exception in one `GlobalExceptionHandler : IExceptionHandler`, registered with `AddProblemDetails()` and run by `UseExceptionHandler()` + `UseStatusCodePages()` at the top of the pipeline. It maps `NotFoundException` / `ForbiddenException` / `ConflictException` (and the feature exceptions derived from them), FluentValidation's `ValidationException`, and `BadHttpRequestException` to their status codes, and anything else to a 500 with no exception detail. It logs 5xx itself because .NET 10 no longer does. Every error is Problem Details (RFC 9457). Never add a second handler or build error responses in try/catch blocks. The full implementation, registration, and tests are in `references/exception-handling.md`.
 
 ## Authentication and Authorization
 
@@ -45,7 +45,7 @@ description: "Use when building or reviewing ASP.NET Core Web APIs (Minimal APIs
 
 ## Testing
 
-- Unit test handlers and services; integration test endpoints.
+- Unit test handlers and services (services on the `csharp-xunit` database ladder, since they query the `DbContext` directly); integration test endpoints, including each Problem Details mapping.
 - Substitute external dependencies with NSubstitute and host endpoints with `WebApplicationFactory<Program>` (see the `csharp-xunit` skill; expose `Program` with `public partial class Program { }`); test authentication and authorization logic.
 
 ## Performance
@@ -59,3 +59,11 @@ description: "Use when building or reviewing ASP.NET Core Web APIs (Minimal APIs
 - Containerize with .NET's built-in container support (`dotnet publish --os linux --arch x64 -p:PublishProfile=DefaultContainer`) instead of a manual Dockerfile.
 - Ship through CI/CD to Azure App Service, Azure Container Apps, or comparable hosting.
 - Implement health checks (`MapHealthChecks`) and readiness probes; keep configuration environment-specific per stage.
+
+## References
+
+Read these on demand — they are not loaded until you need them.
+
+| Read this | When |
+| --- | --- |
+| `references/exception-handling.md` | Adding or changing the exception handler, Problem Details registration, or problem `type` URIs; adding an exception type; an error response without a Problem Details body; testing error responses |

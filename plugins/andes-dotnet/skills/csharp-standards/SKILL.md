@@ -20,6 +20,7 @@ These apply to every new or changed file. Reviewers flag violations.
 - **Collection expressions** for every collection literal: `[]`, `[1, 2, 3]`, `[.. first, .. second]` — never `new List<T>()`, `new T[] { }`, or `Array.Empty<T>()`.
 - **`var`** for every local whose initializer has a type: `var service = new OrderService(...)`, not `OrderService service = new()`. Spell the type out only where the initializer has none — collection expressions (`List<int> ids = [1, 2];`), `default`, `null`, and lambdas.
 - **Logging through `[LoggerMessage]`** source-generated methods in the `Logging` region — never `_logger.LogInformation(...)` calls in method bodies.
+- **No repository layer.** Services inject the EF Core `DbContext` and query it; never an `I<Entity>Repository`, a generic `IRepository<T>`, or a unit-of-work wrapper (`dotnet-api-architecture`).
 - **The file layout below.**
 - Tests: xUnit v3 + NSubstitute only (`csharp-xunit`).
 
@@ -34,14 +35,18 @@ One type per file, with the two exceptions `dotnet-api-architecture` defines: an
 5. `#region Logging` — the `[LoggerMessage]` partial methods. A class that logs is `partial`.
 
 ```csharp
-public sealed partial class OrderService(IOrderRepository repository, ILogger<OrderService> logger) : IOrderService
+public sealed partial class OrderService(ContosoDbContext ctx, ILogger<OrderService> logger) : IOrderService
 {
-    private readonly IOrderRepository _repository = repository;
+    private readonly ContosoDbContext _ctx = ctx;
     private readonly ILogger<OrderService> _logger = logger;
 
-    public async Task<Order?> GetAsync(Guid id, CancellationToken cancellationToken)
+    public async Task<OrderDto?> GetAsync(Guid id, CancellationToken cancellationToken)
     {
-        var order = await _repository.FindAsync(id, cancellationToken);
+        var order = await _ctx.Orders
+            .AsNoTracking()
+            .Where(o => o.Id == id)
+            .Select(OrderMapper.MapToOrderDtoExpression)
+            .FirstOrDefaultAsync(cancellationToken);
         if (order is null)
         {
             LogOrderMissing(_logger, id);
@@ -58,8 +63,8 @@ public sealed partial class OrderService(IOrderRepository repository, ILogger<Or
 
     #region Public static methods
 
-    public static OrderService Create(IOrderRepository repository, ILoggerFactory factory) =>
-        new(repository, factory.CreateLogger<OrderService>());
+    public static OrderService Create(ContosoDbContext ctx, ILoggerFactory factory) =>
+        new(ctx, factory.CreateLogger<OrderService>());
 
     #endregion
 
@@ -101,13 +106,14 @@ Exempt: `[McpServerToolType]` static tool classes (`csharp-mcp-server`), records
 ## Errors and security
 
 - Throw precise exception types; never throw or catch base `Exception` without rethrowing; no silent catches.
-- Centralize error handling and return errors as Problem Details (RFC 9457).
+- Centralize error handling in the one `GlobalExceptionHandler` and return every error as Problem Details (RFC 9457); never build error responses in try/catch blocks (`aspnet-rest-apis` `references/exception-handling.md`).
 - Never log PII or secrets. Prefer `DefaultAzureCredential` with Azure Key Vault / Managed Identity over secrets in code or config.
 - Resilient I/O: timeouts everywhere, retry with backoff where the operation is idempotent.
 
 ## Data access
 
-- Use Entity Framework Core (`ef-core` skill); tests pick a provider from the database ladder in the `csharp-xunit` skill.
+- Use Entity Framework Core (`ef-core` skill) straight from the service; tests pick a provider from the database ladder in the `csharp-xunit` skill.
+- Track new entities with `Add` / `AddRange`, never `AddAsync` / `AddRangeAsync` — nothing touches the database until `SaveChangesAsync` (`ef-core`).
 - Manage schema with migrations; avoid N+1 and over-fetching.
 
 ## Logging and performance

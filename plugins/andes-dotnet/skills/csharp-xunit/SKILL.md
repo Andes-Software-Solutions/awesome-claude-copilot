@@ -37,6 +37,7 @@ description: "Use when writing or reviewing .NET tests: xUnit v3 (latest, Micros
 - Substitute interfaces (or abstract/virtual members) at the boundary: `var clock = Substitute.For<IClock>();`.
 - Stub with `.Returns(...)`, match with `Arg.Any<T>()` / `Arg.Is<T>(x => ...)`, verify with `.Received(1)` / `.DidNotReceive()`.
 - Async: `.Returns(Task.FromResult(x))` or `.Returns(x)`; throw with `.ThrowsAsync(...)` (`NSubstitute.ExceptionExtensions`).
+- Services query the `DbContext` directly (no repository to substitute), so a service test runs on the database ladder below; endpoint and handler tests substitute `I<Entity>Service`.
 - Do not substitute what you own and can construct cheaply (value objects, pure services); do not substitute `DbContext`/`DbSet` (use the database ladder) or `HttpClient` (use a stub `HttpMessageHandler` or `WebApplicationFactory`).
 
 ## Database ladder
