@@ -296,7 +296,7 @@ claude --plugin-dir plugins/andes-core --plugin-dir plugins/andes-<name>
 **Keep copies in sync.**
 
 - **Agent twins.** A Claude agent and its Copilot twin change together, and their descriptions match apart from the word PROACTIVELY.
-- **Copilot agents.** No `target`, so they load in VS Code and `github-copilot`; `reasoning-effort` equal to the audit's `copilotEffort` table; plain tool aliases (`read`, `edit`, `search`, `execute`, `agent`, `web`, `todo`) and exact `server/tool` MCP grants; no `handoffs`, `argument-hint`, or `vscode/*` tools; an `agents:` list only together with the `agent` tool, and never pointing at an agent that has `disable-model-invocation: true`.
+- **Copilot agents.** No `target`, so they load in VS Code and `github-copilot`; `model` as a pair from the audit's `modelParity` table, CLI slug first and VS Code display name second (`[claude-sonnet-5.5, Claude Sonnet 5.5 (copilot)]`); `reasoning-effort` equal to the audit's `copilotEffort` table; plain tool aliases (`read`, `edit`, `search`, `execute`, `agent`, `web`, `todo`) and exact `server/tool` MCP grants; no `handoffs`, `argument-hint`, or `vscode/*` tools; an `agents:` list only together with the `agent` tool, and never pointing at an agent that has `disable-model-invocation: true`.
 - **MCP files.** `.mcp.json` and `mcp.json` list the same servers.
 - **The `AGENTS.md` block.** Edit `plugins/andes-core/skills/andes-init/assets/agents-block.md`, then copy it word for word between the markers in `AGENTS.md`.
 - **The review loop.** Copy its `## Review loop` section word for word into the Copilot implementers.

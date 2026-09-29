@@ -87,23 +87,25 @@ const CONFIG = {
   // The CLI reference documents this spelling, but Copilot CLI 1.0.88 only reads the kebab-case key
   // (github/copilot-cli#4963).
   copilotEffortMisspelling: 'reasoningEffort',
+  // Copilot pins list the CLI slug, then the VS Code display name. Copilot CLI 1.0.89 dispatches
+  // on the first entry only and fails the dispatch when it is unavailable; VS Code tries each in order.
   modelParity: {
-    sonnet: 'Claude Sonnet 5.5 (copilot)',
-    haiku: 'Claude Haiku 4.5 (copilot)',
-    opus: 'Claude Opus 5.5 (copilot)',
-    fable: 'Claude Fable 5 (copilot)',
+    sonnet: ['claude-sonnet-5.5', 'Claude Sonnet 5.5 (copilot)'],
+    haiku: ['claude-haiku-4.5', 'Claude Haiku 4.5 (copilot)'],
+    opus: ['claude-opus-5.5', 'Claude Opus 5.5 (copilot)'],
+    fable: ['claude-fable-5.1', 'Claude Fable 5.1 (copilot)'],
   },
   // Documented per-harness cost overrides. Each states the Claude model it was recorded
   // against so it goes stale loudly instead of silently excusing a future model change.
   modelParityOverrides: {
     'andes-github-actions-reviewer': {
       claude: 'opus',
-      copilot: 'Claude Sonnet 5.5 (copilot)',
+      copilot: ['claude-sonnet-5.5', 'Claude Sonnet 5.5 (copilot)'],
       reason: 'deliberate: deepest review tier on Claude; Opus pricing not justified on Copilot AI Credits',
     },
     'andes-se-technical-writer': {
       claude: 'sonnet',
-      copilot: 'Claude Haiku 4.5 (copilot)',
+      copilot: ['claude-haiku-4.5', 'Claude Haiku 4.5 (copilot)'],
       reason: 'template-driven docs; ~2x cheaper on AI Credits; Haiku 4.5 has no configurable reasoning',
     },
   },
@@ -499,6 +501,11 @@ if (runs('agents')) {
           ? `Copilot agent reasoning-effort is '${effort}', expected '${want}'`
           : `Copilot agent declares reasoning-effort '${effort}', but its model has no configurable reasoning; remove the key`, [a.path]);
       }
+      const pin = (fmList(a.fm, 'model') ?? []).join(', ');
+      const knownPins = [...Object.values(CONFIG.modelParity), ...Object.values(CONFIG.modelParityOverrides).map((o) => o.copilot)];
+      if (!knownPins.some((p) => p.join(', ') === pin)) {
+        add('agents', 'model-format', 'error', `Copilot agent pins '[${pin}]'; pin a modelParity pair [<cli-slug>, <Display Name> (copilot)] so Copilot CLI and VS Code both resolve it`, [a.path, 'scripts/repo-audit.mjs']);
+      }
       for (const t of tools) {
         if (t.startsWith('vscode/')) add('agents', 'vscode-tool', 'error', `'${t}' is a VS Code-only tool with no equivalent on Copilot CLI or the cloud agent`, [a.path]);
         else if (aliasSubtool.test(t)) add('agents', 'alias-subtool', 'error', `'${t}' is a VS Code tool-set member; grant the plain alias '${t.split('/')[0]}'`, [a.path]);
@@ -536,17 +543,17 @@ if (runs('agents')) {
       add('agents', 'description-parity', 'error', 'Twin descriptions differ beyond the word PROACTIVELY (the description drives auto-delegation on both harnesses)', [twin.path, a.path]);
     }
     const cModel = fmScalar(twin.fm, 'model');
-    const gModel = fmScalar(a.fm, 'model');
+    const gModel = (fmList(a.fm, 'model') ?? []).join(', ');
     const override = CONFIG.modelParityOverrides[a.stem];
     if (override && override.claude !== cModel) {
       add('agents', 'model-parity', 'error', `Stale override: recorded against Claude model '${override.claude}' but the agent now pins '${cModel}'`,
         [twin.path, 'scripts/repo-audit.mjs'], undefined, 'Update or remove the modelParityOverrides entry.');
       continue;
     }
-    const expected = override ? override.copilot : CONFIG.modelParity[cModel];
+    const expected = (override ? override.copilot : CONFIG.modelParity[cModel])?.join(', ');
     if (!expected) add('agents', 'unknown-model', 'warn', `Claude model '${cModel}' has no modelParity entry`, [twin.path]);
     else if (gModel !== expected) {
-      add('agents', 'model-parity', 'error', `Copilot twin pins '${gModel}' but parity expects '${expected}'`, [twin.path, a.path],
+      add('agents', 'model-parity', 'error', `Copilot twin pins '[${gModel}]' but parity expects '[${expected}]'`, [twin.path, a.path],
         override ? { override } : undefined, 'Align the model, or record a documented override (user approval required).');
     }
   }

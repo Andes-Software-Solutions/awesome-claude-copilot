@@ -40,6 +40,7 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ### Changed
 
+- **Copilot agent model pins name both forms.** Each Copilot agent's `model` now lists the Copilot CLI slug first and the VS Code display name second, for example `[claude-sonnet-5.5, Claude Sonnet 5.5 (copilot)]`. Copilot CLI dispatches on the first entry only; VS Code tries each in order. New audit rule `agents/model-format`; `modelParity` now maps `fable` to Claude Fable 5.1. Pins are ignored in Copilot desktop app sessions started with an explicit model. See `docs/2026-09-copilot-model-ids.md`.
 - **Breaking:** how the standards load, and how agents behave.
   - **Shared `AGENTS.md`.** Both harnesses now read a short always-on block in a shared root `AGENTS.md`, down from 1,263 words in `CLAUDE.md` and 995 in `copilot-instructions.md`. `CLAUDE.md` is now just `@AGENTS.md`.
   - **Rules are now skills.** The path-scoped rules became on-demand skills: `csharp` became `csharp-standards`, `terraform` became `terraform-conventions`, and the others kept their names. A file-type routing table in `AGENTS.md` names the skill to load. A `.cs` edit no longer loads about 2,566 words of rules.

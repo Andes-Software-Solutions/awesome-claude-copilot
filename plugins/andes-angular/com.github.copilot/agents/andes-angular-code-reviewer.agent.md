@@ -1,7 +1,7 @@
 ---
 name: andes-angular-code-reviewer
 description: "Angular code reviewer. Use immediately after writing or modifying Angular code — components, templates, services, routing, forms, HTTP, or NgRx Signal Store state. Checks signals, change detection and zoneless readiness, control flow, DI, state, SSR/hydration, security, accessibility, performance, and tests. Reports High and Medium findings only; never edits files or hands work back."
-model: Claude Sonnet 5.5 (copilot)
+model: [claude-sonnet-5.5, Claude Sonnet 5.5 (copilot)]
 reasoning-effort: high
 tools:
   [
