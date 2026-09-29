@@ -2,12 +2,12 @@
 // Structural audit for the andes plugin marketplace.
 //
 // Every plugin under `plugins/` serves Claude Code and GitHub Copilot from one directory:
-// shared `skills/`; Claude Code reads `.claude-plugin/plugin.json`, `.mcp.json`, and
-// `claude-agents/`; Copilot (CLI and cloud agent) reads the Agent Plugins 1.0 root `plugin.json`,
-// `mcp.json`, and `com.github.copilot/agents/`. This script
+// shared `skills/` and `scripts/`; Claude Code reads `.claude-plugin/plugin.json`, `.mcp.json`,
+// `claude-agents/`, and `claude-hooks/`; Copilot (CLI and cloud agent) reads the Agent Plugins 1.0
+// root `plugin.json`, `mcp.json`, and `com.github.copilot/{agents,hooks}/`. This script
 // verifies that those pieces still line up, that agents follow the naming/review/MCP
 // contracts, that the shared AGENTS.md block matches the template `andes-init` installs,
-// and that the .NET testing policy has not regressed.
+// that the .NET testing policy has not regressed, and that no Markdown file has a broken local link.
 //
 //   node scripts/repo-audit.mjs                     human-readable report
 //   node scripts/repo-audit.mjs --json              machine-readable report
@@ -26,7 +26,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -57,6 +57,17 @@ const CONFIG = {
   agentPluginsMcpSchema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json',
   // Agent Plugins 1.0 fixes component locations; these manifest fields are ignored there.
   agentPluginsForbiddenFields: ['agents', 'skills', 'commands', 'hooks', 'mcpServers', 'lspServers'],
+  // Hooks live outside the default `hooks/` for the same reason agents do. Claude Code loads the file
+  // its manifest declares; Agent Plugins 1.0 reads hooks only from the com.github.copilot namespace.
+  claudeHooksFile: 'claude-hooks/hooks.json',
+  copilotHooksFile: 'com.github.copilot/hooks/hooks.json',
+  // Each Claude event must run the same scripts as its Copilot counterpart.
+  hookEventMap: { Notification: 'notification', Stop: 'agentStop', PostToolUse: 'postToolUse' },
+  hookScriptRef: {
+    claude: /\$\{CLAUDE_PLUGIN_ROOT\}\/scripts\/([\w.-]+\.mjs)/g,
+    bash: /\$PLUGIN_ROOT\/scripts\/([\w.-]+\.mjs)/g,
+    powershell: /\$env:PLUGIN_ROOT\/scripts\/([\w.-]+\.mjs)/g,
+  },
   // Claude Code's main session implements code, so these roles exist only for Copilot.
   copilotOnlyAgents: [
     'andes-planner-expert', 'andes-full-stack-expert', 'andes-csharp-expert',
@@ -171,6 +182,10 @@ const CONFIG = {
   maintainerMcpServers: ['microsoft-learn', 'angular-cli', 'context7', 'azure-devops', 'terraform'],
   // Skills whose bytes are pinned to an upstream source and must not be edited here.
   upstreamLock: 'scripts/upstream-skills.lock.json',
+  // The link checker the andes-core hook runs; the audit reuses it so CI and the hook agree.
+  linkChecker: 'plugins/andes-core/scripts/check-links.mjs',
+  // Consumer templates: their links resolve in the repo andes-init writes them into.
+  linkCheckExclude: ['plugins/andes-core/skills/andes-init/assets/'],
   // Paths that only exist in the old drop-in layout; plugin content must name skills instead.
   harnessPathPattern: /\.claude\/(rules|skills|agents|CLAUDE\.md)|\.github\/(skills|instructions|agents|copilot-instructions\.md)|copilot-instructions\.md/,
   // andes-init detects and removes the old drop-in layout, so it must name those paths.
@@ -651,6 +666,95 @@ if (runs('mcp')) {
   }
 }
 
+// --- hooks -------------------------------------------------------------------
+if (runs('hooks')) {
+  const refs = (text, re) => [...String(text ?? '').matchAll(re)].map((m) => m[1]);
+  const sorted = (xs) => [...new Set(xs)].sort();
+  for (const p of plugins) {
+    const cPath = `${P(p)}/.claude-plugin/plugin.json`;
+    if (!exists(cPath)) continue;
+    const declared = readJson(cPath).hooks;
+    const claudePath = `${P(p)}/${CONFIG.claudeHooksFile}`;
+    const copilotPath = `${P(p)}/${CONFIG.copilotHooksFile}`;
+    const hasClaude = exists(claudePath);
+    const hasCopilot = exists(copilotPath);
+    if (declared !== undefined && declared !== `./${CONFIG.claudeHooksFile}`) {
+      add('hooks', 'claude-path', 'error', `.claude-plugin/plugin.json "hooks" must be "./${CONFIG.claudeHooksFile}"`, [cPath], { hooks: declared });
+    } else if (declared !== undefined && !hasClaude) {
+      add('hooks', 'claude-path', 'error', `plugin.json declares hooks but ${CONFIG.claudeHooksFile} does not exist`, [cPath]);
+    }
+    if (hasClaude && declared === undefined) {
+      add('hooks', 'claude-unlisted', 'error', `${CONFIG.claudeHooksFile} exists but plugin.json does not declare it (Claude Code loads only a declared path outside hooks/)`, [cPath, claudePath]);
+    }
+    if (hasClaude && !hasCopilot) {
+      add('hooks', 'copilot-missing', 'error', 'Plugin ships Claude Code hooks but no Copilot hooks', [claudePath], undefined,
+        `Add ${CONFIG.copilotHooksFile}; Agent Plugins 1.0 reads hooks only from the com.github.copilot namespace.`);
+    }
+    if (hasCopilot && !hasClaude) add('hooks', 'claude-missing', 'error', 'Plugin ships Copilot hooks but no Claude Code hooks', [copilotPath]);
+
+    // event -> scripts it runs, per harness
+    const claudeEvents = new Map();
+    const copilotEvents = new Map();
+    if (hasClaude) {
+      const events = readJson(claudePath).hooks;
+      if (!events || typeof events !== 'object') add('hooks', 'claude-format', 'error', 'Claude hooks file has no "hooks" object', [claudePath]);
+      for (const [event, groups] of Object.entries(events ?? {})) {
+        const scripts = [];
+        for (const h of (Array.isArray(groups) ? groups : []).flatMap((g) => g?.hooks ?? [])) {
+          const found = refs([h.command, ...(h.args ?? [])].join(' '), CONFIG.hookScriptRef.claude);
+          if (h.type !== 'command' || typeof h.command !== 'string' || !found.length) {
+            add('hooks', 'claude-format', 'error', `A '${event}' handler must be type "command" and run \${CLAUDE_PLUGIN_ROOT}/scripts/<name>.mjs`, [claudePath]);
+          }
+          scripts.push(...found);
+        }
+        claudeEvents.set(event, sorted(scripts));
+      }
+    }
+    if (hasCopilot) {
+      const g = readJson(copilotPath);
+      if (g.version !== 1 || !g.hooks || typeof g.hooks !== 'object') add('hooks', 'copilot-format', 'error', 'Copilot hooks file must be {"version": 1, "hooks": {...}}', [copilotPath]);
+      for (const [event, entries] of Object.entries(g.hooks ?? {})) {
+        const scripts = [];
+        for (const h of Array.isArray(entries) ? entries : []) {
+          const bash = sorted(refs(h.bash, CONFIG.hookScriptRef.bash));
+          const ps = sorted(refs(h.powershell, CONFIG.hookScriptRef.powershell));
+          if (h.type !== 'command' || typeof h.timeoutSec !== 'number' || !bash.length || !ps.length) {
+            add('hooks', 'copilot-format', 'error', `A '${event}' entry needs type "command", a numeric timeoutSec, and bash ($PLUGIN_ROOT) and powershell ($env:PLUGIN_ROOT) commands that run scripts/<name>.mjs`, [copilotPath]);
+          } else if (JSON.stringify(bash) !== JSON.stringify(ps)) {
+            add('hooks', 'copilot-format', 'error', `A '${event}' entry runs different scripts in bash and powershell`, [copilotPath], { bash, powershell: ps });
+          }
+          scripts.push(...bash);
+        }
+        copilotEvents.set(event, sorted(scripts));
+      }
+    }
+    if (hasClaude && hasCopilot) {
+      const mapped = new Set(Object.values(CONFIG.hookEventMap));
+      for (const [event, scripts] of claudeEvents) {
+        const twin = CONFIG.hookEventMap[event];
+        if (!twin) { add('hooks', 'harness-drift', 'error', `Claude event '${event}' has no Copilot counterpart in hookEventMap`, [claudePath, 'scripts/repo-audit.mjs']); continue; }
+        if (JSON.stringify(scripts) !== JSON.stringify(copilotEvents.get(twin) ?? [])) {
+          add('hooks', 'harness-drift', 'error', `'${event}' (Claude) and '${twin}' (Copilot) run different scripts`, [claudePath, copilotPath], { claude: scripts, copilot: copilotEvents.get(twin) ?? [] });
+        }
+      }
+      for (const event of copilotEvents.keys()) {
+        if (!mapped.has(event)) add('hooks', 'harness-drift', 'error', `Copilot event '${event}' has no Claude counterpart in hookEventMap`, [copilotPath, 'scripts/repo-audit.mjs']);
+        else if (![...claudeEvents.keys()].some((e) => CONFIG.hookEventMap[e] === event)) {
+          add('hooks', 'harness-drift', 'error', `Copilot event '${event}' has no Claude hook`, [copilotPath, claudePath]);
+        }
+      }
+    }
+    for (const s of sorted([...claudeEvents.values(), ...copilotEvents.values()].flat())) {
+      const path = `${P(p)}/scripts/${s}`;
+      if (!exists(path)) { add('hooks', 'script-missing', 'error', `A hook runs scripts/${s}, which does not exist`, [path]); continue; }
+      // andes-init copies hook scripts into consumer repos, where no plugin dependencies exist.
+      const specifiers = [...read(path).matchAll(/^\s*import\s[^'"]*?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]/gm)].map((m) => m[1] ?? m[2]);
+      const foreign = specifiers.filter((x) => !x.startsWith('node:'));
+      if (foreign.length) add('hooks', 'script-imports', 'error', 'Hook scripts must import only node: built-ins', [path], { imports: foreign });
+    }
+  }
+}
+
 // --- memory ------------------------------------------------------------------
 if (runs('memory')) {
   for (const f of ['.claude/CLAUDE.md', '.github/copilot-instructions.md']) {
@@ -762,10 +866,38 @@ if (runs('changelog')) {
   }
 }
 
+// --- links -------------------------------------------------------------------
+if (runs('links')) {
+  let checker = null;
+  // Loaded lazily so a broken checker is one finding, not a crash that hides every other check.
+  try { checker = await import(pathToFileURL(join(ROOT, CONFIG.linkChecker)).href); } catch (e) {
+    add('links', 'checker-missing', 'error', `Cannot load the link checker (${e.message})`, [CONFIG.linkChecker]);
+  }
+  let tracked = null;
+  try {
+    tracked = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard', '--', '*.md', '*.mdx', '*.markdown'],
+      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\0').filter(Boolean);
+  } catch {
+    add('links', 'no-git', 'warn', 'Not a git checkout; the link check was skipped', ['.']);
+  }
+  if (checker && tracked) {
+    const lock = exists(CONFIG.upstreamLock) ? readJson(CONFIG.upstreamLock) : {};
+    // Upstream-pinned skills cannot be edited here, so their links are upstream's to fix.
+    const skip = [...Object.values(lock.skills ?? {}).map((e) => e.andes?.path).filter(Boolean).map((d) => `${d}/`), ...CONFIG.linkCheckExclude];
+    const cache = {};
+    for (const f of [...new Set(tracked)].sort()) {
+      if (skip.some((s) => f.startsWith(s)) || !exists(f)) continue;
+      for (const b of checker.findBrokenLinks(join(ROOT, f), { root: ROOT, cache })) {
+        add('links', 'broken', 'error', `Broken link '${b.target}': ${b.reason}`, [`${f}:${b.line}`]);
+      }
+    }
+  }
+}
+
 // --- report ------------------------------------------------------------------
 const errors = findings.filter((f) => f.severity === 'error');
 const warnings = findings.filter((f) => f.severity === 'warn');
-const checkNames = ['manifests', 'skills', 'harness-paths', 'agents', 'mcp', 'memory', 'testing-policy', 'csharp-policy', 'registry', 'changelog'];
+const checkNames = ['manifests', 'skills', 'harness-paths', 'agents', 'mcp', 'hooks', 'memory', 'testing-policy', 'csharp-policy', 'registry', 'changelog', 'links'];
 const report = {
   status: errors.length || (STRICT && warnings.length) ? 'findings' : 'clean',
   generatedAt: new Date().toISOString(),

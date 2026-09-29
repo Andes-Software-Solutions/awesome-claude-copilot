@@ -19,6 +19,10 @@ on:
       - "CLAUDE.md"
       - "README.md"
       - "CHANGELOG.md"
+      # links/broken checks every Markdown file in the repository.
+      - "**/*.md"
+      - "**/*.mdx"
+      - "**/*.markdown"
   push:
     branches: [main]
 
@@ -66,3 +70,7 @@ jobs:
             claude plugin validate --strict "$plugin" || rc=1
           done
           exit "$rc"
+
+      - name: Test hook scripts
+        if: ${{ !cancelled() }}
+        run: node --test scripts/tests/check-links.test.mjs scripts/tests/notify.test.mjs

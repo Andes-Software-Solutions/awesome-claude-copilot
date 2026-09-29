@@ -1,7 +1,7 @@
 # ADR-001: Ship the Standards as the `andes` Plugin Marketplace
 
 **Status**: Accepted — verified on Claude Code; GitHub Copilot checks pending ([checklist](#not-yet-verified-github-copilot-checklist))
-**Amended by**: [2026-09-copilot-harness-and-release.md](2026-09-copilot-harness-and-release.md) (2026-09-27)
+**Amended by**: [2026-09-copilot-harness-and-release.md](2026-09-copilot-harness-and-release.md) (2026-09-27), [2026-09-notification-and-link-hooks.md](2026-09-notification-and-link-hooks.md) (2026-09-29)
 **Date**: 2026-09-26
 **Deciders**: Rodrigo Rojas
 **Supersedes in part**: [2026-08-effort-defaults.md](2026-08-effort-defaults.md), [2026-08-repo-audit.md](2026-08-repo-audit.md), [2026-08-prd-workflow.md](2026-08-prd-workflow.md), [2026-08-standards-refresh.md](2026-08-standards-refresh.md)
@@ -65,7 +65,7 @@ plugins/andes-<name>/
 
 A first iteration used the legacy `.github/plugin/plugin.json` manifest, but VS Code's format detection does not list that path and would have fallen back to the Claude manifest, loading the Claude agents — so it was dropped.
 
-**Each harness reads only its own agents.** Claude Code loads only the `claude-agents/` files listed in `.claude-plugin/plugin.json`. Copilot reads custom agents only from the `com.github.copilot/` namespace, which other clients ignore by spec. Neither is a default `agents/` folder, so neither harness picks up the other's files. The audit rejects default-named `agents/`, `commands/`, and `hooks/` folders, a `.github/` folder inside a plugin, a missing or wrong `$schema`, and component path fields in the Agent Plugins manifest.
+**Each harness reads only its own agents.** Claude Code loads only the `claude-agents/` files listed in `.claude-plugin/plugin.json`. Copilot reads custom agents only from the `com.github.copilot/` namespace, which other clients ignore by spec. Neither is a default `agents/` folder, so neither harness picks up the other's files. The audit rejects default-named `agents/`, `commands/`, and `hooks/` folders, a `.github/` folder inside a plugin, a missing or wrong `$schema`, and component path fields in the Agent Plugins manifest. Hooks follow the same rule: they live in `claude-hooks/`, declared in `.claude-plugin/plugin.json`, and in `com.github.copilot/hooks/` ([2026-09-notification-and-link-hooks.md](2026-09-notification-and-link-hooks.md)).
 
 **Dependencies are Claude-only.** Agent Plugins 1.0 has no `dependencies` field. Claude Code resolves them from `.claude-plugin/plugin.json`; Copilot users install `andes-core` (and `andes-dotnet` before `andes-dotnet-wasm`) explicitly.
 
