@@ -1,31 +1,39 @@
 # Persistence and providers
 
-`<Root>.Repository` is provider-first: store-agnostic contracts sit at the top, and everything one technology needs sits in its own `<Provider>/` folder, so a second store is a sibling rather than a refactor. Query and migration practice is `ef-core`; this file fixes ownership and placement.
+`<Root>.Repository` is provider-first and plumbing-only: everything one technology needs sits in its own `<Provider>/` folder, so a second store is a sibling rather than a refactor, and no repository interface or implementation lives here — those are in `Service/<Feature>/`. Query and migration practice is `ef-core`; base entities and their configurations `ef-core-base-entities`; enum lookup tables `ef-core-enum-reference-tables`. This file fixes ownership and placement.
 
 ## What a provider folder owns
 
-- **Its own DI.** `<Provider>PersistenceConfiguration.cs` exposes `public static Add<Prefix><Provider>Persistence(IServiceCollection, IConfiguration)`. `Program.cs` sequences one call per store; the composition root holds no client construction and `Api/Configuration/` holds no store wiring.
+- **Its own DI.** `<Provider>PersistenceConfiguration.cs` exposes `public static Add<Prefix><Provider>Persistence(IServiceCollection, IConfiguration)`: the DbContext with its interceptors, the provider's options, and its health probe. `Program.cs` sequences one call per store; the composition root holds no client construction and `Api/Configuration/` holds no store wiring. It never registers a repository — `Repository` cannot reference `Service`, so repositories are registered by `Add<Feature>`.
 - **Its options.** `Options/<Provider>DbOptions.cs` with `SectionName` and its validator in the same file, never in a shared `Options/` at the Repository root.
-- **Its plumbing.** `<Provider>Queries.cs`, `<Provider>Records.cs`, `<Provider>Containers.cs` for client, connection, and query code; `Serialization/` for the converters and serializer settings this store needs.
+- **Its plumbing.** `<Provider>Queries.cs`, `<Provider>Containers.cs` for client, connection, and query code with method bodies; `Models/`, `Constants/`, `Exceptions/` for the provider's own shapes, catalogs, and store-shaped exceptions, one type per file; `Serialization/` for the converters and serializer settings this store needs.
 - **Its health probe.** `HealthChecks/<Provider>HealthCheck.cs` is `internal` and attached inside `Add<Prefix><Provider>HealthCheck(IHealthChecksBuilder, …)`; the name, tag, and route stay in `Api/Health/HealthRegistration.cs`, so the composition root never names the type.
 - **Its provisioning.** `Provisioning/<Provider>ResourceProvisioner.cs` creates resources and `<Provider>SchemaMigrator.cs` applies migrations. These are `public` because an `Api/Startup/<Name>Bootstrapper.cs` resolves them: the bootstrapper decides *whether* to run, the provider type knows *how*, so Api never makes a store-specific call.
-- **Its repositories.** `<Feature>/<Provider><Entity>Repository.cs` implements the contract in `Repository/<Feature>/Interfaces/I<Entity>Repository.cs`.
+- **Its scripts.** `Scripts/<Verb><Subject>.sql` — views, stored procedures, functions, and operator-owned seed rows — as `<EmbeddedResource Include="<Provider>\Scripts\*.sql" />`, each named after the migration that runs it (`migrationBuilder.Sql(<Provider>Scripts.Read("CreateOrderSummaryView"))`) with the matching `Drop…` script in the `Down` path. `<Provider>Scripts.cs` is the one static reader (`Assembly.GetManifestResourceStream`). A script is versioned by its migration: changing a view means a new migration and a new script, never an edit to a shipped one.
+- **Its gateways (non-EF stores only).** `<Provider><Subject>Store.cs` — `I<Subject>Store` first, then the implementation — wraps the client (`BlobContainerClient`, `IMongoCollection<T>`) so no provider type reaches Service. It is a thin client wrapper, not a repository: no business queries, no domain rules.
 
 ## EF Core providers
 
 - `DbContexts/<Prefix>DbContext.cs`; an injected context is parameter `ctx`, field `_ctx`.
-- `Configurations/<Feature>/<Entity>Configuration.cs`, one `IEntityTypeConfiguration<T>` per entity, mirroring the Entity folders. It holds every mapping: keys, column lengths and precision, row version, keyless types, relationships, indexes, check constraints, value conversions, and seed data. Entities carry no mapping attributes and `<Root>.Entity` references no EF Core package.
-- `Interceptors/<Name>Interceptor.cs`, one per file, `internal`, attached in `<Provider>PersistenceConfiguration.cs`.
+- `Configurations/Base/Base<Thing>Configuration.cs`: the abstract, shared `IEntityTypeConfiguration<T>` classes for the `Entity/Base/` types — `BaseEntityConfiguration<T>`, `BaseCreatedEntityConfiguration<T>`, `BaseModifiedEntityConfiguration<T>` (`ef-core-base-entities`) and `BaseEnumEntityConfiguration<TEntity, TEnum>` (`ef-core-enum-reference-tables`). `Configure` maps the base members, then calls `ConfigureEntity`.
+- `Configurations/<Feature>/<Entity>Configuration.cs`, one `IEntityTypeConfiguration<T>` per entity, mirroring the Entity folders and deriving from the matching base configuration. It holds every mapping: keys, column lengths and precision, row version, keyless types, relationships, indexes, check constraints, value conversions, and seed data. Entities carry no mapping attributes and `<Root>.Entity` references no EF Core package.
+- `Interceptors/<Name>Interceptor.cs`, one per file, `internal`, attached in `<Provider>PersistenceConfiguration.cs` — `SoftDeleteInterceptor` before `AuditTimestampInterceptor`, then command and connection interceptors.
 - `Migrations/` is `dotnet ef migrations add <Verb><Subject>` output. Never regenerate a migration to absorb a CLR rename; edit the type-name strings and verify with `dotnet ef migrations has-pending-model-changes`. Mark `**/<Provider>/Migrations/*.cs` as generated code in `.editorconfig`, because `dotnet ef` writes no `<auto-generated>` header.
-- Seed data: `HasData` only for rows the application owns and never changes after release; rows operators change (catalogs, prices, mappings) are `InsertData` in the migration that creates the table, so a regeneration cannot drop them.
-- A non-EF store has no `DbContexts/`, `Configurations/`, `Interceptors/`, or `Migrations/`.
+- Seed data: `HasData` only for rows the application owns and never changes after release (enum reference tables are the canonical case); rows operators change (catalogs, prices, mappings) are `InsertData` in the migration that creates the table, or a `Scripts/` file that migration runs, so a regeneration cannot drop them.
+- A non-EF store has no `DbContexts/`, `Configurations/`, `Interceptors/`, `Migrations/`, or `Scripts/`.
 
-## Exceptions cross the boundary translated
+## Repositories live in Service
 
-- `Repository/<Feature>/<Feature>Exceptions.cs` declares the store-shaped exceptions the contract documents, thrown by every provider (`StorageNotConfiguredException`, `StoreUnavailableException`).
-- The Service feature catches them and rethrows the domain exception its handler maps, declared in `Service/<Feature>/<Feature>Exceptions.cs` or one of the two shared types in `Service/Exceptions/`.
-- Api's exception handlers therefore name no Repository type, and swapping the store changes nothing above Service.
+- `Service/<Feature>/<Entity>Repository.cs` declares `I<Entity>Repository` first, then `<Entity>Repository`, which takes `<Prefix>DbContext` through its primary constructor (`ctx` / `_ctx`). The interface exists so the service's tests can substitute it; the repository's own tests run against the `csharp-xunit` database ladder, never a mocked `DbContext`.
+- Reads use `AsNoTracking()` and project through the feature mapper's expression; writes track, save, and translate. Cross-cutting behaviour (audit stamps, soft delete) is the interceptors' job, not the repository's.
+- The repository uses the provider-agnostic EF Core API only. Provider types, connection strings, and client construction stay in `Repository/<Provider>/`; a non-EF store is reached through its `I<Subject>Store` gateway.
+- Registered by `Add<Feature>` in `Api/Configuration/<Feature>Configuration.cs`, beside `I<Entity>Service`.
+
+## Store faults cross the boundary translated
+
+- The repository catches `DbUpdateConcurrencyException` (→ `ConflictException`), `DbUpdateException` and provider exceptions (→ the feature's `Exceptions/<Condition>Exception`, or `NotFoundException` / `ForbiddenException`), and the store-shaped exceptions a gateway documents in `Repository/<Provider>/Exceptions/`.
+- Api's exception handlers therefore name no EF Core, provider, or Repository type, and swapping the store changes nothing above Service.
 
 ## Adding a second store
 
-Create `Repository/<Provider2>/` with its own `<Provider2>PersistenceConfiguration.cs`, `Options/`, `HealthChecks/`, `Provisioning/`, and `<Feature>/<Provider2><Entity>Repository.cs`; add one `Add<Prefix><Provider2>Persistence` call to `Program.cs`. Nothing under `Repository/<Feature>/`, `Service/`, or `Api/` changes.
+Create `Repository/<Provider2>/` with its own `<Provider2>PersistenceConfiguration.cs`, `Options/`, `HealthChecks/`, `Provisioning/`, and — for EF — `DbContexts/`, `Configurations/`, `Migrations/`; add one `Add<Prefix><Provider2>Persistence` call to `Program.cs`. A feature that must read or write the new store gets a second implementation of its `I<Entity>Repository` in `Service/<Feature>/`, named for what it does (`ArchivedOrderRepository`) and registered by `Add<Feature>`; once two implementations serve the same interface, the interface moves to `<Feature>/Interfaces/`. Nothing under `Api/` beyond that registration changes.

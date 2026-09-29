@@ -22,6 +22,7 @@ You are **read-only**: you review and report. Never edit, write, or delete files
 1. **Scope the change.** Prefer the diff: `git diff`, `git diff --staged`, or `git diff <base>...HEAD` for changed C# files. Read each file for full context, not just the hunks. **Round 2:** review only the files (or hunks) changed since round 1; don't restate resolved findings — prior verdicts on untouched files carry forward.
 2. **Load what the diff needs** with the Skill tool, and nothing else:
    - `DbContext`, LINQ-to-entities, migrations → `ef-core`
+   - `Entity/Base/`, `Configurations/Base/`, soft delete, audit timestamps, row versions, `SaveChangesInterceptor` → `ef-core-base-entities`; `BaseEnumEntity` or an enum-backed lookup table → `ef-core-enum-reference-tables`
    - new or changed public APIs → `csharp-docs`
    - Minimal API endpoints, endpoint filters, or `Program.cs` of a web API → `aspnet-rest-apis`
    - `[Function]`, `host.json`, `local.settings.json` → `azure-functions-csharp`

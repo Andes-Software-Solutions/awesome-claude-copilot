@@ -30,7 +30,7 @@ Claude Code reads `AGENTS.md` natively only when no `CLAUDE.md`, `.claude/CLAUDE
 
 ## 3. Detect the stacks
 
-From `git ls-files`: `*.csproj` / `*.sln` / `*.slnx` → `andes-dotnet`; `*.razor` → `andes-dotnet-wasm`; `angular.json` → `andes-angular`; `*.tf` → `andes-terraform`; `.github/workflows/*` → `andes-github`. `andes-core` is always included. Report which plugins match and which of them are not installed.
+From `git ls-files`: `*.csproj` / `*.sln` / `*.slnx` → `andes-dotnet`; `*.razor` → `andes-dotnet-wasm`; `angular.json` → `andes-angular`; `*.tf` → `andes-terraform`; `.github/workflows/*` → `andes-github`; `azure-pipelines.yml` or an existing `## Azure DevOps` section in `AGENTS.md` → `andes-azure-devops` (a hint only — Azure Pipelines does not imply Azure Boards). `andes-core` is always included. Report which plugins match and which of them are not installed.
 
 ## 4. Opt-in settings
 
@@ -42,7 +42,7 @@ Plugins cannot ship settings, so offer these **one at a time**, show the exact d
    - when `andes-angular` is enabled: `permissions.deny` gains `"mcp__plugin_andes-angular_angular-cli__ai_tutor"` (the Angular CLI server has no flag to drop its tutor tool; a bare-name deny removes it from context)
 2. `.claude/settings.json` — `"effortLevel": "xhigh"` (the Andes default; costs more per turn — ask separately).
 
-Do not offer VS Code settings (`chat.plugins.*`, `chat.useAgentsMdFile`): the plugins target the `github-copilot` harness (Copilot CLI, coding agent, github.com), not VS Code.
+Do not offer VS Code settings (`chat.plugins.*`, `chat.useAgentsMdFile`): the agents load in VS Code, but installing and configuring the plugins there is untested.
 
 ## 5. Old drop-in copies
 
@@ -51,7 +51,7 @@ Earlier versions of these standards were copied into repositories. Look for, and
 - `.claude/rules/{csharp,aspnet-rest-apis,azure-functions-csharp,blazor-wasm,csharp-mcp-server,terraform,api-architecture,ui-architecture}.md` and `.github/instructions/<same>.instructions.md`
 - `.claude/agents/{csharp-code-reviewer,angular-code-reviewer,github-actions-reviewer,prd-generator,se-technical-writer}.md` and `.github/agents/*.agent.md` for the same roles plus `planner-expert`, `csharp-expert`, `angular-expert`, `full-stack-expert`, `csharp-dotnet-janitor`, `csharp-mcp-expert`
 - `.claude/skills/<name>` or `.github/skills/<name>` for any skill an installed Andes plugin also ships
-- `microsoft-learn`, `angular-cli`, `context7`, or `terraform` servers in `.mcp.json` / `.vscode/mcp.json` (the plugins start their own)
+- `microsoft-learn`, `angular-cli`, `context7`, `terraform`, or `azure-devops` servers in `.mcp.json` / `.vscode/mcp.json` (the plugins start their own)
 - `microsoft-docs@claude-plugins-official` in `enabledPlugins` (it starts a second Microsoft Learn server)
 
 These load the same guidance twice or contradict the plugins. Offer to delete them as one batch; delete only on a yes.
