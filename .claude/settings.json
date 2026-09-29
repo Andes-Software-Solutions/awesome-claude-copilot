@@ -13,8 +13,6 @@
     }
   },
   "enabledPlugins": {
-    "andes-core@andes": true,
-    "andes-github@andes": true,
     "frontend-design@claude-plugins-official": true,
     "code-review@claude-plugins-official": true,
     "github@claude-plugins-official": true,
