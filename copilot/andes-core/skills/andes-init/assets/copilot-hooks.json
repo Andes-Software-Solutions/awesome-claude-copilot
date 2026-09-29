@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "type": "command",
+        "matcher": "edit|create",
+        "bash": "command -v node >/dev/null 2>&1 || exit 0; node .github/hooks/andes/check-links.mjs --harness=copilot",
+        "powershell": "$OutputEncoding = [Text.UTF8Encoding]::new($false); if (Get-Command node -ErrorAction SilentlyContinue) { $input | node .github/hooks/andes/check-links.mjs --harness=copilot }",
+        "timeoutSec": 30
+      }
+    ]
+  }
+}
