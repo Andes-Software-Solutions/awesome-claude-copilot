@@ -1,8 +1,8 @@
 ---
 name: andes-csharp-code-reviewer
-target: github-copilot
 description: "C#/.NET code reviewer. Use immediately after writing or modifying C# code (including Blazor .razor files). Checks correctness, async/concurrency, nullability, naming and modern constructs, error handling, security and secret leakage, XML docs, data access, and tests against the xUnit + NSubstitute policy. Reports High and Medium findings only; never edits files or hands work back."
 model: Claude Sonnet 5.5 (copilot)
+reasoning-effort: high
 tools:
   [
     read,

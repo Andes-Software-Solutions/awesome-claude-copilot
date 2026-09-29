@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/RorroRojas3/awesome-claude-copilot/pulls)
 
-This repository is the **`andes` plugin marketplace**. It packages engineering standards for C#/.NET, Angular, GitHub Actions, and Terraform, plus Azure DevOps backlog management, as plugins for [Claude Code](https://code.claude.com) and [GitHub Copilot](https://github.com/features/copilot) on the `github-copilot` harness (Copilot CLI, Copilot coding agent, github.com). Each plugin lives in one directory that serves both harnesses. You install only the stacks you use, and updates arrive through the marketplace instead of by re-copying files.
+This repository is the **`andes` plugin marketplace**. It packages engineering standards for C#/.NET, Angular, GitHub Actions, and Terraform, plus Azure DevOps backlog management, as plugins for [Claude Code](https://code.claude.com) and [GitHub Copilot](https://github.com/features/copilot) (Copilot CLI, Copilot coding agent, github.com, and VS Code). Each plugin lives in one directory that serves both harnesses. You install only the stacks you use, and updates arrive through the marketplace instead of by re-copying files.
 
 It contains no application code, only assistant configuration: skills, agents, MCP servers, and a shared `AGENTS.md` block.
 
@@ -76,11 +76,11 @@ copilot plugin install andes-dotnet@andes
 
 On Copilot, the plugins use the Agent Plugins 1.0 format, which has no `dependencies` field. That means you install dependencies yourself: always install `andes-core`, and install `andes-dotnet` before `andes-dotnet-wasm`. Then run the `andes-init` skill (`/andes-init`). The files it writes serve both harnesses, so you can also run it once from Claude Code. Whether Copilot CLI expands `${ADO_ORG}` in a plugin's `mcp.json` is not yet verified; `azure-devops-init` explains the manual registration fallback.
 
-The Copilot agents declare `target: github-copilot`, so they also load for the Copilot coding agent and on github.com once the plugins are installed there.
+The Copilot agents declare no `target`, which GitHub defines as both environments: `github-copilot` (Copilot CLI, the Copilot coding agent, github.com) and `vscode`.
 
-### Not supported: VS Code (local Copilot)
+### VS Code (local Copilot): unverified
 
-Do **not** add this marketplace to `chat.plugins.marketplaces` or install the plugins from the `@agentPlugins` view in VS Code. The plugins target the `github-copilot` harness only: every Copilot agent is `target: github-copilot`, none uses VS Code tools (`vscode/askQuestions`, `vscode/memory`) or handoff buttons, and the maintainer commands are skills rather than VS Code prompt files. `andes-init` no longer offers VS Code settings. Use Copilot CLI, the Copilot coding agent, or github.com.
+The agents load in VS Code because they declare no `target`. They keep one frontmatter shape for every surface: plain tool aliases, exact `server/tool` MCP grants, no VS Code tools (`vscode/askQuestions`, `vscode/memory`), and no handoff buttons, which the cloud agent ignores. Nothing else has been verified in VS Code: installing the plugins, loading their skills, and starting their MCP servers are untested there. `andes-init` does not write VS Code settings, and the maintainer commands are skills rather than VS Code prompt files.
 
 ---
 
@@ -110,6 +110,7 @@ Models and reasoning effort:
 
 - **Claude.** Reviewers and the PRD and writer agents run on Sonnet. `andes-github-actions-reviewer` runs on Opus. Reviewers use `effort: xhigh`; `andes-prd-generator`, `andes-se-technical-writer`, and `andes-ado-backlog-manager` use `high`.
 - **Copilot.** Agents run on Claude Sonnet 5.5. `andes-planner-expert` and `andes-full-stack-expert` run on Claude Opus 5.5. `andes-se-technical-writer` runs on Claude Haiku 4.5 to save cost.
+- **Copilot reasoning effort.** Each agent pins `reasoning-effort`, tiered by role because a higher level consumes more AI Credits. The three reviewers, `andes-prd-generator`, and `andes-planner-expert` use `high`. The implementers, `andes-full-stack-expert`, `andes-csharp-dotnet-janitor`, and `andes-ado-backlog-manager` use `medium`. `andes-se-technical-writer` has no key, because Claude Haiku 4.5 has no configurable reasoning. The key needs Copilot CLI 1.0.88 or later and must be spelled `reasoning-effort`; the `reasoningEffort` spelling in the CLI reference is not applied ([github/copilot-cli#4963](https://github.com/github/copilot-cli/issues/4963)). An explicit `--reasoning-effort` flag overrides it. Whether the Copilot coding agent reads the key is unverified.
 
 ---
 
@@ -199,17 +200,24 @@ Tool scoping:
 | Always-on standards | `CLAUDE.md` 1,263 words; `copilot-instructions.md` 995 words | `AGENTS.md` block, about 640 words |
 | Loaded automatically on a `.cs` edit (Claude Code) | 4 rules, about 2,566 words | Nothing. Only the skills the change needs |
 
-Skill descriptions are the always-on price of each installed plugin. Measured with `claude plugin details`:
+Skill descriptions are the always-on price of each installed plugin. Measured on 2026-09-29 from the working tree with `claude --plugin-dir plugins/<name> plugin details <name>` (Claude Code 2.1.207):
 
 | Plugin | Tokens |
 | --- | --- |
-| `andes-core` | ~301 |
-| `andes-dotnet` | ~1,250 (estimated after `dotnet-api-architecture`, `ef-core-base-entities`, and `ef-core-enum-reference-tables`; measured ~963 before them) |
+| `andes-core` | ~316 |
+| `andes-dotnet` | ~1,517 |
 | `andes-dotnet-wasm` | ~126 |
-| `andes-angular` | ~465 (estimated after `angular-ui-architecture`; measured ~364 before it) |
+| `andes-angular` | ~507 |
 | `andes-github` | ~278 |
 | `andes-terraform` | ~98 |
-| `andes-azure-devops` | ~110 (estimated; measure with `claude plugin details`) |
+| `andes-azure-devops` | ~138 |
+| All seven | ~2,980 |
+
+The figures cover skills only. The command lists no agents for a plugin loaded from disk, so agent descriptions are not counted, and MCP tool schemas are resolved at runtime.
+
+The repo audit warns when a skill body passes 20,000 characters, an agent body passes 12,000, or an agent description passes 550.
+
+On Copilot, output tokens cost five times as much as input tokens, and Anthropic bills reasoning as output tokens. That makes `reasoning-effort` a larger cost lever than context size; see [Agents](#agents) for the value each agent pins.
 
 Claude Code limits the skill listing to about 1% of context, and when that overflows it drops the descriptions of rarely used skills. The routing table in `AGENTS.md` names skills by file type, so the right skill still loads without its description.
 
@@ -288,7 +296,7 @@ claude --plugin-dir plugins/andes-core --plugin-dir plugins/andes-<name>
 **Keep copies in sync.**
 
 - **Agent twins.** A Claude agent and its Copilot twin change together, and their descriptions match apart from the word PROACTIVELY.
-- **Copilot agents.** `target: github-copilot`; plain tool aliases (`read`, `edit`, `search`, `execute`, `agent`, `web`, `todo`) and exact `server/tool` MCP grants; no `handoffs`, `argument-hint`, or `vscode/*` tools; an `agents:` list only together with the `agent` tool, and never pointing at an agent that has `disable-model-invocation: true`.
+- **Copilot agents.** No `target`, so they load in VS Code and `github-copilot`; `reasoning-effort` equal to the audit's `copilotEffort` table; plain tool aliases (`read`, `edit`, `search`, `execute`, `agent`, `web`, `todo`) and exact `server/tool` MCP grants; no `handoffs`, `argument-hint`, or `vscode/*` tools; an `agents:` list only together with the `agent` tool, and never pointing at an agent that has `disable-model-invocation: true`.
 - **MCP files.** `.mcp.json` and `mcp.json` list the same servers.
 - **The `AGENTS.md` block.** Edit `plugins/andes-core/skills/andes-init/assets/agents-block.md`, then copy it word for word between the markers in `AGENTS.md`.
 - **The review loop.** Copy its `## Review loop` section word for word into the Copilot implementers.
@@ -355,6 +363,7 @@ The underlying check is `node plugins/andes-angular/skills/ngrx-signal-store/scr
 - [docs/2026-09-architecture-skills.md](docs/2026-09-architecture-skills.md) records the `dotnet-api-architecture` and `angular-ui-architecture` skills: the split between `SKILL.md` and `references/`, the routing rows, and the decisions on EF mapping, test layout, and styling.
 - [docs/2026-09-persistence-layout-and-ef-core-entity-skills.md](docs/2026-09-persistence-layout-and-ef-core-entity-skills.md) records one type per file with `Models/` subfolders, repositories in Service over a plumbing-only Repository, and the `ef-core-base-entities` and `ef-core-enum-reference-tables` skills.
 - [docs/2026-09-azure-devops-plugin.md](docs/2026-09-azure-devops-plugin.md) records the `andes-azure-devops` plugin: the local stdio server and its three domains, `azcli` authentication, the `ADO-STATUS` contract, why removal is `State = Removed`, and the open Copilot `${ADO_ORG}` question.
+- [docs/2026-09-copilot-reasoning-effort.md](docs/2026-09-copilot-reasoning-effort.md) records the per-agent `reasoning-effort` values on Copilot, the removal of `target`, the context trims, and what is still unverified.
 - The `docs/2026-08-*.md` files record earlier decisions. Parts of them are superseded by the ADR.
 - [CHANGELOG.md](CHANGELOG.md)
 

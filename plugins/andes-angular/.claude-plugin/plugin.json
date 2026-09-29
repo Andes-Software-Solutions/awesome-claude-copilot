@@ -1,6 +1,6 @@
 {
   "name": "andes-angular",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Angular and NgRx Signal Store skills, a read-only Angular CLI MCP server, and a report-only Angular reviewer.",
   "author": {
     "name": "Rodrigo Rojas"

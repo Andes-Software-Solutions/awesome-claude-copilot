@@ -13,6 +13,10 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ### Added
 
+- **Reasoning effort on the Copilot agents.** Ten agents now pin `reasoning-effort`, so their cost no longer depends on the level your session runs at. The three reviewers, `andes-prd-generator`, and `andes-planner-expert` use `high`. The implementers, `andes-full-stack-expert`, `andes-csharp-dotnet-janitor`, and `andes-ado-backlog-manager` use `medium`. `andes-se-technical-writer` has no key, because Claude Haiku 4.5 has no configurable reasoning. Requires Copilot CLI 1.0.88 or later. If your session runs at the default `medium`, the five `high` agents now cost more. See `docs/2026-09-copilot-reasoning-effort.md`.
+  - **VS Code.** The Copilot agents no longer declare `target`, so they load in VS Code as well as on Copilot CLI, the Copilot coding agent, and github.com. Installing the plugins in VS Code is untested.
+  - **Smaller context.** The Claude `andes-angular-code-reviewer` loads `ngrx-signal-store` only when the diff has store code. `andes-github-actions-reviewer` skips the hardening skill's report template. `dotnet-api-architecture` no longer repeats its own rules under `## Never`.
+  - **Audit.** New rules `agents/effort` and `agents/effort-key`; `agents/target` now fails when the key is present; new size warnings for skill bodies, agent bodies, and agent descriptions.
 - **Breaking restructure:** the repository is now the `andes` plugin marketplace for Claude Code and GitHub Copilot. You install plugins instead of copying files, and updates arrive through the marketplace.
   - **Plugins.** Seven plugins: `andes-core`, `andes-dotnet`, `andes-dotnet-wasm`, `andes-angular`, `andes-github`, `andes-terraform`, and `andes-azure-devops`. Stack plugins depend on `andes-core`.
   - **One directory, both harnesses.** Each plugin serves both harnesses from one directory with shared skills. Claude Code reads its own manifest. Copilot reads an Agent Plugins 1.0 manifest.

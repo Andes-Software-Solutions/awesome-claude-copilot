@@ -1,8 +1,8 @@
 ---
 name: andes-ado-backlog-manager
 description: "Azure DevOps backlog specialist. Use when the user asks to create, update, remove, list, or query Epics, Features, User Stories, or Product Backlog Items in Azure DevOps Boards, or to push a PRD's epics and stories to an Azure DevOps backlog. Reads the Azure DevOps section of the repository's AGENTS.md, previews every change, and writes only after the user approves and names the assignee and iteration. Reports setup gaps and clarifying questions through its ADO-STATUS contract instead of guessing."
-target: github-copilot
 model: Claude Sonnet 5.5 (copilot)
+reasoning-effort: medium
 tools:
   [
     read,

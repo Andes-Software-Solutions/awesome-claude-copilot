@@ -1,8 +1,8 @@
 ---
 name: andes-csharp-dotnet-janitor
-target: github-copilot
 description: "C#/.NET cleanup and modernization agent — dead code, warnings, obsolete APIs, modern C# constructs, test-coverage backfill, and XML docs. Changes in small behavior-preserving batches, tests after each, and self-reviews through andes-csharp-code-reviewer (two rounds max)."
 model: Claude Sonnet 5.5 (copilot)
+reasoning-effort: medium
 tools:
   [
     read,

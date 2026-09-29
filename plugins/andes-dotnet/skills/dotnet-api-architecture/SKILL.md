@@ -102,15 +102,12 @@ Full trees and what each folder holds: `references/project-layout.md`.
 
 ## Never
 
-- No loose `.cs` at a project root; no grouped `<Folder>Records.cs`, `<Folder>Classes.cs`, `<Folder>Structs.cs`, `<Folder>Constants.cs`, or `<Folder>Exceptions.cs` files — one type per file; model types only under a `Models/` subfolder and exceptions only under an `Exceptions/` subfolder; no `Helpers/`, `Utils/`, `Tool/`, `Settings/`, or `Mappers/` folders; nothing in `Service/Exceptions/` beyond the three shared types.
-- No repository interface or implementation in `<Root>.Repository` — it holds persistence plumbing only (DbContext, configurations, migrations, scripts, interceptors, options, health checks, provisioning). No `Repository/<Feature>/` folder.
-- No `Abstractions` project, no AutoMapper, no `*Settings` classes, no `Configure<T>` — options bind through `AddOptions<T>()` (`references/options-and-validation.md`).
-- No enums or constant catalogs in Dto, Entity, Service, or Api — they live in Common.
-- No provider name on a type outside `Repository/<Provider>/`; no provider type, client construction, or connection string in Service or Api — Service sees the `DbContext` and the EF Core API only, and a non-EF store only through its `I<Subject>Store` gateway.
+Only the bans not already stated as rules above.
+
+- No `Helpers/`, `Utils/`, `Tool/`, `Settings/`, or `Mappers/` folders.
+- No `*Settings` classes, no `Configure<T>` — options bind through `AddOptions<T>()` (`references/options-and-validation.md`).
 - No shared `Options/` or `Serialization/` folder at the Repository root when provider folders exist — each provider owns its own.
-- No interface-only file for a 1:1 pair; no file named after the interface when it also holds the implementation.
 - No mapping attributes on an entity (no DataAnnotations, no `[Timestamp]`) and no constants class for column lengths or precision — they live in the `IEntityTypeConfiguration<T>`; no model-owned (`HasData`) seed for rows operators change after release — write those as `InsertData` in the migration that creates the table, or as a `Scripts/` file that migration runs.
-- No test helper types outside `TestInfrastructure/`; no `*Tests` class inside it.
 - Never regenerate a migration to absorb a CLR rename; edit the type-name strings and verify with `dotnet ef migrations has-pending-model-changes`.
 - Framework bans (controllers, validation attributes, OpenAPI tooling) are not restated here; `csharp-standards` and `aspnet-rest-apis` own them.
 

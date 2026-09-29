@@ -44,6 +44,10 @@ const CONFIG = {
   agentsTemplate: 'plugins/andes-core/skills/andes-init/assets/agents-block.md',
   agentsBlockBudget: 700,
   skillDescriptionBudget: 400,
+  // Characters. Each sits just above the largest file today, so the tree is clean and growth warns.
+  skillBodyBudget: 20000,
+  agentBodyBudget: 12000,
+  agentDescriptionBudget: 550,
   // Folders whose defaults either harness would auto-scan; agents live in claude-agents/ and
   // com.github.copilot/agents/ so neither harness loads the other's files. A legacy
   // .github/plugin manifest would compete with the Agent Plugins root manifest.
@@ -65,6 +69,24 @@ const CONFIG = {
   ],
   // Reviewers find defects, so they keep the deepest effort; everything else runs at high.
   effort: { reviewer: 'xhigh', other: 'high' },
+  // A higher level consumes more AI Credits, so Copilot effort is tiered by role instead of mirroring
+  // the Claude pins. null means the key must be absent: the model has no configurable reasoning.
+  copilotEffort: {
+    'andes-csharp-code-reviewer': 'high',
+    'andes-angular-code-reviewer': 'high',
+    'andes-github-actions-reviewer': 'high',
+    'andes-prd-generator': 'high',
+    'andes-planner-expert': 'high',
+    'andes-full-stack-expert': 'medium',
+    'andes-csharp-expert': 'medium',
+    'andes-angular-expert': 'medium',
+    'andes-csharp-dotnet-janitor': 'medium',
+    'andes-ado-backlog-manager': 'medium',
+    'andes-se-technical-writer': null,
+  },
+  // The CLI reference documents this spelling, but Copilot CLI 1.0.88 only reads the kebab-case key
+  // (github/copilot-cli#4963).
+  copilotEffortMisspelling: 'reasoningEffort',
   modelParity: {
     sonnet: 'Claude Sonnet 5.5 (copilot)',
     haiku: 'Claude Haiku 4.5 (copilot)',
@@ -82,12 +104,11 @@ const CONFIG = {
     'andes-se-technical-writer': {
       claude: 'sonnet',
       copilot: 'Claude Haiku 4.5 (copilot)',
-      reason: 'template-driven docs; ~2x cheaper on AI Credits; Copilot has no effort key',
+      reason: 'template-driven docs; ~2x cheaper on AI Credits; Haiku 4.5 has no configurable reasoning',
     },
   },
-  // Copilot agents target only the github-copilot harness (Copilot CLI, coding agent, github.com).
-  // VS Code is not a supported surface, so its frontmatter keys and tool-set ids are forbidden.
-  copilotTarget: 'github-copilot',
+  // Copilot agents declare no target, which GitHub defines as both vscode and github-copilot. One
+  // frontmatter shape serves both, so keys and tool-set ids that only VS Code honors stay forbidden.
   copilotToolAliases: ['read', 'edit', 'search', 'execute', 'agent', 'web', 'todo'],
   copilotVscodeOnlyKeys: ['handoffs', 'argument-hint'],
   // MCP tools each research or implementer agent must be granted, in Copilot `server/tool` form.
@@ -339,9 +360,12 @@ if (runs('skills')) {
       stats.skills++;
       const path = `${P(p)}/skills/${s}/SKILL.md`;
       if (!exists(path)) { add('skills', 'missing-skill-md', 'error', `Skill folder '${s}' has no SKILL.md`, [`${P(p)}/skills/${s}`]); continue; }
-      const { fm } = splitFrontmatter(read(path));
+      const { fm, body } = splitFrontmatter(read(path));
       const name = fmScalar(fm, 'name');
       const desc = fmScalar(fm, 'description');
+      if (body.length > CONFIG.skillBodyBudget) {
+        add('skills', 'body-budget', 'warn', `SKILL.md body is ${body.length} chars (budget ${CONFIG.skillBodyBudget}); move detail into references/ so it loads on demand`, [path]);
+      }
       if (name !== s) add('skills', 'name-mismatch', 'error', `Skill name '${name}' does not match its folder '${s}'`, [path]);
       if (!desc) add('skills', 'no-description', 'error', 'Skill has no description — it can never trigger on its own', [path]);
       else if (desc.length > CONFIG.skillDescriptionBudget) {
@@ -402,7 +426,14 @@ if (runs('agents')) {
     if (name !== a.stem) add('agents', 'name-stem', 'error', `Agent name '${name}' must equal its file stem '${a.stem}'`, [a.path]);
     if (!CONFIG.namePattern.test(a.stem)) add('agents', 'name-pattern', 'error', `Agent '${a.stem}' must match ${CONFIG.namePattern}`, [a.path]);
     if (!fmScalar(a.fm, 'model')) add('agents', 'model-pin', 'error', 'Agent does not pin a model', [a.path]);
-    if (!fmScalar(a.fm, 'description')) add('agents', 'no-description', 'error', 'Agent has no description', [a.path]);
+    const desc = fmScalar(a.fm, 'description');
+    if (!desc) add('agents', 'no-description', 'error', 'Agent has no description', [a.path]);
+    else if (desc.length > CONFIG.agentDescriptionBudget) {
+      add('agents', 'description-budget', 'warn', `Description is ${desc.length} chars (budget ${CONFIG.agentDescriptionBudget}); every installed agent description is always in context`, [a.path]);
+    }
+    if (a.body.length > CONFIG.agentBodyBudget) {
+      add('agents', 'body-budget', 'warn', `Agent body is ${a.body.length} chars (budget ${CONFIG.agentBodyBudget}); it is paid on every run of the agent`, [a.path]);
+    }
 
     for (const t of tools) {
       if (t.endsWith('*') || (a.harness === 'claude' ? t.startsWith('mcp__') && !t.slice(5).includes('__') : mcpOwners.has(t))) {
@@ -450,11 +481,23 @@ if (runs('agents')) {
     }
 
     if (a.harness === 'copilot') {
-      if (fmScalar(a.fm, 'target') !== CONFIG.copilotTarget) {
-        add('agents', 'target', 'error', `Copilot agent must declare 'target: ${CONFIG.copilotTarget}' (VS Code is not a supported surface)`, [a.path]);
+      if (hasKey(a.fm, 'target')) {
+        add('agents', 'target', 'error', "Copilot agent declares 'target:', which limits it to one environment; remove the key so it loads in both VS Code and github-copilot", [a.path]);
       }
       for (const k of CONFIG.copilotVscodeOnlyKeys) {
         if (hasKey(a.fm, k)) add('agents', 'vscode-key', 'error', `'${k}:' is VS Code-only frontmatter, unsupported on Copilot CLI and the cloud agent; remove it`, [a.path]);
+      }
+      if (hasKey(a.fm, CONFIG.copilotEffortMisspelling)) {
+        add('agents', 'effort-key', 'error', `'${CONFIG.copilotEffortMisspelling}:' is not applied by Copilot CLI; use 'reasoning-effort:'`, [a.path]);
+      }
+      const effort = fmScalar(a.fm, 'reasoning-effort');
+      if (!(a.stem in CONFIG.copilotEffort)) {
+        add('agents', 'effort', 'error', 'Copilot agent has no copilotEffort entry', [a.path, 'scripts/repo-audit.mjs']);
+      } else if (effort !== CONFIG.copilotEffort[a.stem]) {
+        const want = CONFIG.copilotEffort[a.stem];
+        add('agents', 'effort', 'error', want
+          ? `Copilot agent reasoning-effort is '${effort}', expected '${want}'`
+          : `Copilot agent declares reasoning-effort '${effort}', but its model has no configurable reasoning; remove the key`, [a.path]);
       }
       for (const t of tools) {
         if (t.startsWith('vscode/')) add('agents', 'vscode-tool', 'error', `'${t}' is a VS Code-only tool with no equivalent on Copilot CLI or the cloud agent`, [a.path]);

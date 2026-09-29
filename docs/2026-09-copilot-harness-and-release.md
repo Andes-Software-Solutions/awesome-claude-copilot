@@ -4,6 +4,7 @@
 **Date**: 2026-09-27
 **Deciders**: Rodrigo Rojas
 **Amends**: [2026-09-plugin-architecture.md](2026-09-plugin-architecture.md)
+**Superseded in part by**: [2026-09-copilot-reasoning-effort.md](2026-09-copilot-reasoning-effort.md) (2026-09-29) — the Copilot agents no longer declare `target`, so they load in VS Code too. The bans on `handoffs`, `argument-hint`, and `vscode/*` tools stand.
 
 The agent files, manifests, skills, `AGENTS.md`, `scripts/repo-audit.mjs`, and `scripts/release.mjs` are the source of truth. This record explains why they look the way they do. If a value here disagrees with a file, trust the file.
 

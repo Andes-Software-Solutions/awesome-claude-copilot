@@ -42,7 +42,7 @@ Plugins cannot ship settings, so offer these **one at a time**, show the exact d
    - when `andes-angular` is enabled: `permissions.deny` gains `"mcp__plugin_andes-angular_angular-cli__ai_tutor"` (the Angular CLI server has no flag to drop its tutor tool; a bare-name deny removes it from context)
 2. `.claude/settings.json` — `"effortLevel": "xhigh"` (the Andes default; costs more per turn — ask separately).
 
-Do not offer VS Code settings (`chat.plugins.*`, `chat.useAgentsMdFile`): the plugins target the `github-copilot` harness (Copilot CLI, coding agent, github.com), not VS Code.
+Do not offer VS Code settings (`chat.plugins.*`, `chat.useAgentsMdFile`): the agents load in VS Code, but installing and configuring the plugins there is untested.
 
 ## 5. Old drop-in copies
 

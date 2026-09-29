@@ -42,7 +42,7 @@ After changing code, run the matching reviewer on the diff: `andes-csharp-code-r
 
 ## About this repository
 
-This repository is the `andes` plugin marketplace: engineering standards for C#/.NET, Angular, GitHub Actions, and Terraform, plus Azure DevOps backlog management, packaged as plugins for Claude Code and GitHub Copilot on the `github-copilot` harness (Copilot CLI, coding agent, github.com — not VS Code). It holds no application code, only assistant configuration: skills, agents, MCP server declarations, and the always-on block above, which is also what `andes-init` installs in consumer repositories.
+This repository is the `andes` plugin marketplace: engineering standards for C#/.NET, Angular, GitHub Actions, and Terraform, plus Azure DevOps backlog management, packaged as plugins for Claude Code and GitHub Copilot (Copilot CLI, coding agent, github.com; the agents also load in VS Code, which is unverified). It holds no application code, only assistant configuration: skills, agents, MCP server declarations, and the always-on block above, which is also what `andes-init` installs in consumer repositories.
 
 ## Layout
 
@@ -56,7 +56,7 @@ This repository is the `andes` plugin marketplace: engineering standards for C#/
 
 ## Working conventions
 
-- A Claude agent and its Copilot twin change together; their descriptions match apart from the word PROACTIVELY. Copilot agents declare `target: github-copilot`, use only the plain tool aliases and exact `server/tool` MCP grants, and carry no `handoffs`, `argument-hint`, or `vscode/*` tools.
+- A Claude agent and its Copilot twin change together; their descriptions match apart from the word PROACTIVELY. Copilot agents declare no `target`, so they load in both VS Code and `github-copilot`; they pin `reasoning-effort` to the `copilotEffort` table in `scripts/repo-audit.mjs`, use only the plain tool aliases and exact `server/tool` MCP grants, and carry no `handoffs`, `argument-hint`, or `vscode/*` tools.
 - Bump `version` in both manifests of every plugin you change — installs are cached by version. CI enforces it with `--base`.
 - Edit the block in `agents-block.md`, then copy it verbatim between the markers above. Its `## Review loop` section is also copied verbatim into the Copilot implementer agents.
 - Never edit `plugins/andes-angular/skills/angular-developer/` (vendored upstream, hash-pinned). Refresh `ngrx-signal-store` with `/ngrx-signals-sync`.

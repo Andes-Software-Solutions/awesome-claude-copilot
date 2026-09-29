@@ -2,6 +2,8 @@
 
 > **Superseded in part by [2026-09-plugin-architecture.md](2026-09-plugin-architecture.md)** (2026-09-26): reviewers keep `xhigh`, but `andes-prd-generator` and `andes-se-technical-writer` now run at `high`, and the main-session `effortLevel: xhigh` is an opt-in offered by `andes-init` (plugins cannot ship settings).
 
+> **Superseded in part by [2026-09-copilot-reasoning-effort.md](2026-09-copilot-reasoning-effort.md)** (2026-09-29): [section 4](#4-github-copilot-no-per-agent-effort-key-yet) no longer holds. Copilot CLI reads a per-agent `reasoning-effort` key, and ten Copilot agents now pin it.
+
 > **Update 2026-08-06**: the Copilot half of [section 3](#3-se-technical-writer-haiku--sonnet) is superseded — the Copilot writer moved back to Haiku 4.5 as a documented per-harness cost override (Copilot has no effort key, so the Haiku-ignores-effort concern doesn't apply there). The Claude side is unchanged: Sonnet + `xhigh`. A fifth subagent (`prd-generator`) now also pins `xhigh`. See [2026-08-repo-audit.md](2026-08-repo-audit.md).
 
 **Date**: 2026-08-02
