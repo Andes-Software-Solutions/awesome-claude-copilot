@@ -6,9 +6,11 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { extractLinks, findBrokenLinks, headingAnchors, readPayload, runHook } from '../../plugins/andes-core/scripts/check-links.mjs';
 
-const SCRIPT = fileURLToPath(new URL('../../plugins/andes-core/scripts/check-links.mjs', import.meta.url));
+// Each harness tree ships its own copy; scripts/tests/run.mjs runs this suite once per tree.
+const SCRIPT_URL = new URL(`../../${process.env.ANDES_TREE ?? 'claude'}/andes-core/scripts/check-links.mjs`, import.meta.url);
+const SCRIPT = fileURLToPath(SCRIPT_URL);
+const { extractLinks, findBrokenLinks, headingAnchors, readPayload, runHook } = await import(SCRIPT_URL.href);
 const FENCE = '```';
 
 function fixture(files) {

@@ -3,10 +3,17 @@ name: repo-audit
 on:
   pull_request:
     paths:
-      - "plugins/**"
+      - "claude/**"
+      - "copilot/**"
       - "scripts/**"
       - ".claude-plugin/**"
+      - ".github/plugin/**"
       - ".claude/**"
+      # plugins/, marketplace.json, and .plugin/ must not exist; they stay listed so a PR that
+      # recreates them runs the audit (isolation/legacy-tree, isolation/root-marketplace) before merge.
+      - "plugins/**"
+      - "marketplace.json"
+      - ".plugin/**"
       # .github/prompts and .vscode/mcp.json must not exist; they stay listed so a PR that
       # recreates them runs the audit (registry/legacy-commands, mcp/root-config) before merge.
       # .mcp.json must match the plugin declarations (mcp/root-drift).
@@ -66,11 +73,11 @@ jobs:
           npm install --global --no-fund --no-audit @anthropic-ai/claude-code@2.1.283
           rc=0
           claude plugin validate --strict . || rc=1
-          for plugin in plugins/*/; do
+          for plugin in claude/*/; do
             claude plugin validate --strict "$plugin" || rc=1
           done
           exit "$rc"
 
       - name: Test hook scripts
         if: ${{ !cancelled() }}
-        run: node --test scripts/tests/check-links.test.mjs scripts/tests/notify.test.mjs
+        run: node scripts/tests/run.mjs

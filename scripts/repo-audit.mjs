@@ -1,13 +1,15 @@
 #!/usr/bin/env node
 // Structural audit for the andes plugin marketplace.
 //
-// Every plugin under `plugins/` serves Claude Code and GitHub Copilot from one directory:
-// shared `skills/` and `scripts/`; Claude Code reads `.claude-plugin/plugin.json`, `.mcp.json`,
-// `claude-agents/`, and `claude-hooks/`; Copilot (CLI and cloud agent) reads the Agent Plugins 1.0
-// root `plugin.json`, `mcp.json`, and `com.github.copilot/{agents,hooks}/`. This script
-// verifies that those pieces still line up, that agents follow the naming/review/MCP
-// contracts, that the shared AGENTS.md block matches the template `andes-init` installs,
-// that the .NET testing policy has not regressed, and that no Markdown file has a broken local link.
+// Every plugin exists once per harness. `claude/<name>/` holds what Claude Code reads:
+// `.claude-plugin/plugin.json`, `.mcp.json`, `agents/`, and `hooks/hooks.json`. `copilot/<name>/`
+// holds what Copilot reads: the Agent Plugins 1.0 root `plugin.json`, `mcp.json`, and
+// `com.github.copilot/{agents,hooks}/`. `skills/` and `scripts/` are mirrored into both, because
+// VS Code hands one plugin folder to several harnesses and each reads the manifest it understands.
+// This script verifies that neither tree holds the other's files, that the mirrors match, that
+// agents follow the naming/review/MCP contracts, that the shared AGENTS.md block matches the
+// template `andes-init` installs, that the .NET testing policy has not regressed, and that no
+// Markdown file has a broken local link.
 //
 //   node scripts/repo-audit.mjs                     human-readable report
 //   node scripts/repo-audit.mjs --json              machine-readable report
@@ -28,6 +30,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
+import { MIRRORED, TREES, compareMirrors } from './sync-shared.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -37,29 +40,45 @@ process.on('uncaughtException', (err) => {
 });
 
 const CONFIG = {
-  pluginsDir: 'plugins',
+  // One tree per harness, plus the folders mirrored into both; owned by the sync helper.
+  trees: TREES,
+  mirrored: MIRRORED,
+  // The pre-split location; it must stay gone, and --base reads old versions from it.
+  legacyPluginsDir: 'plugins',
   namePattern: /^andes-[a-z0-9]+(-[a-z0-9]+)*$/,
-  marketplace: '.claude-plugin/marketplace.json',
+  marketplaceName: 'andes',
+  // Copilot CLI and VS Code take the first marketplace file they find, and .github/plugin/ comes
+  // before .claude-plugin/ in that order. Claude Code reads only its own.
+  marketplaces: { claude: '.claude-plugin/marketplace.json', copilot: '.github/plugin/marketplace.json' },
+  // Both come before .github/plugin/ in Copilot's lookup order and would shadow the Copilot marketplace.
+  forbiddenMarketplaces: ['marketplace.json', '.plugin/marketplace.json'],
+  // Everything a plugin root may hold. Any other entry is either the other harness's file or a
+  // default folder a harness would auto-load.
+  treeEntries: {
+    claude: ['.claude-plugin', '.mcp.json', 'agents', 'hooks', 'skills', 'scripts'],
+    copilot: ['plugin.json', 'mcp.json', 'com.github.copilot', 'skills', 'scripts'],
+  },
+  copilotNamespaceEntries: ['agents', 'hooks'],
   // The template andes-init writes into consumer repos; the root AGENTS.md must embed it verbatim.
-  agentsTemplate: 'plugins/andes-core/skills/andes-init/assets/agents-block.md',
+  agentsTemplate: 'claude/andes-core/skills/andes-init/assets/agents-block.md',
   agentsBlockBudget: 700,
   skillDescriptionBudget: 400,
   // Characters. Each sits just above the largest file today, so the tree is clean and growth warns.
   skillBodyBudget: 20000,
   agentBodyBudget: 12000,
   agentDescriptionBudget: 550,
-  // Folders whose defaults either harness would auto-scan; agents live in claude-agents/ and
-  // com.github.copilot/agents/ so neither harness loads the other's files. A legacy
-  // .github/plugin manifest would compete with the Agent Plugins root manifest.
-  forbiddenPluginDirs: ['agents', 'commands', 'hooks', '.github'],
+  claudeAgentsDir: 'agents',
   copilotAgentsDir: 'com.github.copilot/agents',
+  // Claude Code finds agents/ and hooks/hooks.json by default. `agents` would replace that scan,
+  // and `hooks` and `mcpServers` merge with the default file and register its entries twice.
+  claudeManifestForbiddenFields: ['agents', 'skills', 'commands', 'hooks', 'mcpServers', 'lspServers'],
   agentPluginsSchema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json',
   agentPluginsMcpSchema: 'https://agent-plugins.org/schemas/1.0.0/mcp.schema.json',
   // Agent Plugins 1.0 fixes component locations; these manifest fields are ignored there.
   agentPluginsForbiddenFields: ['agents', 'skills', 'commands', 'hooks', 'mcpServers', 'lspServers'],
-  // Hooks live outside the default `hooks/` for the same reason agents do. Claude Code loads the file
-  // its manifest declares; Agent Plugins 1.0 reads hooks only from the com.github.copilot namespace.
-  claudeHooksFile: 'claude-hooks/hooks.json',
+  // Claude Code loads its default hooks file; Agent Plugins 1.0 reads hooks only from the
+  // com.github.copilot namespace.
+  claudeHooksFile: 'hooks/hooks.json',
   copilotHooksFile: 'com.github.copilot/hooks/hooks.json',
   // Each Claude event must run the same scripts as its Copilot counterpart.
   hookEventMap: { Notification: 'notification', Stop: 'agentStop', PostToolUse: 'postToolUse' },
@@ -183,13 +202,13 @@ const CONFIG = {
   // Skills whose bytes are pinned to an upstream source and must not be edited here.
   upstreamLock: 'scripts/upstream-skills.lock.json',
   // The link checker the andes-core hook runs; the audit reuses it so CI and the hook agree.
-  linkChecker: 'plugins/andes-core/scripts/check-links.mjs',
+  linkChecker: 'claude/andes-core/scripts/check-links.mjs',
   // Consumer templates: their links resolve in the repo andes-init writes them into.
-  linkCheckExclude: ['plugins/andes-core/skills/andes-init/assets/'],
+  linkCheckExclude: ['claude/andes-core/skills/andes-init/assets/'],
   // Paths that only exist in the old drop-in layout; plugin content must name skills instead.
   harnessPathPattern: /\.claude\/(rules|skills|agents|CLAUDE\.md)|\.github\/(skills|instructions|agents|copilot-instructions\.md)|copilot-instructions\.md/,
   // andes-init detects and removes the old drop-in layout, so it must name those paths.
-  harnessPathAllow: ['plugins/andes-core/skills/andes-init/'],
+  harnessPathAllow: ['claude/andes-core/skills/andes-init/'],
   bannedTestLibs: /\b(FluentAssertions|AwesomeAssertions|Shouldly|Moq|FakeItEasy|NUnit|MSTest|UseInMemoryDatabase)\b|fluent assertions/i,
   // C# non-negotiables: Minimal APIs and FluentValidation only, no repository layer, sync Add/AddRange. Lines phrased as prohibitions pass.
   bannedCsharpPatterns: /\[ApiController\]|AddControllers\(|MapControllers\(|DataAnnotationsValidator|DataAnnotations|--use-controllers|\bAdd(Range)?Async\b|\b[A-Z]\w+Repository\b|<Entity>Repository/,
@@ -293,19 +312,29 @@ function section(body, heading) {
   return lines.slice(i + 1, j).join('\n').trim();
 }
 
-const plugins = dirs(CONFIG.pluginsDir);
-const P = (name) => `${CONFIG.pluginsDir}/${name}`;
-const stats = { plugins: plugins.length, skills: 0, claudeAgents: 0, copilotAgents: 0, agentTwins: 0 };
+const C = (name) => `${CONFIG.trees.claude}/${name}`;
+const G = (name) => `${CONFIG.trees.copilot}/${name}`;
+const plugins = [...new Set([...dirs(CONFIG.trees.claude), ...dirs(CONFIG.trees.copilot)])].sort();
+const entriesOf = (rel) => (isDir(rel) ? readdirSync(join(ROOT, rel), { withFileTypes: true }) : []);
+
+// The Copilot copies of mirrored folders are identical to the Claude ones (mirror/*), so content
+// checks read each shared file once.
+const mirrorCopy = new RegExp(`^${CONFIG.trees.copilot}/[^/]+/(${CONFIG.mirrored.join('|')})/`);
+const pluginFiles = () => Object.values(CONFIG.trees).flatMap((t) => (isDir(t) ? walkFiles(t) : [])).filter((f) => !mirrorCopy.test(f));
+const stats = {
+  plugins: plugins.length, skills: 0, claudeAgents: 0, copilotAgents: 0, agentTwins: 0,
+  mirroredFiles: plugins.flatMap((p) => CONFIG.mirrored.flatMap((m) => (isDir(`${C(p)}/${m}`) ? walkFiles(`${C(p)}/${m}`) : []))).length,
+};
 
 // Collected once; several checks read the agent inventory.
 const agents = [];
 for (const p of plugins) {
-  for (const f of files(`${P(p)}/claude-agents`, '.md')) {
-    const path = `${P(p)}/claude-agents/${f}`;
+  for (const f of files(`${C(p)}/${CONFIG.claudeAgentsDir}`, '.md')) {
+    const path = `${C(p)}/${CONFIG.claudeAgentsDir}/${f}`;
     agents.push({ plugin: p, harness: 'claude', stem: f.slice(0, -3), path, ...splitFrontmatter(read(path)) });
   }
-  for (const f of files(`${P(p)}/${CONFIG.copilotAgentsDir}`, '.agent.md')) {
-    const path = `${P(p)}/${CONFIG.copilotAgentsDir}/${f}`;
+  for (const f of files(`${G(p)}/${CONFIG.copilotAgentsDir}`, '.agent.md')) {
+    const path = `${G(p)}/${CONFIG.copilotAgentsDir}/${f}`;
     agents.push({ plugin: p, harness: 'copilot', stem: f.slice(0, -'.agent.md'.length), path, ...splitFrontmatter(read(path)) });
   }
 }
@@ -315,16 +344,10 @@ const isReviewer = (a) => a.stem.endsWith('-reviewer');
 if (runs('manifests')) {
   const seen = new Map();
   for (const p of plugins) {
-    const cPath = `${P(p)}/.claude-plugin/plugin.json`;
-    const gPath = `${P(p)}/plugin.json`;
+    const cPath = `${C(p)}/.claude-plugin/plugin.json`;
+    const gPath = `${G(p)}/plugin.json`;
     if (!CONFIG.namePattern.test(p)) {
-      add('manifests', 'name-pattern', 'error', `Plugin folder '${p}' does not match ${CONFIG.namePattern}`, [P(p)]);
-    }
-    for (const d of CONFIG.forbiddenPluginDirs) {
-      if (isDir(`${P(p)}/${d}`)) {
-        add('manifests', 'default-dir', 'error', `Plugin has a default-named '${d}/' folder that one harness would auto-load for the other`,
-          [`${P(p)}/${d}`], undefined, 'Use claude-agents/ (listed in .claude-plugin/plugin.json) and com.github.copilot/agents/ instead.');
-      }
+      add('manifests', 'name-pattern', 'error', `Plugin folder '${p}' does not match ${CONFIG.namePattern}`, [C(p), G(p)].filter(isDir));
     }
     const missing = [cPath, gPath].filter((x) => !exists(x));
     if (missing.length) {
@@ -341,10 +364,9 @@ if (runs('manifests')) {
     for (const key of ['version', 'description']) {
       if (c[key] !== g[key]) add('manifests', `${key}-drift`, 'error', `Manifests disagree on '${key}'`, [cPath, gPath], { claude: c[key], copilot: g[key] });
     }
-    const listed = (c.agents ?? []).map((a) => a.replace(/^\.\//, ''));
-    const onDisk = files(`${P(p)}/claude-agents`, '.md').map((f) => `claude-agents/${f}`);
-    for (const a of onDisk) if (!listed.includes(a)) add('manifests', 'claude-agent-unlisted', 'error', `Claude agent '${a}' is not listed in plugin.json "agents" (Claude loads only listed files)`, [cPath, `${P(p)}/${a}`]);
-    for (const a of listed) if (!onDisk.includes(a)) add('manifests', 'claude-agent-ghost', 'error', `plugin.json lists '${a}' but the file does not exist`, [cPath]);
+    for (const k of CONFIG.claudeManifestForbiddenFields) {
+      if (k in c) add('manifests', 'claude-field', 'error', `Claude Code loads components from their default locations; remove '${k}'`, [cPath]);
+    }
     if (g.$schema !== CONFIG.agentPluginsSchema) {
       add('manifests', 'agent-plugins-schema', 'error', `Copilot manifest must declare $schema ${CONFIG.agentPluginsSchema} (VS Code and Copilot CLI then use Agent Plugins 1.0 semantics)`, [gPath]);
     }
@@ -357,32 +379,119 @@ if (runs('manifests')) {
     }
   }
 
-  if (!exists(CONFIG.marketplace)) {
-    add('manifests', 'marketplace-missing', 'error', 'Marketplace manifest is missing', [CONFIG.marketplace]);
-  } else {
-    const m = readJson(CONFIG.marketplace);
+  const listed = {};
+  for (const [tree, file] of Object.entries(CONFIG.marketplaces)) {
+    if (!exists(file)) {
+      add('manifests', 'marketplace-missing', 'error', `The ${tree} marketplace manifest is missing`, [file]);
+      continue;
+    }
+    const root = tree === 'claude' ? C : G;
+    const manifest = (p) => (tree === 'claude' ? `${C(p)}/.claude-plugin/plugin.json` : `${G(p)}/plugin.json`);
+    const m = readJson(file);
     const entries = m.plugins ?? [];
+    listed[tree] = { file, owner: m.owner?.name, names: entries.map((e) => e.name).sort() };
+    if (m.name !== CONFIG.marketplaceName) {
+      add('manifests', 'marketplace-name', 'error', `Marketplace name is '${m.name}'; both marketplaces must be '${CONFIG.marketplaceName}' so '<plugin>@${CONFIG.marketplaceName}' resolves on either harness`, [file]);
+    }
     for (const p of plugins) {
       const hits = entries.filter((e) => e.name === p);
-      if (hits.length !== 1) add('manifests', 'marketplace-entry', 'error', `Marketplace lists '${p}' ${hits.length} times (expected once)`, [CONFIG.marketplace]);
-      else if (hits[0].source !== `./${P(p)}`) add('manifests', 'marketplace-source', 'error', `Marketplace source for '${p}' should be './${P(p)}'`, [CONFIG.marketplace], { source: hits[0].source });
+      if (hits.length !== 1) { add('manifests', 'marketplace-entry', 'error', `Marketplace lists '${p}' ${hits.length} times (expected once)`, [file]); continue; }
+      if (hits[0].source !== `./${root(p)}`) add('manifests', 'marketplace-source', 'error', `Marketplace source for '${p}' should be './${root(p)}'`, [file], { source: hits[0].source });
+      if (exists(manifest(p)) && hits[0].description !== readJson(manifest(p)).description) {
+        add('manifests', 'marketplace-description', 'error', `Marketplace description for '${p}' differs from its manifest`, [file, manifest(p)]);
+      }
+      if ('version' in hits[0]) add('manifests', 'marketplace-entry-version', 'error', `Marketplace entry '${p}' carries a version; the manifest owns it`, [file]);
     }
-    for (const e of entries) if (!plugins.includes(e.name)) add('manifests', 'marketplace-ghost', 'error', `Marketplace lists '${e.name}' but no plugin folder exists`, [CONFIG.marketplace]);
+    for (const e of entries) if (!isDir(root(e.name))) add('manifests', 'marketplace-ghost', 'error', `Marketplace lists '${e.name}' but '${root(e.name)}' does not exist`, [file]);
+  }
+  if (listed.claude && listed.copilot
+    && (JSON.stringify(listed.claude.names) !== JSON.stringify(listed.copilot.names) || listed.claude.owner !== listed.copilot.owner)) {
+    add('manifests', 'marketplace-parity', 'error', 'The two marketplaces list different plugins or owners', [listed.claude.file, listed.copilot.file],
+      { claude: listed.claude, copilot: listed.copilot });
   }
 
   if (BASE) {
     // stderr is dropped: `git show` on a plugin that did not exist at the merge base is expected noise.
     const git = (...a) => execFileSync('git', a, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
     const mergeBase = git('merge-base', BASE, 'HEAD').trim();
-    const changed = git('diff', '--name-only', mergeBase, '--', CONFIG.pluginsDir).split('\n').filter(Boolean);
+    const legacy = (p) => `${CONFIG.legacyPluginsDir}/${p}`;
+    const changed = git('diff', '--name-only', mergeBase, '--', ...Object.values(CONFIG.trees), CONFIG.legacyPluginsDir).split('\n').filter(Boolean);
+    const versionAt = (path) => { try { return JSON.parse(git('show', `${mergeBase}:${path}`)).version; } catch { return undefined; } };
     for (const p of plugins) {
-      if (!changed.some((f) => f.startsWith(`${P(p)}/`))) continue;
-      let before;
-      try { before = JSON.parse(git('show', `${mergeBase}:${P(p)}/.claude-plugin/plugin.json`)).version; } catch { continue; }
-      if (before === seen.get(p)) {
+      if (!changed.some((f) => [C(p), G(p), legacy(p)].some((r) => f.startsWith(`${r}/`)))) continue;
+      // A base that predates the split holds the manifest under the legacy folder.
+      const before = versionAt(`${C(p)}/.claude-plugin/plugin.json`) ?? versionAt(`${legacy(p)}/.claude-plugin/plugin.json`);
+      if (before !== undefined && before === seen.get(p)) {
         add('manifests', 'version-bump', 'error', `'${p}' changed since ${BASE} but its version is still ${before} — installed copies are cached by version and will not update`,
-          [`${P(p)}/.claude-plugin/plugin.json`, `${P(p)}/plugin.json`], undefined, 'Bump the version in both manifests.');
+          [`${C(p)}/.claude-plugin/plugin.json`, `${G(p)}/plugin.json`], undefined, 'Bump the version in both manifests.');
       }
+    }
+  }
+}
+
+// --- isolation ---------------------------------------------------------------
+// VS Code hands one plugin folder to several harnesses, and each reads the manifest it understands.
+// A folder that carries both formats therefore loads the wrong agents somewhere.
+if (runs('isolation')) {
+  if (exists(CONFIG.legacyPluginsDir)) {
+    add('isolation', 'legacy-tree', 'error', `'${CONFIG.legacyPluginsDir}/' is the pre-split layout; plugins live under ${Object.values(CONFIG.trees).join('/ and ')}/`, [CONFIG.legacyPluginsDir]);
+  }
+  for (const f of CONFIG.forbiddenMarketplaces) {
+    if (exists(f)) add('isolation', 'root-marketplace', 'error', `Copilot reads '${f}' before ${CONFIG.marketplaces.copilot}, so it would replace the Copilot marketplace`, [f]);
+  }
+  for (const [tree, root] of Object.entries(CONFIG.trees)) {
+    const other = CONFIG.trees[tree === 'claude' ? 'copilot' : 'claude'];
+    for (const e of entriesOf(root)) {
+      if (!e.isDirectory()) add('isolation', 'tree-entry', 'error', `${root}/ holds plugin folders only`, [`${root}/${e.name}`]);
+    }
+    for (const p of dirs(root)) {
+      if (!isDir(`${other}/${p}`)) add('isolation', 'tree-missing', 'error', `Plugin '${p}' exists under ${root}/ but not under ${other}/`, [`${root}/${p}`]);
+      for (const e of entriesOf(`${root}/${p}`)) {
+        if (!CONFIG.treeEntries[tree].includes(e.name)) {
+          add('isolation', 'unexpected-entry', 'error', `'${e.name}' does not belong in a ${tree} plugin`, [`${root}/${p}/${e.name}`],
+            { allowed: CONFIG.treeEntries[tree] });
+        }
+      }
+    }
+  }
+  for (const p of plugins) {
+    // Claude Code scans agents/ recursively and loads every Markdown file in it as an agent.
+    for (const e of entriesOf(`${C(p)}/${CONFIG.claudeAgentsDir}`)) {
+      if (e.isDirectory() || !e.name.endsWith('.md') || e.name.endsWith('.agent.md')) {
+        add('isolation', 'agent-file', 'error', 'A Claude agents/ folder holds only <name>.md agent files', [`${C(p)}/${CONFIG.claudeAgentsDir}/${e.name}`]);
+      }
+    }
+    for (const e of entriesOf(`${G(p)}/com.github.copilot`)) {
+      if (!CONFIG.copilotNamespaceEntries.includes(e.name)) {
+        add('isolation', 'namespace-entry', 'error', `'${e.name}' is not a component this marketplace ships under com.github.copilot/`, [`${G(p)}/com.github.copilot/${e.name}`],
+          { allowed: CONFIG.copilotNamespaceEntries });
+      }
+    }
+    for (const e of entriesOf(`${G(p)}/${CONFIG.copilotAgentsDir}`)) {
+      if (e.isDirectory() || !e.name.endsWith('.agent.md')) {
+        add('isolation', 'agent-file', 'error', 'A Copilot agents/ folder holds only <name>.agent.md files', [`${G(p)}/${CONFIG.copilotAgentsDir}/${e.name}`]);
+      }
+    }
+  }
+  // Read from the index: a Windows checkout without core.symlinks turns a link into a plain file.
+  try {
+    const rows = execFileSync('git', ['ls-files', '-s', '-z', '--', ...Object.values(CONFIG.trees)],
+      { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).split('\0').filter(Boolean);
+    for (const row of rows) {
+      const [meta, path] = row.split('\t');
+      if (meta.startsWith('120000')) add('isolation', 'symlink', 'error', 'Neither harness follows a link out of a plugin root; copy the file', [path]);
+    }
+  } catch { /* Not a git checkout; links/no-git reports it. */ }
+}
+
+// --- mirror ------------------------------------------------------------------
+if (runs('mirror')) {
+  for (const d of compareMirrors(ROOT)) {
+    const hint = `Run node scripts/sync-shared.mjs --from=<the tree you edited> --plugin=${d.plugin}`;
+    if (d.kind === 'drift') add('mirror', 'drift', 'error', 'The two copies of a shared file differ', [d.source, d.dest], undefined, hint);
+    else {
+      const only = d.kind === 'missing' ? d.source : d.dest;
+      add('mirror', 'missing', 'error', `A shared file exists only under ${only.split('/')[0]}/`, [only], undefined, hint);
     }
   }
 }
@@ -391,10 +500,10 @@ if (runs('manifests')) {
 if (runs('skills')) {
   const owners = new Map();
   for (const p of plugins) {
-    for (const s of dirs(`${P(p)}/skills`)) {
+    for (const s of dirs(`${C(p)}/skills`)) {
       stats.skills++;
-      const path = `${P(p)}/skills/${s}/SKILL.md`;
-      if (!exists(path)) { add('skills', 'missing-skill-md', 'error', `Skill folder '${s}' has no SKILL.md`, [`${P(p)}/skills/${s}`]); continue; }
+      const path = `${C(p)}/skills/${s}/SKILL.md`;
+      if (!exists(path)) { add('skills', 'missing-skill-md', 'error', `Skill folder '${s}' has no SKILL.md`, [`${C(p)}/skills/${s}`]); continue; }
       const { fm, body } = splitFrontmatter(read(path));
       const name = fmScalar(fm, 'name');
       const desc = fmScalar(fm, 'description');
@@ -417,18 +526,26 @@ if (runs('skills')) {
     }
   }
   for (const [s, ps] of owners) {
-    if (ps.length > 1) add('skills', 'duplicate-name', 'error', `Skill '${s}' is defined in several plugins: ${ps.join(', ')}`, ps.map((p) => `${P(p)}/skills/${s}`));
+    if (ps.length > 1) add('skills', 'duplicate-name', 'error', `Skill '${s}' is defined in several plugins: ${ps.join(', ')}`, ps.map((p) => `${C(p)}/skills/${s}`));
   }
 
   if (exists(CONFIG.upstreamLock)) {
     const lock = readJson(CONFIG.upstreamLock);
     for (const [s, entry] of Object.entries(lock.skills ?? {})) {
-      const dir = entry.andes?.path;
-      if (!dir || !isDir(dir)) { add('skills', 'upstream-path', 'error', `Upstream-pinned skill '${s}' has no andes.path in the lock, or the folder is missing`, [CONFIG.upstreamLock]); continue; }
-      const tree = walkFiles(dir).sort().map((f) => `${f.slice(dir.length + 1)}\n${sha(read(f))}`).join('\n');
-      if (sha(tree) !== entry.andes.treeSha256) {
-        add('skills', 'upstream-drift', 'error', `Upstream-pinned skill '${s}' was edited locally (tree hash mismatch)`, [dir, CONFIG.upstreamLock],
-          { expected: entry.andes.treeSha256, actual: sha(tree) }, 'Revert the local edit, or re-vendor from upstream and update treeSha256.');
+      const pinned = entry.andes?.paths ?? [];
+      // One copy per tree; an unpinned copy could be edited and then synced over the pinned one.
+      for (const root of Object.values(CONFIG.trees)) {
+        if (!pinned.some((d) => d.startsWith(`${root}/`))) {
+          add('skills', 'upstream-path', 'error', `Upstream-pinned skill '${s}' lists no andes.paths entry under ${root}/`, [CONFIG.upstreamLock]);
+        }
+      }
+      for (const dir of pinned) {
+        if (!isDir(dir)) { add('skills', 'upstream-path', 'error', `Upstream-pinned skill '${s}' is missing from '${dir}'`, [CONFIG.upstreamLock]); continue; }
+        const tree = walkFiles(dir).sort().map((f) => `${f.slice(dir.length + 1)}\n${sha(read(f))}`).join('\n');
+        if (sha(tree) !== entry.andes.treeSha256) {
+          add('skills', 'upstream-drift', 'error', `Upstream-pinned skill '${s}' was edited locally (tree hash mismatch)`, [dir, CONFIG.upstreamLock],
+            { expected: entry.andes.treeSha256, actual: sha(tree) }, 'Revert the local edit, or re-vendor from upstream and update treeSha256.');
+        }
       }
     }
   }
@@ -436,7 +553,7 @@ if (runs('skills')) {
 
 // --- harness-paths -----------------------------------------------------------
 if (runs('harness-paths')) {
-  for (const f of walkFiles(CONFIG.pluginsDir)) {
+  for (const f of pluginFiles()) {
     if (!CONFIG.textExt.test(f) || CONFIG.harnessPathAllow.some((a) => f.startsWith(a))) continue;
     read(f).split('\n').forEach((line, i) => {
       if (CONFIG.harnessPathPattern.test(line)) {
@@ -450,7 +567,7 @@ if (runs('harness-paths')) {
 // --- agents ------------------------------------------------------------------
 if (runs('agents')) {
   // server name → plugin that ships it; drives the mcp-wildcard, mcp-owner, and required-mcp rules.
-  const mcpOwners = new Map(plugins.flatMap((p) => (exists(`${P(p)}/.mcp.json`) ? Object.keys(readJson(`${P(p)}/.mcp.json`).mcpServers ?? {}).map((s) => [s, p]) : [])));
+  const mcpOwners = new Map(plugins.flatMap((p) => (exists(`${C(p)}/.mcp.json`) ? Object.keys(readJson(`${C(p)}/.mcp.json`).mcpServers ?? {}).map((s) => [s, p]) : [])));
   const aliasSubtool = new RegExp(`^(${CONFIG.copilotToolAliases.join('|')})/`);
   const normDesc = (d) => (d ?? '').replace(/\bUse PROACTIVELY\b/g, 'Use').replace(/\s+/g, ' ').trim();
 
@@ -609,18 +726,21 @@ if (runs('mcp')) {
   if (exists('.vscode/mcp.json')) add('mcp', 'root-config', 'error', 'This repo is maintained with Claude Code; its MCP servers live in the root .mcp.json', ['.vscode/mcp.json']);
   const rootServers = exists('.mcp.json') ? readJson('.mcp.json').mcpServers ?? {} : {};
   for (const name of CONFIG.maintainerMcpServers) {
-    const owner = plugins.find((p) => (exists(`${P(p)}/.mcp.json`) ? readJson(`${P(p)}/.mcp.json`).mcpServers ?? {} : {})[name]);
-    const shipped = owner && readJson(`${P(owner)}/.mcp.json`).mcpServers[name];
+    const owner = plugins.find((p) => (exists(`${C(p)}/.mcp.json`) ? readJson(`${C(p)}/.mcp.json`).mcpServers ?? {} : {})[name]);
+    const shipped = owner && readJson(`${C(owner)}/.mcp.json`).mcpServers[name];
     if (!rootServers[name]) add('mcp', 'root-missing', 'error', `The root .mcp.json does not start '${name}'`, ['.mcp.json']);
     else if (!shipped) add('mcp', 'root-drift', 'error', `No plugin ships '${name}'; drop it from maintainerMcpServers or the root .mcp.json`, ['.mcp.json']);
     else if (JSON.stringify(rootServers[name]) !== JSON.stringify(shipped)) {
-      add('mcp', 'root-drift', 'error', `Root .mcp.json '${name}' differs from ${P(owner)}/.mcp.json`, ['.mcp.json', `${P(owner)}/.mcp.json`], { root: rootServers[name], plugin: shipped });
+      add('mcp', 'root-drift', 'error', `Root .mcp.json '${name}' differs from ${C(owner)}/.mcp.json`, ['.mcp.json', `${C(owner)}/.mcp.json`], { root: rootServers[name], plugin: shipped });
     }
   }
   for (const p of plugins) {
-    const path = `${P(p)}/.mcp.json`;
-    if (!exists(path)) continue;
-    const apPath = `${P(p)}/mcp.json`;
+    const path = `${C(p)}/.mcp.json`;
+    const apPath = `${G(p)}/mcp.json`;
+    if (!exists(path)) {
+      if (exists(apPath)) add('mcp', 'claude-missing', 'error', 'Plugin ships mcp.json (Agent Plugins, Copilot) but no .mcp.json (Claude Code)', [apPath]);
+      continue;
+    }
     if (!exists(apPath)) {
       add('mcp', 'copilot-missing', 'error', 'Plugin ships .mcp.json (Claude Code) but no mcp.json (Agent Plugins, Copilot)', [path]);
     } else {
@@ -670,22 +790,13 @@ if (runs('mcp')) {
 if (runs('hooks')) {
   const refs = (text, re) => [...String(text ?? '').matchAll(re)].map((m) => m[1]);
   const sorted = (xs) => [...new Set(xs)].sort();
+  // A handler that names the other harness makes the script answer in the wrong protocol.
+  const wrongHarness = (text, harness) => [...String(text ?? '').matchAll(/--harness=([\w-]+)/g)].some((m) => m[1] !== harness);
   for (const p of plugins) {
-    const cPath = `${P(p)}/.claude-plugin/plugin.json`;
-    if (!exists(cPath)) continue;
-    const declared = readJson(cPath).hooks;
-    const claudePath = `${P(p)}/${CONFIG.claudeHooksFile}`;
-    const copilotPath = `${P(p)}/${CONFIG.copilotHooksFile}`;
+    const claudePath = `${C(p)}/${CONFIG.claudeHooksFile}`;
+    const copilotPath = `${G(p)}/${CONFIG.copilotHooksFile}`;
     const hasClaude = exists(claudePath);
     const hasCopilot = exists(copilotPath);
-    if (declared !== undefined && declared !== `./${CONFIG.claudeHooksFile}`) {
-      add('hooks', 'claude-path', 'error', `.claude-plugin/plugin.json "hooks" must be "./${CONFIG.claudeHooksFile}"`, [cPath], { hooks: declared });
-    } else if (declared !== undefined && !hasClaude) {
-      add('hooks', 'claude-path', 'error', `plugin.json declares hooks but ${CONFIG.claudeHooksFile} does not exist`, [cPath]);
-    }
-    if (hasClaude && declared === undefined) {
-      add('hooks', 'claude-unlisted', 'error', `${CONFIG.claudeHooksFile} exists but plugin.json does not declare it (Claude Code loads only a declared path outside hooks/)`, [cPath, claudePath]);
-    }
     if (hasClaude && !hasCopilot) {
       add('hooks', 'copilot-missing', 'error', 'Plugin ships Claude Code hooks but no Copilot hooks', [claudePath], undefined,
         `Add ${CONFIG.copilotHooksFile}; Agent Plugins 1.0 reads hooks only from the com.github.copilot namespace.`);
@@ -701,10 +812,12 @@ if (runs('hooks')) {
       for (const [event, groups] of Object.entries(events ?? {})) {
         const scripts = [];
         for (const h of (Array.isArray(groups) ? groups : []).flatMap((g) => g?.hooks ?? [])) {
-          const found = refs([h.command, ...(h.args ?? [])].join(' '), CONFIG.hookScriptRef.claude);
+          const line = [h.command, ...(h.args ?? [])].join(' ');
+          const found = refs(line, CONFIG.hookScriptRef.claude);
           if (h.type !== 'command' || typeof h.command !== 'string' || !found.length) {
             add('hooks', 'claude-format', 'error', `A '${event}' handler must be type "command" and run \${CLAUDE_PLUGIN_ROOT}/scripts/<name>.mjs`, [claudePath]);
           }
+          if (wrongHarness(line, 'claude')) add('hooks', 'harness-flag', 'error', `A '${event}' handler must pass --harness=claude`, [claudePath]);
           scripts.push(...found);
         }
         claudeEvents.set(event, sorted(scripts));
@@ -722,6 +835,9 @@ if (runs('hooks')) {
             add('hooks', 'copilot-format', 'error', `A '${event}' entry needs type "command", a numeric timeoutSec, and bash ($PLUGIN_ROOT) and powershell ($env:PLUGIN_ROOT) commands that run scripts/<name>.mjs`, [copilotPath]);
           } else if (JSON.stringify(bash) !== JSON.stringify(ps)) {
             add('hooks', 'copilot-format', 'error', `A '${event}' entry runs different scripts in bash and powershell`, [copilotPath], { bash, powershell: ps });
+          }
+          if (wrongHarness(h.bash, 'copilot') || wrongHarness(h.powershell, 'copilot')) {
+            add('hooks', 'harness-flag', 'error', `A '${event}' entry must pass --harness=copilot`, [copilotPath]);
           }
           scripts.push(...bash);
         }
@@ -744,13 +860,17 @@ if (runs('hooks')) {
         }
       }
     }
-    for (const s of sorted([...claudeEvents.values(), ...copilotEvents.values()].flat())) {
-      const path = `${P(p)}/scripts/${s}`;
-      if (!exists(path)) { add('hooks', 'script-missing', 'error', `A hook runs scripts/${s}, which does not exist`, [path]); continue; }
-      // andes-init copies hook scripts into consumer repos, where no plugin dependencies exist.
-      const specifiers = [...read(path).matchAll(/^\s*import\s[^'"]*?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]/gm)].map((m) => m[1] ?? m[2]);
-      const foreign = specifiers.filter((x) => !x.startsWith('node:'));
-      if (foreign.length) add('hooks', 'script-imports', 'error', 'Hook scripts must import only node: built-ins', [path], { imports: foreign });
+    // Each harness resolves a script inside its own plugin root.
+    for (const [root, events] of [[C(p), claudeEvents], [G(p), copilotEvents]]) {
+      for (const s of sorted([...events.values()].flat())) {
+        const path = `${root}/scripts/${s}`;
+        if (!exists(path)) { add('hooks', 'script-missing', 'error', `A hook runs scripts/${s}, which does not exist`, [path]); continue; }
+        if (root !== C(p)) continue;
+        // andes-init copies hook scripts into consumer repos, where no plugin dependencies exist.
+        const specifiers = [...read(path).matchAll(/^\s*import\s[^'"]*?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]/gm)].map((m) => m[1] ?? m[2]);
+        const foreign = specifiers.filter((x) => !x.startsWith('node:'));
+        if (foreign.length) add('hooks', 'script-imports', 'error', 'Hook scripts must import only node: built-ins', [path], { imports: foreign });
+      }
     }
   }
 }
@@ -793,7 +913,7 @@ if (runs('memory')) {
 
 // --- testing-policy ----------------------------------------------------------
 if (runs('testing-policy')) {
-  const scan = [...walkFiles(CONFIG.pluginsDir), ...(exists('AGENTS.md') ? ['AGENTS.md'] : [])];
+  const scan = [...pluginFiles(), ...(exists('AGENTS.md') ? ['AGENTS.md'] : [])];
   for (const f of scan) {
     if (!f.endsWith('.md')) continue;
     read(f).split('\n').forEach((line, i) => {
@@ -807,7 +927,7 @@ if (runs('testing-policy')) {
 
 // --- csharp-policy -----------------------------------------------------------
 if (runs('csharp-policy')) {
-  const scan = [...walkFiles(CONFIG.pluginsDir), ...(exists('AGENTS.md') ? ['AGENTS.md'] : [])];
+  const scan = [...pluginFiles(), ...(exists('AGENTS.md') ? ['AGENTS.md'] : [])];
   for (const f of scan) {
     if (!f.endsWith('.md')) continue;
     read(f).split('\n').forEach((line, i) => {
@@ -826,7 +946,7 @@ if (runs('registry')) {
   for (const legacy of ['.claude/commands', '.github/prompts']) {
     if (isDir(legacy)) add('registry', 'legacy-commands', 'error', `${legacy}/ is a single-harness command surface; maintainer commands live in .claude/skills/`, [legacy]);
   }
-  const pluginSkills = new Set(plugins.flatMap((p) => dirs(`${P(p)}/skills`)));
+  const pluginSkills = new Set(plugins.flatMap((p) => dirs(`${C(p)}/skills`)));
   const maintainerSkills = dirs('.claude/skills');
   for (const s of maintainerSkills) {
     const path = `.claude/skills/${s}/SKILL.md`;
@@ -883,10 +1003,10 @@ if (runs('links')) {
   if (checker && tracked) {
     const lock = exists(CONFIG.upstreamLock) ? readJson(CONFIG.upstreamLock) : {};
     // Upstream-pinned skills cannot be edited here, so their links are upstream's to fix.
-    const skip = [...Object.values(lock.skills ?? {}).map((e) => e.andes?.path).filter(Boolean).map((d) => `${d}/`), ...CONFIG.linkCheckExclude];
+    const skip = [...Object.values(lock.skills ?? {}).flatMap((e) => e.andes?.paths ?? []).map((d) => `${d}/`), ...CONFIG.linkCheckExclude];
     const cache = {};
     for (const f of [...new Set(tracked)].sort()) {
-      if (skip.some((s) => f.startsWith(s)) || !exists(f)) continue;
+      if (skip.some((s) => f.startsWith(s)) || mirrorCopy.test(f) || !exists(f)) continue;
       for (const b of checker.findBrokenLinks(join(ROOT, f), { root: ROOT, cache })) {
         add('links', 'broken', 'error', `Broken link '${b.target}': ${b.reason}`, [`${f}:${b.line}`]);
       }
@@ -897,7 +1017,7 @@ if (runs('links')) {
 // --- report ------------------------------------------------------------------
 const errors = findings.filter((f) => f.severity === 'error');
 const warnings = findings.filter((f) => f.severity === 'warn');
-const checkNames = ['manifests', 'skills', 'harness-paths', 'agents', 'mcp', 'hooks', 'memory', 'testing-policy', 'csharp-policy', 'registry', 'changelog', 'links'];
+const checkNames = ['manifests', 'isolation', 'mirror', 'skills', 'harness-paths', 'agents', 'mcp', 'hooks', 'memory', 'testing-policy', 'csharp-policy', 'registry', 'changelog', 'links'];
 const report = {
   status: errors.length || (STRICT && warnings.length) ? 'findings' : 'clean',
   generatedAt: new Date().toISOString(),
@@ -915,7 +1035,8 @@ const report = {
 
 const summaryLine =
   `Repo audit ${report.status === 'clean' ? 'clean' : 'found drift'}: ` +
-  `${stats.plugins} plugins, ${stats.skills} skills, ${stats.claudeAgents} Claude + ${stats.copilotAgents} Copilot agents ` +
+  `${stats.plugins} plugins in ${Object.keys(CONFIG.trees).length} trees, ${stats.skills} skills (${stats.mirroredFiles} mirrored files), ` +
+  `${stats.claudeAgents} Claude + ${stats.copilotAgents} Copilot agents ` +
   `(${stats.agentTwins} twins). ${errors.length} error(s), ${warnings.length} warning(s)` +
   (warnings.length && !STRICT ? ' (warnings do not fail; use --strict to work them)' : '') + '.';
 
