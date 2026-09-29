@@ -166,6 +166,9 @@ const CONFIG = {
   forbiddenMcpArgs: { 'azure-devops': ['all', 'test-plans', 'repositories', 'pipelines', 'wiki', 'search', 'advanced-security'] },
   // Exposed by a shipped server but never granted to an agent.
   forbiddenMcpTools: ['ai_tutor', 'wit_work_item_attachment', 'work_iteration_write', 'work_capacity_write'],
+  // This repo never installs its own plugins, so the root .mcp.json starts the servers maintainers
+  // query; each entry must match the plugin that ships it so the pins move together.
+  maintainerMcpServers: ['microsoft-learn', 'angular-cli', 'context7', 'azure-devops', 'terraform'],
   // Skills whose bytes are pinned to an upstream source and must not be edited here.
   upstreamLock: 'scripts/upstream-skills.lock.json',
   // Paths that only exist in the old drop-in layout; plugin content must name skills instead.
@@ -588,8 +591,16 @@ if (runs('agents')) {
 
 // --- mcp ---------------------------------------------------------------------
 if (runs('mcp')) {
-  for (const stale of ['.mcp.json', '.vscode/mcp.json']) {
-    if (exists(stale)) add('mcp', 'root-config', 'error', 'Repo-level MCP config duplicates the servers the plugins ship', [stale]);
+  if (exists('.vscode/mcp.json')) add('mcp', 'root-config', 'error', 'This repo is maintained with Claude Code; its MCP servers live in the root .mcp.json', ['.vscode/mcp.json']);
+  const rootServers = exists('.mcp.json') ? readJson('.mcp.json').mcpServers ?? {} : {};
+  for (const name of CONFIG.maintainerMcpServers) {
+    const owner = plugins.find((p) => (exists(`${P(p)}/.mcp.json`) ? readJson(`${P(p)}/.mcp.json`).mcpServers ?? {} : {})[name]);
+    const shipped = owner && readJson(`${P(owner)}/.mcp.json`).mcpServers[name];
+    if (!rootServers[name]) add('mcp', 'root-missing', 'error', `The root .mcp.json does not start '${name}'`, ['.mcp.json']);
+    else if (!shipped) add('mcp', 'root-drift', 'error', `No plugin ships '${name}'; drop it from maintainerMcpServers or the root .mcp.json`, ['.mcp.json']);
+    else if (JSON.stringify(rootServers[name]) !== JSON.stringify(shipped)) {
+      add('mcp', 'root-drift', 'error', `Root .mcp.json '${name}' differs from ${P(owner)}/.mcp.json`, ['.mcp.json', `${P(owner)}/.mcp.json`], { root: rootServers[name], plugin: shipped });
+    }
   }
   for (const p of plugins) {
     const path = `${P(p)}/.mcp.json`;
@@ -723,6 +734,15 @@ if (runs('registry')) {
       add('registry', 'maintainer-skill', 'error', "'disable-model-invocation: true' makes the skill unreachable on Copilot CLI (github/copilot-cli#4438); guard in the body instead", [path]);
     }
     if (pluginSkills.has(s)) add('registry', 'maintainer-skill', 'error', `Maintainer skill '${s}' shadows the plugin skill of the same name (project skills win in Copilot CLI)`, [path]);
+  }
+  // This repo builds the marketplace; installing it here would load stale cached copies over the live files.
+  if (exists('.claude/settings.json')) {
+    const settings = readJson('.claude/settings.json');
+    const selfPlugins = Object.keys(settings.enabledPlugins ?? {}).filter((k) => k.endsWith('@andes'));
+    if (settings.extraKnownMarketplaces?.andes || selfPlugins.length) {
+      add('registry', 'self-install', 'error', 'The repo settings register the andes marketplace or enable its plugins; develop with --plugin-dir instead',
+        ['.claude/settings.json'], { plugins: selfPlugins });
+    }
   }
   const readme = exists('README.md') ? read('README.md') : '';
   const names = [...plugins, ...new Set(agents.map((a) => a.stem)), ...pluginSkills, ...maintainerSkills.map((s) => `/${s}`)];

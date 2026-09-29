@@ -14,13 +14,5 @@
     "claude-code-setup@claude-plugins-official": true,
     "sonarqube@claude-plugins-official": false
   },
-  "extraKnownMarketplaces": {
-    "andes": {
-      "source": {
-        "source": "github",
-        "repo": "RorroRojas3/awesome-claude-copilot"
-      }
-    }
-  },
   "effortLevel": "xhigh"
 }

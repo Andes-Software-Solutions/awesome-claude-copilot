@@ -272,7 +272,8 @@ What was renamed:
 ├── AGENTS.md                           # the andes block (= andes-init template) + this repo's own sections
 ├── CLAUDE.md                           # exactly "@AGENTS.md"
 ├── .claude/skills/                     # maintainer-only /repo-audit, /ngrx-signals-sync, /release (not shipped)
-├── .claude/settings.json               # maintainer settings (enables andes-core, andes-github)
+├── .claude/settings.json               # maintainer settings; never registers the andes marketplace or its plugins
+├── .mcp.json                           # maintainer MCP servers, copied from the plugins (audit: mcp/root-drift)
 ├── .github/workflows/repo-audit.yml    # CI
 ├── scripts/repo-audit.mjs              # structural audit
 ├── scripts/release.mjs                 # release: CHANGELOG roll, tag, GitHub Release
@@ -367,6 +368,7 @@ The underlying check is `node plugins/andes-angular/skills/ngrx-signal-store/scr
 - [docs/2026-09-azure-devops-plugin.md](docs/2026-09-azure-devops-plugin.md) records the `andes-azure-devops` plugin: the local stdio server and its three domains, `azcli` authentication, the `ADO-STATUS` contract, why removal is `State = Removed`, and the open Copilot `${ADO_ORG}` question.
 - [docs/2026-09-copilot-reasoning-effort.md](docs/2026-09-copilot-reasoning-effort.md) records the per-agent `reasoning-effort` values on Copilot, the removal of `target`, the context trims, and what is still unverified.
 - [docs/2026-09-planner-handoffs.md](docs/2026-09-planner-handoffs.md) records why the planner declares handoff buttons for VS Code Local sessions, the audit exemption, and when the buttons will be removed.
+- [docs/2026-09-maintainer-mcp-servers.md](docs/2026-09-maintainer-mcp-servers.md) records why this repository starts its own MCP servers from the root `.mcp.json` and never installs its own marketplace, and the audit rules that keep the root entries in step with the plugins.
 - [docs/2026-09-services-own-data-access-and-scaffold.md](docs/2026-09-services-own-data-access-and-scaffold.md) records why services query the `DbContext` directly with no repository layer, `Add` over `AddAsync`, the single `GlobalExceptionHandler`, `DateTimeOffset` timestamps, and the `andes-scaffold` skill.
 - The `docs/2026-08-*.md` files record earlier decisions. Parts of them are superseded by the ADR.
 - [CHANGELOG.md](CHANGELOG.md)
