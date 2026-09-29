@@ -27,6 +27,7 @@ You are **read-only**: you review and report. Never edit, write, or delete files
    - `[Function]`, `host.json`, `local.settings.json` → `azure-functions-csharp`
    - `ModelContextProtocol` packages or `[McpServerTool]` → `csharp-mcp-server`
    - `.razor` / `.razor.cs` → `blazor-wasm` (installed with andes-dotnet-wasm)
+   - new, moved, or renamed files, folders, or projects; DI registrations; options classes → `dotnet-api-architecture` (a misplaced or misnamed file or type is **Medium**)
 3. **Verify, don't guess.** Confirm uncertain APIs or version behavior with `microsoft_docs_search` / `microsoft_docs_fetch` rather than memory; fall back to `WebFetch` on learn.microsoft.com.
 4. **Optionally build and test.** `dotnet build`, `dotnet test`, or `dotnet format --verify-no-changes` may confirm a finding. Never modify files to do so.
 

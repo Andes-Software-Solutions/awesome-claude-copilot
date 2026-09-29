@@ -9,7 +9,7 @@ description: "Use when writing, editing, or reviewing any C# (.cs) code: C# 14 i
 
 - Read the target framework (TFM), `<LangVersion>`, `global.json` SDK, `<Nullable>`, and repo config (`Directory.Build.*`, `Directory.Packages.props`). Don't change the TFM, SDK, or language version unless asked, and don't use C# features newer than the TFM default.
 - Follow the project's conventions for anything these standards do not cover. Where they conflict with a non-negotiable below, apply the non-negotiable to new and changed code and flag the conflict; migrate existing code only when asked.
-- Web/API standards live in `aspnet-rest-apis`; async detail in `csharp-async`; XML docs in `csharp-docs`; tests in `csharp-xunit`; EF Core in `ef-core`.
+- Web/API standards live in `aspnet-rest-apis`; async detail in `csharp-async`; XML docs in `csharp-docs`; tests in `csharp-xunit`; EF Core in `ef-core`. Where a file goes, what it is called, and which project owns it: `dotnet-api-architecture`.
 
 ## Non-negotiables
 
@@ -25,7 +25,7 @@ These apply to every new or changed file. Reviewers flag violations.
 
 ## File layout
 
-One type per file. Members appear in exactly this order; a region exists only when it has members, and the regions always close the file.
+One type per file, except the groupings `dotnet-api-architecture` defines (a folder's records, structs, constants, or exceptions in one `<Folder>…` file; an interface with its single implementation; a validator with the type it validates). Members appear in exactly this order; a region exists only when it has members, and the regions always close the file.
 
 1. Captured fields, constants, and properties — no region.
 2. Interface implementations, in the interface's order — no region. Public instance members that no interface declares follow them.

@@ -5,7 +5,7 @@ description: "Use when writing, editing, or reviewing Angular code (components, 
 
 # Angular standards
 
-Detailed how-to lives in the `angular-developer` skill (read the `references/` file matching the work) and, for state, the `ngrx-signal-store` skill. This file is the short list every change is held to.
+Detailed how-to lives in the `angular-developer` skill (read the `references/` file matching the work) and, for state, the `ngrx-signal-store` skill. File and folder placement, naming suffixes, path aliases, and the dependency direction live in `angular-ui-architecture`. This file is the short list every change is held to.
 
 ## Workflow
 

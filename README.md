@@ -27,9 +27,9 @@ How it fits together:
 | Plugin | Ships | Depends on |
 | --- | --- | --- |
 | `andes-core` | **Skills:** `andes-init`, `prd`, `technical-writing`<br>**Agents:** `andes-prd-generator`, `andes-se-technical-writer`<br>**Copilot-only agents:** `andes-planner-expert`, `andes-full-stack-expert`<br>**MCP:** `context7` | — |
-| `andes-dotnet` | **Skills:** `csharp-standards`, `aspnet-rest-apis`, `azure-functions-csharp`, `csharp-mcp-server`, `csharp-async`, `csharp-docs`, `csharp-xunit`, `ef-core`, `microsoft-agent-framework`, `microsoft-docs`<br>**Agents:** `andes-csharp-code-reviewer`<br>**Copilot-only agents:** `andes-csharp-expert`, `andes-csharp-dotnet-janitor`<br>**MCP:** `microsoft-learn` | `andes-core` |
+| `andes-dotnet` | **Skills:** `csharp-standards`, `dotnet-api-architecture`, `aspnet-rest-apis`, `azure-functions-csharp`, `csharp-mcp-server`, `csharp-async`, `csharp-docs`, `csharp-xunit`, `ef-core`, `microsoft-agent-framework`, `microsoft-docs`<br>**Agents:** `andes-csharp-code-reviewer`<br>**Copilot-only agents:** `andes-csharp-expert`, `andes-csharp-dotnet-janitor`<br>**MCP:** `microsoft-learn` | `andes-core` |
 | `andes-dotnet-wasm` | **Skills:** `blazor-wasm` (standalone Blazor WebAssembly, .NET 10) | `andes-core`, `andes-dotnet` |
-| `andes-angular` | **Skills:** `angular-standards`, `ngrx-signal-store`, `angular-developer` (official Angular team skill, vendored)<br>**Agents:** `andes-angular-code-reviewer`<br>**Copilot-only agents:** `andes-angular-expert`<br>**MCP:** `angular-cli` | `andes-core` |
+| `andes-angular` | **Skills:** `angular-standards`, `angular-ui-architecture`, `ngrx-signal-store`, `angular-developer` (official Angular team skill, vendored)<br>**Agents:** `andes-angular-code-reviewer`<br>**Copilot-only agents:** `andes-angular-expert`<br>**MCP:** `angular-cli` | `andes-core` |
 | `andes-github` | **Skills:** `github-actions-hardening`, `github-actions-efficiency`, `github-actions-runtime-upgrade-conventions`<br>**Agents:** `andes-github-actions-reviewer` | `andes-core` |
 | `andes-terraform` | **Skills:** `terraform-conventions`<br>**MCP:** `terraform` | `andes-core` |
 
@@ -134,6 +134,7 @@ The loop works like this:
 ## Testing policy (.NET)
 
 - **Libraries.** Use xUnit v3 (latest, on Microsoft Testing Platform: `dotnet new xunit3`) with xUnit's `Assert`, and NSubstitute for test doubles. Never use FluentAssertions, AwesomeAssertions, Shouldly, Moq, FakeItEasy, NUnit, or MSTest.
+- **Layout.** Two test projects per solution under `tests/`, `<Root>.Unit.Test` and `<Root>.Integration.Test`, with folders mirroring the source projects and `TestInfrastructure/` at each root (`dotnet-api-architecture`).
 - **Test databases.** Try these in order:
   1. Testcontainers
   2. SQLite in-memory
@@ -197,9 +198,9 @@ Skill descriptions are the always-on price of each installed plugin. Measured wi
 | Plugin | Tokens |
 | --- | --- |
 | `andes-core` | ~301 |
-| `andes-dotnet` | ~963 |
+| `andes-dotnet` | ~1,060 (estimated after `dotnet-api-architecture`; measured ~963 before it) |
 | `andes-dotnet-wasm` | ~126 |
-| `andes-angular` | ~364 |
+| `andes-angular` | ~465 (estimated after `angular-ui-architecture`; measured ~364 before it) |
 | `andes-github` | ~278 |
 | `andes-terraform` | ~98 |
 
@@ -234,6 +235,7 @@ What was renamed:
 | Rule `csharp` | Skill `csharp-standards` |
 | Rule `terraform` | Skill `terraform-conventions` |
 | Rules `aspnet-rest-apis`, `azure-functions-csharp`, `csharp-mcp-server`, `blazor-wasm` | Skills with the same names |
+| Rules `api-architecture`, `ui-architecture` (kept in some repositories) | Skills `dotnet-api-architecture`, `angular-ui-architecture` |
 
 ---
 
@@ -342,6 +344,7 @@ The underlying check is `node plugins/andes-angular/skills/ngrx-signal-store/scr
 
 - [docs/2026-09-plugin-architecture.md](docs/2026-09-plugin-architecture.md) is the ADR for this layout. It covers verification results, the Copilot checklist, and fallbacks.
 - [docs/2026-09-copilot-harness-and-release.md](docs/2026-09-copilot-harness-and-release.md) records the move to the `github-copilot` harness, the planner → PRD direction, Context7 in `andes-core`, the C# non-negotiables, maintainer skills, and the release process.
+- [docs/2026-09-architecture-skills.md](docs/2026-09-architecture-skills.md) records the `dotnet-api-architecture` and `angular-ui-architecture` skills: the split between `SKILL.md` and `references/`, the routing rows, and the decisions on EF mapping, test layout, and styling.
 - The `docs/2026-08-*.md` files record earlier decisions. Parts of them are superseded by the ADR.
 - [CHANGELOG.md](CHANGELOG.md)
 

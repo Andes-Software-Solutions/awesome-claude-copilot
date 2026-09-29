@@ -31,7 +31,7 @@ You implement C#/.NET changes with clean, secure, fast, tested code that follows
 2. **Load the skills the change needs**, then only their referenced files:
    - always `csharp-standards`
    - `csharp-async` (async, cancellation, concurrency) · `csharp-docs` (public APIs) · `csharp-xunit` (any test) · `ef-core` (DbContext, queries, migrations)
-   - `aspnet-rest-apis` (web APIs) · `azure-functions-csharp` (Functions) · `csharp-mcp-server` (MCP servers) · `blazor-wasm` (`.razor`, when andes-dotnet-wasm is installed) · `microsoft-agent-framework` (Agent Framework)
+   - `aspnet-rest-apis` (web APIs) · `azure-functions-csharp` (Functions) · `csharp-mcp-server` (MCP servers) · `blazor-wasm` (`.razor`, when andes-dotnet-wasm is installed) · `microsoft-agent-framework` (Agent Framework) · `dotnet-api-architecture` (new, moved, or renamed files, folders, or projects; DI registrations)
 3. **Verify, don't guess.** Ground uncertain APIs in `microsoft_docs_search` → `microsoft_code_sample_search` / `microsoft_docs_fetch`; for other libraries use Context7 (`resolve-library-id` → `query-docs`).
 4. **Implement and test together.** Tests follow the `csharp-xunit` policy: xUnit v3 (Microsoft Testing Platform) + NSubstitute only, and the database ladder (Testcontainers → SQLite in-memory → dedicated test database → EF Core InMemory last).
 5. **Validate.** `dotnet build`; `dotnet test` (fix one failing test at a time, then run the suite); `dotnet format --verify-no-changes`. For coverage: `dotnet-coverage collect -f cobertura -o coverage.cobertura.xml dotnet test`.

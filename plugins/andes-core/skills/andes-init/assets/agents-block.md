@@ -1,4 +1,4 @@
-<!-- andes:begin v1.1.0 -->
+<!-- andes:begin v1.2.0 -->
 # Andes engineering standards
 
 Shared by Claude Code and GitHub Copilot. The `andes-init` skill manages this block and replaces it on refresh — put project-specific instructions after the `andes:end` marker (`andes-init` scaffolds those sections on first install).
@@ -14,10 +14,10 @@ Detailed standards live in skills that load on demand. Load the matching skill b
 
 | Working on | Load |
 | --- | --- |
-| Any `*.cs` | `csharp-standards`, plus `aspnet-rest-apis` (web APIs), `azure-functions-csharp` (Functions), `csharp-mcp-server` (MCP servers), `ef-core` (EF Core), `csharp-async`, `csharp-docs` (public APIs) as the change needs. Non-negotiables: Minimal APIs only (no controllers), FluentValidation only (no DataAnnotations), primary constructors, collection expressions, `var`, and the `csharp-standards` file layout |
+| Any `*.cs` | `csharp-standards`, plus `aspnet-rest-apis` (web APIs), `azure-functions-csharp` (Functions), `csharp-mcp-server` (MCP servers), `ef-core` (EF Core), `csharp-async`, `csharp-docs` (public APIs) as the change needs; `dotnet-api-architecture` when adding, moving, renaming, or registering files, folders, or projects. Non-negotiables: Minimal APIs only (no controllers), FluentValidation only (no DataAnnotations), primary constructors, collection expressions, `var`, and the `csharp-standards` file layout |
 | .NET tests | `csharp-xunit` — xUnit v3 + NSubstitute only; never FluentAssertions, Shouldly, Moq, NUnit, or MSTest. Test databases: Testcontainers → SQLite in-memory → dedicated test database → EF Core InMemory as a last resort |
 | `*.razor`, `*.razor.cs` | `blazor-wasm` |
-| Angular code | `angular-standards`; `ngrx-signal-store` for any state; `angular-developer` references for depth |
+| Angular code | `angular-standards`; `ngrx-signal-store` for any state; `angular-ui-architecture` when adding, moving, or naming files or wiring layer lint; `angular-developer` references for depth |
 | `*.tf` | `terraform-conventions` |
 | `.github/workflows/*.yml`, `action.yml` | `github-actions-hardening`, plus `github-actions-efficiency` / `github-actions-runtime-upgrade-conventions` when relevant |
 | Microsoft Agent Framework | `microsoft-agent-framework` |

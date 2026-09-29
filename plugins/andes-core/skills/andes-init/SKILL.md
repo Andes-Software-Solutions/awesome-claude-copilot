@@ -48,7 +48,7 @@ Do not offer VS Code settings (`chat.plugins.*`, `chat.useAgentsMdFile`): the pl
 
 Earlier versions of these standards were copied into repositories. Look for, and list with paths:
 
-- `.claude/rules/{csharp,aspnet-rest-apis,azure-functions-csharp,blazor-wasm,csharp-mcp-server,terraform}.md` and `.github/instructions/<same>.instructions.md`
+- `.claude/rules/{csharp,aspnet-rest-apis,azure-functions-csharp,blazor-wasm,csharp-mcp-server,terraform,api-architecture,ui-architecture}.md` and `.github/instructions/<same>.instructions.md`
 - `.claude/agents/{csharp-code-reviewer,angular-code-reviewer,github-actions-reviewer,prd-generator,se-technical-writer}.md` and `.github/agents/*.agent.md` for the same roles plus `planner-expert`, `csharp-expert`, `angular-expert`, `full-stack-expert`, `csharp-dotnet-janitor`, `csharp-mcp-expert`
 - `.claude/skills/<name>` or `.github/skills/<name>` for any skill an installed Andes plugin also ships
 - `microsoft-learn`, `angular-cli`, `context7`, or `terraform` servers in `.mcp.json` / `.vscode/mcp.json` (the plugins start their own)

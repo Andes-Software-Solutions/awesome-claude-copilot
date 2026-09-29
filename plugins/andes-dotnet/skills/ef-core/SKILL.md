@@ -10,7 +10,7 @@ description: "Use when writing or reviewing Entity Framework Core code: DbContex
 - Keep DbContext classes focused and cohesive
 - Take options through a primary constructor: `public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)`
 - Override OnModelCreating for fluent API configuration
-- Separate entity configurations using IEntityTypeConfiguration
+- Separate entity configurations using IEntityTypeConfiguration (one per entity under `Repository/<Provider>/Configurations/`, per `dotnet-api-architecture`)
 - Consider using DbContextFactory pattern for console apps or tests
 
 ## Entity Design

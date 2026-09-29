@@ -68,7 +68,7 @@ Skip this step for bug fixes, cleanup or modernization (janitor work), documenta
 
 Explore the codebase yourself with `search` and `read`: analogous existing features to use as implementation templates, the conventions in play, potential blockers and ambiguities. Split large tasks by area (front end, back end, infrastructure) and explore each in turn.
 
-Name the relevant installed Andes skills in the plan (for example `csharp-standards`, `aspnet-rest-apis`, `ef-core`, `csharp-xunit`, `blazor-wasm`, `angular-standards`, `ngrx-signal-store`, `terraform-conventions`, `github-actions-hardening`) so the implementing agent loads them before coding. You may load a skill yourself to ground design decisions. Ground version-specific questions per <mcp_grounding>.
+Name the relevant installed Andes skills in the plan (for example `csharp-standards`, `dotnet-api-architecture`, `aspnet-rest-apis`, `ef-core`, `csharp-xunit`, `blazor-wasm`, `angular-standards`, `angular-ui-architecture`, `ngrx-signal-store`, `terraform-conventions`, `github-actions-hardening`) so the implementing agent loads them before coding. You may load a skill yourself to ground design decisions. Ground version-specific questions per <mcp_grounding>.
 
 Carry findings into the plan.
 
