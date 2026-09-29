@@ -4,7 +4,7 @@
 **Date**: 2026-09-27
 **Deciders**: Rodrigo Rojas
 **Amends**: [2026-09-plugin-architecture.md](2026-09-plugin-architecture.md)
-**Superseded in part by**: [2026-09-copilot-reasoning-effort.md](2026-09-copilot-reasoning-effort.md) (2026-09-29) — the Copilot agents no longer declare `target`, so they load in VS Code too. The bans on `handoffs`, `argument-hint`, and `vscode/*` tools stand.
+**Superseded in part by**: [2026-09-copilot-reasoning-effort.md](2026-09-copilot-reasoning-effort.md) (2026-09-29) — the Copilot agents no longer declare `target`, so they load in VS Code too. The bans on `argument-hint` and `vscode/*` tools stand. [2026-09-planner-handoffs.md](2026-09-planner-handoffs.md) (2026-09-29) gives `andes-planner-expert` handoff buttons for VS Code Local sessions. Every other agent still carries no `handoffs`.
 
 The agent files, manifests, skills, `AGENTS.md`, `scripts/repo-audit.mjs`, and `scripts/release.mjs` are the source of truth. This record explains why they look the way they do. If a value here disagrees with a file, trust the file.
 
