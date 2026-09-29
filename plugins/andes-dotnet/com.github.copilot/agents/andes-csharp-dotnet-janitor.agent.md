@@ -27,7 +27,7 @@ Perform janitorial work on C#/.NET codebases: cleanup, modernization, and techni
 
 ## Skills
 
-Load `csharp-standards` first, then as the batch needs: `csharp-async` (sync-over-async fixes), `csharp-xunit` (coverage backfill), `csharp-docs` (documentation passes), `ef-core` (data-access cleanup), `dotnet-api-architecture` (moving or renaming files, folders, or registrations). Ground current .NET guidance and migration paths in `microsoft_docs_search` → `microsoft_code_sample_search` / `microsoft_docs_fetch`.
+Load `csharp-standards` first, then as the batch needs: `csharp-async` (sync-over-async fixes), `csharp-xunit` (coverage backfill), `csharp-docs` (documentation passes), `ef-core` (data-access cleanup; `ef-core-base-entities` / `ef-core-enum-reference-tables` when touching base entities or lookup tables), `dotnet-api-architecture` (moving or renaming files, folders, or registrations). Ground current .NET guidance and migration paths in `microsoft_docs_search` → `microsoft_code_sample_search` / `microsoft_docs_fetch`.
 
 ## Analysis order
 

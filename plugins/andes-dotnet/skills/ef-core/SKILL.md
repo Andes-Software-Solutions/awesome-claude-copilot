@@ -10,11 +10,13 @@ description: "Use when writing or reviewing Entity Framework Core code: DbContex
 - Keep DbContext classes focused and cohesive
 - Take options through a primary constructor: `public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)`
 - Override OnModelCreating for fluent API configuration
-- Separate entity configurations using IEntityTypeConfiguration (one per entity under `Repository/<Provider>/Configurations/`, per `dotnet-api-architecture`)
+- Separate entity configurations using IEntityTypeConfiguration (one per entity under `Repository/<Provider>/Configurations/`, per `dotnet-api-architecture`); shared base mappings are abstract configurations under `Configurations/Base/`
 - Consider using DbContextFactory pattern for console apps or tests
 
 ## Entity Design
 
+- Derive entities from the `Entity/Base/` classes (`BaseEntity`, `BaseCreatedEntity`, `BaseModifiedEntity`) per `ef-core-base-entities`: Guid keys, soft delete, UTC audit stamps, and a row-version token, all mapped fluently and stamped by interceptors
+- Model a fixed set of values (status, type, category) as an enum-backed reference table per `ef-core-enum-reference-tables`
 - Use meaningful primary keys (consider natural vs surrogate keys)
 - Implement proper relationships (one-to-one, one-to-many, many-to-many)
 - Configure keys, constraints, and mappings with the fluent API in `IEntityTypeConfiguration<T>` classes only; never put DataAnnotations mapping attributes on entities, and never validate with them (validation is FluentValidation on request types)

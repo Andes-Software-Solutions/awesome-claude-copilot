@@ -4,7 +4,7 @@
     "name": "Rodrigo Rojas"
   },
   "metadata": {
-    "description": "Andes: C#/.NET, Angular, GitHub Actions, and Terraform standards for Claude Code and GitHub Copilot."
+    "description": "Andes: C#/.NET, Angular, GitHub Actions, Terraform, and Azure DevOps standards for Claude Code and GitHub Copilot."
   },
   "plugins": [
     {
@@ -36,6 +36,11 @@
       "name": "andes-terraform",
       "source": "./plugins/andes-terraform",
       "description": "Terraform conventions as an on-demand skill and the Terraform MCP server limited to the public registry toolset."
+    },
+    {
+      "name": "andes-azure-devops",
+      "source": "./plugins/andes-azure-devops",
+      "description": "Azure DevOps backlog management: a scoped Azure DevOps MCP server (core, work, work-items domains), an approval-gated agent that creates, updates, and removes epics, features, and stories and always asks for assignee and iteration, and an init skill that records the project in AGENTS.md."
     }
   ]
 }

@@ -119,13 +119,26 @@ const CONFIG = {
       'angular-cli/get_best_practices', 'angular-cli/search_documentation', 'angular-cli/find_examples',
       'context7/resolve-library-id', 'context7/query-docs',
     ],
+    // The backlog manager writes to Azure DevOps; without these it can only report.
+    'andes-ado-backlog-manager': [
+      'azure-devops/wit_work_item', 'azure-devops/wit_query', 'azure-devops/wit_work_item_write',
+      'azure-devops/wit_work_item_link_write', 'azure-devops/work', 'azure-devops/core_list_project_teams',
+    ],
   },
   // npx servers that deliberately float instead of pinning; the package must carry exactly this
   // suffix so the MCP tool set tracks the latest CLI release.
   floatingMcpServers: { 'angular-cli': '@latest' },
-  requiredMcpArgs: { 'angular-cli': ['--read-only'], terraform: ['--toolsets=registry'] },
-  // Exposed by the Angular CLI MCP server but never granted to an agent.
-  forbiddenMcpTools: ['ai_tutor'],
+  requiredMcpArgs: {
+    'angular-cli': ['--read-only'],
+    terraform: ['--toolsets=registry'],
+    // Three domains and az-login auth only: no test plans, repos, pipelines, wiki, or search, and no
+    // interactive sign-in a headless subagent could never complete.
+    'azure-devops': ['-d', 'core', 'work', 'work-items', '--authentication', 'azcli'],
+  },
+  // `-d` is additive, so requiredMcpArgs alone cannot stop a domain being re-enabled.
+  forbiddenMcpArgs: { 'azure-devops': ['all', 'test-plans', 'repositories', 'pipelines', 'wiki', 'search', 'advanced-security'] },
+  // Exposed by a shipped server but never granted to an agent.
+  forbiddenMcpTools: ['ai_tutor', 'wit_work_item_attachment', 'work_iteration_write', 'work_capacity_write'],
   // Skills whose bytes are pinned to an upstream source and must not be edited here.
   upstreamLock: 'scripts/upstream-skills.lock.json',
   // Paths that only exist in the old drop-in layout; plugin content must name skills instead.
@@ -547,6 +560,9 @@ if (runs('mcp')) {
       }
       for (const req of CONFIG.requiredMcpArgs[name] ?? []) {
         if (!argv.includes(req)) add('mcp', 'required-arg', 'error', `Server '${name}' must run with '${req}'`, [path]);
+      }
+      for (const bad of CONFIG.forbiddenMcpArgs[name] ?? []) {
+        if (argv.includes(bad)) add('mcp', 'forbidden-arg', 'error', `Server '${name}' must not run with '${bad}'`, [path]);
       }
     }
   }
