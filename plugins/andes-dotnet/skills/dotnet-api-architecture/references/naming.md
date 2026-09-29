@@ -8,21 +8,20 @@
 | Folders — collections of like types | plural | `Endpoints`, `Enums`, `Options`, `Configurations`, `HealthChecks`, `Interceptors`, `Models`, `Exceptions`, `Constants`, `Scripts`, `<Feature>` |
 | Folders — techniques and infrastructure | gerund or mass noun | `Extraction`, `Caching`, `Middleware`, `Health`, `Observability`, `Configuration`, `Provisioning`, `Validation` |
 | Folders — persistence providers | the technology's proper name | `Sql`, `Mongo`, `Blob` |
-| File names | == the type name, with two exceptions: an interface with its single implementation, a validator beside the type it validates | `OrderService.cs` (holds `IOrderService` too); `OrderRepository.cs` (holds `IOrderRepository` too); `ExportOptions.cs` holding `ExportOptionsValidator` |
+| File names | == the type name, with two exceptions: an interface with its single implementation, a validator beside the type it validates | `OrderService.cs` (holds `IOrderService` too); `SessionCache.cs` (holds `ISessionCache` too); `ExportOptions.cs` holding `ExportOptionsValidator` |
 | Kind-first subfolders | `Models/`, `Exceptions/`, `Constants/`, `Interfaces/` under the leaf folder, one type per file | `Orders/Models/OrderSummary.cs`, `Orders/Exceptions/OrderClosedException.cs` |
-| Services | `<Entity>Service` / `I<Entity>Service` | `OrderService` |
-| Repositories | contract `I<Entity>Repository` and implementation `<Entity>Repository`, both in `Service/<Feature>/<Entity>Repository.cs`; never a provider prefix | `IOrderRepository` / `OrderRepository` |
+| Services | `<Entity>Service` / `I<Entity>Service`; the service queries the `DbContext`, so there is no repository type to name; never a provider prefix | `OrderService` |
 | Store gateways (non-EF providers) | `I<Subject>Store` / `<Provider><Subject>Store` in `Repository/<Provider>/` | `IDocumentStore` / `BlobDocumentStore` |
 | Mappers | `<Entity>Mapper`, static | `OrderMapper` |
 | Options | `<Area>Options`, `SectionName` | `ExportOptions` |
 | Validators | `<Type>Validator` | `ExportOptionsValidator`, `CreateOrderActionDtoValidator` |
 | DI extension classes (Api) | `<Feature>Configuration` (plural) | `OrdersConfiguration` vs EF `OrderConfiguration` |
 | DI extension classes (Repository) | `<Provider>PersistenceConfiguration` | `SqlPersistenceConfiguration` |
-| DI extension methods | `Add<Feature>` for features (services and repositories); `Add<Prefix><Thing>` for infrastructure; `Add<Prefix><Provider><Concern>` for a store | `AddOrders`; `AddContosoCors`; `AddContosoSqlPersistence` |
+| DI extension methods | `Add<Feature>` for features (their services); `Add<Prefix><Thing>` for infrastructure; `Add<Prefix><Provider><Concern>` for a store | `AddOrders`; `AddContosoCors`; `AddContosoSqlPersistence` |
 | `*Registration` | reserved for `Api/{Health,Middleware,Observability,Problems}` | `TelemetryRegistration` |
 | Endpoint modules | `<Entity>Endpoints`, `Map<Entity>Endpoints` (the `<Resource>Endpoints` of `aspnet-rest-apis`) | `OrderEndpoints` |
 | Filters | `<Name>EndpointFilter` | `PermissionEndpointFilter`, `ValidationEndpointFilter` |
-| Exception handlers | `<Name>ExceptionHandler` | `ValidationExceptionHandler`, `ConflictExceptionHandler` |
+| Exception handler | `GlobalExceptionHandler`, the only `IExceptionHandler` in the solution | `GlobalExceptionHandler` |
 | Health checks | `<Name>HealthCheck` | `DatabaseHealthCheck` |
 | DbContext | `<Prefix>DbContext` in `Repository/<Provider>/DbContexts/` | `ContosoDbContext` |
 | An injected `DbContext` | primary-constructor parameter `ctx`, field `_ctx`, whatever the context type — never `_dbContext` or `_context` | `private readonly ContosoDbContext _ctx = ctx;` |
@@ -46,12 +45,12 @@ Plural enum names collide with analyzer CA1717 ("only FlagsAttribute enums shoul
 
 ## The two file-name exceptions
 
-- **Interface + single implementation.** Same file, named after the implementation, interface declared first — services, repositories, caches, and store gateways all follow it. Two or more implementations, or implementations that live in a subfolder → `<Feature>/Interfaces/I<Name>.cs`, one per file. A nested namespace sees its parent, so an interface in `<Feature>/Interfaces/` needs no `using` for types in `<Feature>/` — IDE0005 flags one as unnecessary.
+- **Interface + single implementation.** Same file, named after the implementation, interface declared first — services, caches, and store gateways all follow it. Two or more implementations, or implementations that live in a subfolder → `<Feature>/Interfaces/I<Name>.cs`, one per file. A nested namespace sees its parent, so an interface in `<Feature>/Interfaces/` needs no `using` for types in `<Feature>/` — IDE0005 flags one as unnecessary.
 - **Validator + validated type.** One `AbstractValidator<T>` per validated type, in the same file as `T` (`options-and-validation.md`).
 
 ## Kind-first subfolders
 
-Everything else is one type per file, named after the type, sorted by kind under the leaf folder: `Models/` (classes, records, structs, record structs), `Exceptions/` (`<Condition>Exception.cs`), `Constants/` (const-only static holders shared in the folder; a const one type uses is a `private const` on it; solution-wide catalogs are `Common/Constants/`), `Interfaces/` (per the rule above). Working types — services, repositories, mappers, endpoint modules, handlers, filters, middleware, static helpers with method bodies — stay at the folder root. There are no `<Folder>Records.cs`-style grouping files; nested and private types stay nested; enums live only in `Common/Enums/`, one per file.
+Everything else is one type per file, named after the type, sorted by kind under the leaf folder: `Models/` (classes, records, structs, record structs), `Exceptions/` (`<Condition>Exception.cs`), `Constants/` (const-only static holders shared in the folder; a const one type uses is a `private const` on it; solution-wide catalogs are `Common/Constants/`), `Interfaces/` (per the rule above). Working types — services, mappers, endpoint modules, handlers, filters, middleware, static helpers with method bodies — stay at the folder root. There are no `<Folder>Records.cs`-style grouping files; nested and private types stay nested; enums live only in `Common/Enums/`, one per file.
 
 ## Enforcing namespace == folder
 

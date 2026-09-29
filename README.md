@@ -13,7 +13,7 @@ It contains no application code, only assistant configuration: skills, agents, M
 
 How it fits together:
 
-- **A short always-on block.** An `AGENTS.md` block of about 640 words, installed by `andes-init`, is the only text loaded every session. Both harnesses read it. On a first install `andes-init` also scaffolds the project's own sections after it.
+- **A short always-on block.** An `AGENTS.md` block of about 650 words, installed by `andes-init`, is the only text loaded every session. Both harnesses read it. On a first install `andes-init` also scaffolds the project's own sections after it.
 - **Standards load on demand.** The detailed standards are skills. A file-type → skill routing table in `AGENTS.md` tells the model which ones to load.
 - **Reviewers only report.** They report High and Medium findings with a verdict. The review loop is capped at two rounds, and then the technical writer documents the change.
 - **MCP servers ship with their plugin.** Each server is pinned (or floats on `@latest` by design) and scoped, every agent is granted exact tools, and the audit checks that each research agent holds the grants it needs.
@@ -26,7 +26,7 @@ How it fits together:
 
 | Plugin | Ships | Depends on |
 | --- | --- | --- |
-| `andes-core` | **Skills:** `andes-init`, `prd`, `technical-writing`<br>**Agents:** `andes-prd-generator`, `andes-se-technical-writer`<br>**Copilot-only agents:** `andes-planner-expert`, `andes-full-stack-expert`<br>**MCP:** `context7` | — |
+| `andes-core` | **Skills:** `andes-init`, `andes-scaffold`, `prd`, `technical-writing`<br>**Agents:** `andes-prd-generator`, `andes-se-technical-writer`<br>**Copilot-only agents:** `andes-planner-expert`, `andes-full-stack-expert`<br>**MCP:** `context7` | — |
 | `andes-dotnet` | **Skills:** `csharp-standards`, `dotnet-api-architecture`, `aspnet-rest-apis`, `azure-functions-csharp`, `csharp-mcp-server`, `csharp-async`, `csharp-docs`, `csharp-xunit`, `ef-core`, `ef-core-base-entities`, `ef-core-enum-reference-tables`, `microsoft-agent-framework`, `microsoft-docs`<br>**Agents:** `andes-csharp-code-reviewer`<br>**Copilot-only agents:** `andes-csharp-expert`, `andes-csharp-dotnet-janitor`<br>**MCP:** `microsoft-learn` | `andes-core` |
 | `andes-dotnet-wasm` | **Skills:** `blazor-wasm` (standalone Blazor WebAssembly, .NET 10) | `andes-core`, `andes-dotnet` |
 | `andes-angular` | **Skills:** `angular-standards`, `angular-ui-architecture`, `ngrx-signal-store`, `angular-developer` (official Angular team skill, vendored)<br>**Agents:** `andes-angular-code-reviewer`<br>**Copilot-only agents:** `andes-angular-expert`<br>**MCP:** `angular-cli` | `andes-core` |
@@ -159,8 +159,10 @@ These apply to every new or changed C# file. Existing code is migrated only when
 - **FluentValidation only.** One `AbstractValidator<T>` per request type, run from a shared endpoint filter. No DataAnnotations, no `AddValidation()`, not in Blazor forms either.
 - **File layout.** Fields and properties, then interface implementations, then `#region Private methods`, `#region Public static methods`, and `#region Logging` (the `[LoggerMessage]` methods), in that order and always last (`csharp-standards`).
 - **Primary constructors**, **collection expressions**, and **`var`** wherever the initializer has a type; logging only through `[LoggerMessage]` source-generated methods.
+- **No repository layer.** Services inject the `DbContext` and query it; `Add` / `AddRange`, never `AddAsync` (`dotnet-api-architecture`, `ef-core`).
+- **One exception handler.** `GlobalExceptionHandler` turns every exception into Problem Details, with no exception detail in a 5xx (`aspnet-rest-apis`).
 
-`andes-csharp-code-reviewer` reports new controllers or DataAnnotations as High and layout, `var`, or logging violations as Medium. The repo audit (`csharp-policy`) fails if any plugin text recommends controllers or DataAnnotations.
+`andes-csharp-code-reviewer` reports new controllers, DataAnnotations, or exception detail in a 5xx body as High. It reports layout, `var`, logging, repository, `AddAsync`, and extra-handler violations as Medium. The repo audit (`csharp-policy`) fails if any plugin text recommends controllers, DataAnnotations, repositories, or `AddAsync`.
 
 ---
 
@@ -270,7 +272,8 @@ What was renamed:
 ├── AGENTS.md                           # the andes block (= andes-init template) + this repo's own sections
 ├── CLAUDE.md                           # exactly "@AGENTS.md"
 ├── .claude/skills/                     # maintainer-only /repo-audit, /ngrx-signals-sync, /release (not shipped)
-├── .claude/settings.json               # maintainer settings (enables andes-core, andes-github)
+├── .claude/settings.json               # maintainer settings; never registers the andes marketplace or its plugins
+├── .mcp.json                           # maintainer MCP servers, copied from the plugins (audit: mcp/root-drift)
 ├── .github/workflows/repo-audit.yml    # CI
 ├── scripts/repo-audit.mjs              # structural audit
 ├── scripts/release.mjs                 # release: CHANGELOG roll, tag, GitHub Release
@@ -361,10 +364,12 @@ The underlying check is `node plugins/andes-angular/skills/ngrx-signal-store/scr
 - [docs/2026-09-plugin-architecture.md](docs/2026-09-plugin-architecture.md) is the ADR for this layout. It covers verification results, the Copilot checklist, and fallbacks.
 - [docs/2026-09-copilot-harness-and-release.md](docs/2026-09-copilot-harness-and-release.md) records the move to the `github-copilot` harness, the planner → PRD direction, Context7 in `andes-core`, the C# non-negotiables, maintainer skills, and the release process.
 - [docs/2026-09-architecture-skills.md](docs/2026-09-architecture-skills.md) records the `dotnet-api-architecture` and `angular-ui-architecture` skills: the split between `SKILL.md` and `references/`, the routing rows, and the decisions on EF mapping, test layout, and styling.
-- [docs/2026-09-persistence-layout-and-ef-core-entity-skills.md](docs/2026-09-persistence-layout-and-ef-core-entity-skills.md) records one type per file with `Models/` subfolders, repositories in Service over a plumbing-only Repository, and the `ef-core-base-entities` and `ef-core-enum-reference-tables` skills.
+- [docs/2026-09-persistence-layout-and-ef-core-entity-skills.md](docs/2026-09-persistence-layout-and-ef-core-entity-skills.md) records one type per file with `Models/` subfolders, a plumbing-only Repository (its repositories-in-Service rule is superseded), and the `ef-core-base-entities` and `ef-core-enum-reference-tables` skills.
 - [docs/2026-09-azure-devops-plugin.md](docs/2026-09-azure-devops-plugin.md) records the `andes-azure-devops` plugin: the local stdio server and its three domains, `azcli` authentication, the `ADO-STATUS` contract, why removal is `State = Removed`, and the open Copilot `${ADO_ORG}` question.
 - [docs/2026-09-copilot-reasoning-effort.md](docs/2026-09-copilot-reasoning-effort.md) records the per-agent `reasoning-effort` values on Copilot, the removal of `target`, the context trims, and what is still unverified.
 - [docs/2026-09-planner-handoffs.md](docs/2026-09-planner-handoffs.md) records why the planner declares handoff buttons for VS Code Local sessions, the audit exemption, and when the buttons will be removed.
+- [docs/2026-09-maintainer-mcp-servers.md](docs/2026-09-maintainer-mcp-servers.md) records why this repository starts its own MCP servers from the root `.mcp.json` and never installs its own marketplace, and the audit rules that keep the root entries in step with the plugins.
+- [docs/2026-09-services-own-data-access-and-scaffold.md](docs/2026-09-services-own-data-access-and-scaffold.md) records why services query the `DbContext` directly with no repository layer, `Add` over `AddAsync`, the single `GlobalExceptionHandler`, `DateTimeOffset` timestamps, and the `andes-scaffold` skill.
 - The `docs/2026-08-*.md` files record earlier decisions. Parts of them are superseded by the ADR.
 - [CHANGELOG.md](CHANGELOG.md)
 

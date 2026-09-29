@@ -9,6 +9,7 @@ on:
       - ".claude/**"
       # .github/prompts and .vscode/mcp.json must not exist; they stay listed so a PR that
       # recreates them runs the audit (registry/legacy-commands, mcp/root-config) before merge.
+      # .mcp.json must match the plugin declarations (mcp/root-drift).
       - ".github/prompts/**"
       - ".github/workflows/repo-audit.yml"
       - ".mcp.json"

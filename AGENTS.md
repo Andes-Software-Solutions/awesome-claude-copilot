@@ -1,4 +1,4 @@
-<!-- andes:begin v1.3.0 -->
+<!-- andes:begin v1.4.0 -->
 # Andes engineering standards
 
 Shared by Claude Code and GitHub Copilot. The `andes-init` skill manages this block and replaces it on refresh — put project-specific instructions after the `andes:end` marker (`andes-init` scaffolds those sections on first install).
@@ -14,7 +14,7 @@ Detailed standards live in skills that load on demand. Load the matching skill b
 
 | Working on | Load |
 | --- | --- |
-| Any `*.cs` | `csharp-standards`, plus `aspnet-rest-apis` (web APIs), `azure-functions-csharp` (Functions), `csharp-mcp-server` (MCP servers), `ef-core` (EF Core; `ef-core-base-entities` / `ef-core-enum-reference-tables` for entities and lookup tables), `csharp-async`, `csharp-docs` (public APIs) as the change needs; `dotnet-api-architecture` when adding, moving, renaming, or registering files, folders, or projects. Non-negotiables: Minimal APIs only (no controllers), FluentValidation only (no DataAnnotations), primary constructors, collection expressions, `var`, and the `csharp-standards` file layout |
+| Any `*.cs` | `csharp-standards`, plus `aspnet-rest-apis` (web APIs), `azure-functions-csharp` (Functions), `csharp-mcp-server` (MCP servers), `ef-core` (EF Core; `ef-core-base-entities` / `ef-core-enum-reference-tables` for entities and lookup tables), `csharp-async`, `csharp-docs` (public APIs) as the change needs; `dotnet-api-architecture` when adding, moving, renaming, or registering files, folders, or projects. Non-negotiables: Minimal APIs only (no controllers), FluentValidation only (no DataAnnotations), services query the `DbContext` directly (no repositories), primary constructors, collection expressions, `var`, and the `csharp-standards` file layout |
 | .NET tests | `csharp-xunit` — xUnit v3 + NSubstitute only; never FluentAssertions, Shouldly, Moq, NUnit, or MSTest. Test databases: Testcontainers → SQLite in-memory → dedicated test database → EF Core InMemory as a last resort |
 | `*.razor`, `*.razor.cs` | `blazor-wasm` |
 | Angular code | `angular-standards`; `ngrx-signal-store` for any state; `angular-ui-architecture` when adding, moving, or naming files or wiring layer lint; `angular-developer` references for depth |
@@ -53,9 +53,11 @@ This repository is the `andes` plugin marketplace: engineering standards for C#/
 - `scripts/` — `repo-audit.mjs` (structural audit), `release.mjs` (release), `upstream-skills.lock.json` (hash pin for the vendored `angular-developer` skill).
 - `docs/` — dated design records. `CHANGELOG.md` — Keep a Changelog, rolled by `/release`.
 - `.github/workflows/repo-audit.yml` — CI: the audit and `claude plugin validate --strict` on every PR.
+- `.mcp.json` — the MCP servers maintainers query for current docs and backlog data: `microsoft-learn`, `angular-cli`, `context7`, `azure-devops` (needs `ADO_ORG` and `az login`), and `terraform` (needs Docker). Each entry is a verbatim copy of the plugin that ships it; the audit fails on drift (`mcp/root-drift`).
 
 ## Working conventions
 
+- This repository builds the marketplace and is maintained with Claude Code. It never registers the `andes` marketplace or enables its plugins in `.claude/settings.json` (`registry/self-install`); load live plugin files with `--plugin-dir` instead (Commands). Ground skill and agent changes in the root `.mcp.json` servers, not in memory. Change a server's pin in its plugin first, then copy the entry into `.mcp.json`.
 - A Claude agent and its Copilot twin change together; their descriptions match apart from the word PROACTIVELY. Copilot agents declare no `target`, so they load in both VS Code and `github-copilot`; they pin `model` as a `modelParity` pair, CLI slug first and VS Code display name second (`[claude-sonnet-5.5, Claude Sonnet 5.5 (copilot)]`), pin `reasoning-effort` to the `copilotEffort` table in `scripts/repo-audit.mjs`, use only the plain tool aliases and exact `server/tool` MCP grants, and carry no `argument-hint` or `vscode/*` tools. Only `andes-planner-expert` declares `handoffs`: VS Code Local sessions show them as buttons, and every other surface ignores them.
 - Bump `version` in both manifests of every plugin you change — installs are cached by version. CI enforces it with `--base`.
 - Edit the block in `agents-block.md`, then copy it verbatim between the markers above. Its `## Review loop` section is also copied verbatim into the Copilot implementer agents.

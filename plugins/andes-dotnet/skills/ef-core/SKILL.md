@@ -8,6 +8,7 @@ description: "Use when writing or reviewing Entity Framework Core code: DbContex
 ## Data Context Design
 
 - Keep DbContext classes focused and cohesive
+- Services inject the DbContext and query it directly (`dotnet-api-architecture`): the DbContext is the unit of work and each DbSet a repository, so never wrap them in `I<Entity>Repository`, a generic `IRepository<T>`, or a unit-of-work class
 - Take options through a primary constructor: `public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)`
 - Override OnModelCreating for fluent API configuration
 - Separate entity configurations using IEntityTypeConfiguration (one per entity under `Repository/<Provider>/Configurations/`, per `dotnet-api-architecture`); shared base mappings are abstract configurations under `Configurations/Base/`
@@ -46,10 +47,11 @@ description: "Use when writing or reviewing Entity Framework Core code: DbContex
 - Prefer strongly-typed LINQ queries over raw SQL
 - Use appropriate query operators (Where, OrderBy, GroupBy)
 - Consider database functions for complex operations
-- Implement specifications pattern for reusable queries
+- Reuse a query two services share as an extension method on `IQueryable<T>` beside the first service that needs it, not as a repository
 
 ## Change Tracking & Saving
 
+- Start tracking new entities with `Add` / `AddRange` (on the DbSet or the DbContext), never `AddAsync` / `AddRangeAsync`. Adding only marks entities `Added` and does not touch the database; the async overloads exist solely for the HiLo value generator, which these standards never configure (Guid keys are generated client-side, `ef-core-base-entities`). The round trip is `SaveChangesAsync`, which stays async. [Add versus AddAsync](https://learn.microsoft.com/ef/core/change-tracking/miscellaneous#add-versus-addasync)
 - Use appropriate change tracking strategies
 - Batch your SaveChanges() calls
 - Implement concurrency control for multi-user scenarios
