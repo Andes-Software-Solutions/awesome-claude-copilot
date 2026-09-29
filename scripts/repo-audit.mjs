@@ -113,6 +113,10 @@ const CONFIG = {
   // frontmatter shape serves both, so keys and tool-set ids that only VS Code honors stay forbidden.
   copilotToolAliases: ['read', 'edit', 'search', 'execute', 'agent', 'web', 'todo'],
   copilotVscodeOnlyKeys: ['handoffs', 'argument-hint'],
+  // VS Code Local sessions render handoffs as buttons; Copilot CLI and the cloud agent ignore the key.
+  // Only the planner keeps them, as a bridge to the implementer until VS Code runs the CLI harness.
+  copilotHandoffAgents: ['andes-planner-expert'],
+  copilotBuiltinHandoffTargets: ['agent'],
   // MCP tools each research or implementer agent must be granted, in Copilot `server/tool` form.
   // A Claude twin is checked through the plugin that ships the server. This is what guarantees the
   // planner and the writers ground version-specific answers in the right server, not in memory.
@@ -251,6 +255,17 @@ function fmList(fm, key) {
   return items;
 }
 const hasKey = (fm, key) => new RegExp(`^${key}:`, 'm').test(fm);
+function handoffTargets(fm) {
+  const lines = fm.split('\n');
+  const i = lines.findIndex((l) => l.startsWith('handoffs:'));
+  if (i < 0) return [];
+  const out = [];
+  for (let j = i + 1; j < lines.length && /^\s/.test(lines[j]); j++) {
+    const m = lines[j].match(/^\s+(?:-\s+)?agent:\s*(.+)$/);
+    if (m) out.push(stripQuotes(m[1].trim()));
+  }
+  return out;
+}
 function section(body, heading) {
   const lines = body.split('\n');
   const i = lines.findIndex((l) => l.trim() === heading);
@@ -487,6 +502,7 @@ if (runs('agents')) {
         add('agents', 'target', 'error', "Copilot agent declares 'target:', which limits it to one environment; remove the key so it loads in both VS Code and github-copilot", [a.path]);
       }
       for (const k of CONFIG.copilotVscodeOnlyKeys) {
+        if (k === 'handoffs' && CONFIG.copilotHandoffAgents.includes(a.stem)) continue;
         if (hasKey(a.fm, k)) add('agents', 'vscode-key', 'error', `'${k}:' is VS Code-only frontmatter, unsupported on Copilot CLI and the cloud agent; remove it`, [a.path]);
       }
       if (hasKey(a.fm, CONFIG.copilotEffortMisspelling)) {
@@ -521,6 +537,12 @@ if (runs('agents')) {
         if (!target) add('agents', 'target-ghost', 'error', `Agent references '${t}', which is not a Copilot agent in this marketplace`, [a.path]);
         else if (fmScalar(target.fm, 'disable-model-invocation') === 'true') {
           add('agents', 'target-not-invocable', 'error', `'${t}' declares disable-model-invocation: true and cannot be invoked as a subagent`, [a.path, target.path]);
+        }
+      }
+      // The user clicks a handoff, so disable-model-invocation on its target does not matter.
+      for (const t of handoffTargets(a.fm)) {
+        if (!CONFIG.copilotBuiltinHandoffTargets.includes(t) && !agents.some((x) => x.harness === 'copilot' && x.stem === t)) {
+          add('agents', 'target-ghost', 'error', `Handoff targets '${t}', which is not a Copilot agent in this marketplace or a built-in VS Code agent`, [a.path]);
         }
       }
       for (const req of CONFIG.requiredMcpGrants[a.stem] ?? []) {
