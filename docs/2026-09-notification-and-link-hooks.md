@@ -1,6 +1,6 @@
 # Notification and link-check hooks
 
-**Date:** 2026-09-29. **Status:** accepted; verified on Claude Code, Copilot checks pending ([checklist](#not-verified-copilot-checklist)). Amends [2026-09-plugin-architecture.md](2026-09-plugin-architecture.md) §1: the default `hooks/` folder stays banned, and plugin hooks live in `claude-hooks/` and `com.github.copilot/hooks/`.
+**Date:** 2026-09-29. **Status:** accepted; verified on Claude Code, Copilot checks pending ([checklist](#not-verified-copilot-checklist)). Amends [2026-09-plugin-architecture.md](2026-09-plugin-architecture.md) §1: the default `hooks/` folder stays banned, and plugin hooks live in `claude-hooks/` and `com.github.copilot/hooks/`. Amended by [2026-09-harness-trees.md](2026-09-harness-trees.md): each harness now has its own plugin tree, so the Claude hooks moved to the default `hooks/hooks.json`.
 
 ## Why
 

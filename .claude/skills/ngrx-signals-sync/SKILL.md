@@ -9,12 +9,12 @@ Run only when the user invoked `/ngrx-signals-sync`.
 
 Refresh the `ngrx-signal-store` skill against the official NgRx docs.
 
-The skill is pinned to a snapshot recorded in `plugins/andes-angular/skills/ngrx-signal-store/sources.json`: a blob sha per upstream doc page, the `@ngrx/signals` version, and a `mapsTo` list saying which skill file each page feeds.
+The skill is pinned to a snapshot recorded in `claude/andes-angular/skills/ngrx-signal-store/sources.json`: a blob sha per upstream doc page, the `@ngrx/signals` version, and a `mapsTo` list saying which skill file each page feeds.
 
 ## 1. Check for drift
 
 ```bash
-node plugins/andes-angular/skills/ngrx-signal-store/scripts/check-updates.mjs --json
+node claude/andes-angular/skills/ngrx-signal-store/scripts/check-updates.mjs --json
 ```
 
 Branch on the exit code — it is the contract:
@@ -55,14 +55,20 @@ Then apply **minimal** edits:
 ## 4. Re-pin
 
 ```bash
-node plugins/andes-angular/skills/ngrx-signal-store/scripts/check-updates.mjs --pin
+node claude/andes-angular/skills/ngrx-signal-store/scripts/check-updates.mjs --pin
 ```
 
 This rewrites the shas, the version, and `pinnedAt` from live upstream. Do not hand-edit shas — the script is there so that no one has to transcribe seventeen hex strings correctly.
 
+Then mirror the skill into the Copilot tree, because each harness loads its own copy and the audit fails while they differ (`mirror/drift`):
+
+```bash
+node scripts/sync-shared.mjs --plugin=andes-angular
+```
+
 ## 5. Bump the plugin version
 
-Installed copies of `andes-angular` are cached by version, so an edited skill reaches no one until the version moves. Bump the patch number of `version` in **both** `plugins/andes-angular/.claude-plugin/plugin.json` and `plugins/andes-angular/plugin.json` (they must stay equal).
+Installed copies of `andes-angular` are cached by version, so an edited skill reaches no one until the version moves. Bump the patch number of `version` in **both** `claude/andes-angular/.claude-plugin/plugin.json` and `copilot/andes-angular/plugin.json` (they must stay equal).
 
 ## 6. Report, and leave the diff for review
 

@@ -1,7 +1,7 @@
 # ADR-001: Ship the Standards as the `andes` Plugin Marketplace
 
 **Status**: Accepted — verified on Claude Code; GitHub Copilot checks pending ([checklist](#not-yet-verified-github-copilot-checklist))
-**Amended by**: [2026-09-copilot-harness-and-release.md](2026-09-copilot-harness-and-release.md) (2026-09-27), [2026-09-notification-and-link-hooks.md](2026-09-notification-and-link-hooks.md) (2026-09-29)
+**Amended by**: [2026-09-copilot-harness-and-release.md](2026-09-copilot-harness-and-release.md) (2026-09-27), [2026-09-notification-and-link-hooks.md](2026-09-notification-and-link-hooks.md) (2026-09-29), [2026-09-harness-trees.md](2026-09-harness-trees.md) (2026-09-29: the §1 layout is replaced by one tree per harness)
 **Date**: 2026-09-26
 **Deciders**: Rodrigo Rojas
 **Supersedes in part**: [2026-08-effort-defaults.md](2026-08-effort-defaults.md), [2026-08-repo-audit.md](2026-08-repo-audit.md), [2026-08-prd-workflow.md](2026-08-prd-workflow.md), [2026-08-standards-refresh.md](2026-08-standards-refresh.md)
