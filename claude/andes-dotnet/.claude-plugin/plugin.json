@@ -1,6 +1,6 @@
 {
   "name": "andes-dotnet",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "description": "C#/.NET standards as on-demand skills (C# 14, ASP.NET Core Minimal APIs, FluentValidation, Azure Functions, MCP servers, EF Core, xUnit v3 + NSubstitute) and a report-only C# reviewer.",
   "author": {
     "name": "Rodrigo Rojas"
@@ -18,8 +18,5 @@
   ],
   "dependencies": [
     "andes-core"
-  ],
-  "agents": [
-    "./claude-agents/andes-csharp-code-reviewer.md"
   ]
 }

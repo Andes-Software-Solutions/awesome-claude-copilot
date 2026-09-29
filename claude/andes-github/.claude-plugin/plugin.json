@@ -1,6 +1,6 @@
 {
   "name": "andes-github",
-  "version": "1.0.4",
+  "version": "1.1.0",
   "description": "GitHub Actions hardening, CI-efficiency, and runtime-upgrade skills with a report-only workflow reviewer.",
   "author": {
     "name": "Rodrigo Rojas"
@@ -15,8 +15,5 @@
   ],
   "dependencies": [
     "andes-core"
-  ],
-  "agents": [
-    "./claude-agents/andes-github-actions-reviewer.md"
   ]
 }
