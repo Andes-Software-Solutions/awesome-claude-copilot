@@ -31,6 +31,8 @@ const WINDOWS_TOAST = [
   '[Windows.UI.Notifications.ToastNotificationManager]::CreateToastNotifier($app).Show([Windows.UI.Notifications.ToastNotification]::new($x))',
 ].join('; ');
 
+const WAIT_MS = 8000;
+
 /** First match for `cmd` on PATH (PATHEXT-aware on Windows), or null. */
 export function onPath(cmd, { env = process.env, platform = process.platform } = {}) {
   const exts = platform === 'win32' ? (env.PATHEXT || '.EXE;.CMD;.BAT').split(';') : [''];
@@ -78,7 +80,7 @@ export function planNotification({ platform = process.platform, env = process.en
     const cmd = which('powershell');
     if (cmd) {
       return {
-        kind: 'spawn', cmd,
+        kind: 'spawn', cmd, wait: true,
         // -EncodedCommand sidesteps Windows PowerShell's command-line quote handling.
         args: ['-NoProfile', '-NonInteractive', '-WindowStyle', 'Hidden', '-EncodedCommand', Buffer.from(WINDOWS_TOAST, 'utf16le').toString('base64')],
         env: { ANDES_NOTIFY_TITLE: title, ANDES_NOTIFY_BODY: body },
@@ -125,11 +127,14 @@ function main() {
   }
   if (plan.kind === 'bell') ringTerminal(harness, platform);
   if (plan.kind !== 'spawn') return;
+  // On Windows a detached PowerShell never shows the toast, and an attached one dies when the hook
+  // exits, so the hook waits for it — capped below the 10 s hook timeout.
   const child = spawn(plan.cmd, plan.args, {
-    detached: true, stdio: 'ignore', windowsHide: true, env: { ...process.env, ...plan.env },
+    detached: !plan.wait, stdio: 'ignore', windowsHide: true, env: { ...process.env, ...plan.env },
   });
   child.on('error', () => {});
-  child.unref();
+  if (plan.wait) setTimeout(() => child.kill(), WAIT_MS).unref();
+  else child.unref();
 }
 
 const isMain = (() => {

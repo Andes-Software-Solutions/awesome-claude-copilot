@@ -2,6 +2,8 @@
 
 **Date:** 2026-09-28. **Status:** accepted. Extends [2026-09-plugin-architecture.md](2026-09-plugin-architecture.md) §3 (path-scoped rules became on-demand skills).
 
+> **Superseded in part by [2026-09-services-own-data-access-and-scaffold.md](2026-09-services-own-data-access-and-scaffold.md)** (2026-09-29): the test projects now live under `test/`, not `tests/`, so item 2 of [What shipped](#what-shipped) no longer holds for the test root.
+
 ## Why
 
 Two path-scoped rules in a consumer repository, `api-architecture.md` (263 lines) and `ui-architecture.md` (127 lines), fixed where every file goes and what it is called in a layered .NET minimal-API solution and in an Angular `src/app/` workspace. They were written to be portable — placeholders, no repository names — but they lived in one repository and auto-loaded on every `.cs` or `src/app/**` edit, about 11k tokens, whether or not the change touched layout.

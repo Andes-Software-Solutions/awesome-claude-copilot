@@ -7,7 +7,7 @@ allowed-tools: Bash(node:*), Bash(git status:*), Bash(git log:*), Bash(git tag:*
 
 Run only when the user invoked `/release`. Never start a release on your own initiative.
 
-This is the one maintainer command allowed to commit, tag, and push — and only after the user says yes to the dry run. Plugin versions are not part of a release: they move in the PR that changes a plugin (`repo-audit --base` enforces it). A release is the marketplace event: CHANGELOG roll, tag `vX.Y.Z`, GitHub Release.
+This is the one maintainer command allowed to commit, tag, and push — and only after the user says yes to the dry run. Plugin versions are not part of a release: all plugins share one version, bumped together in any PR that changes a plugin (`repo-audit` enforces it). A release is the marketplace event: CHANGELOG roll, tag `vX.Y.Z`, GitHub Release.
 
 ## 1. Dry run
 

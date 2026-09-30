@@ -29,6 +29,8 @@ test('Linux uses notify-send when a desktop session exists, otherwise rings the 
 test('Windows runs a PowerShell 5.1 toast with the text in env vars', () => {
   const p = plan({ platform: 'win32', harness: 'copilot' });
   assert.equal(p.cmd, '/usr/bin/powershell');
+  assert.equal(p.wait, true);
+  assert.ok(!plan().wait);
   assert.ok(p.args.includes('-EncodedCommand'));
   assert.deepEqual(p.env, { ANDES_NOTIFY_TITLE: 'GitHub Copilot — shop', ANDES_NOTIFY_BODY: 'Claude needs your permission to use Bash' });
   const script = Buffer.from(p.args.at(-1), 'base64').toString('utf16le');

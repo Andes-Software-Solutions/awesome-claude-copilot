@@ -29,7 +29,7 @@ Placeholders: `<Root>` = solution prefix (`Contoso.Shop`); `<Feature>` = plural 
 - **Validators** (FluentValidation only, per `csharp-standards`): one `AbstractValidator<T>` per validated type, declared in the same file as that type.
 - **Enums** all live in `Common/Enums/`, one per file, named in the plural (`OrderStatuses`) so they never collide with an entity or an enum reference table (`OrderStatus`); a wire-name companion is `<Enum>Names` in the owning Service feature. **Constants** (string and Guid catalogs, const-only) all live in `Common/Constants/`. Dto, Entity, Service, and Api hold no enums and no catalogs.
 - **Exceptions** are one per file in the `Exceptions/` subfolder of the folder whose code throws them (`Service/<Feature>/Exceptions/<Condition>Exception.cs`). `Service/Exceptions/` holds only the three solution-wide types: `NotFoundException`, `ForbiddenException`, `ConflictException`. A feature exception derives from the shared type whose status it means (`OrderClosedException : ConflictException`). A store fault never reaches Api untranslated: the service in `Service/<Feature>/` catches `DbUpdateConcurrencyException`, `DbUpdateException`, and provider exceptions and throws the feature's domain exception or one of the three shared types, so Api's `GlobalExceptionHandler` names no EF Core, provider, or feature type.
-- **Tests mirror source.** `tests/<Root>.Unit.Test/<ProjectShortName>/<Folder>/<Type>Tests.cs` (ProjectShortName ∈ Api, Service, Repository, Entity, Dto, Common); integration tests by feature folder plus `Endpoints/`, `Health/`, `Middleware/`. `TestInfrastructure/` at each test project root holds every fixture, fake, builder, and collection definition — no helper types beside tests, no `*Tests` class inside it. A behaviour-named file (`<Behaviour>Tests.cs`) is allowed only when there is no single subject type. This skill is authoritative for the test-project layout; `csharp-xunit` for the test stack.
+- **Tests mirror source.** `test/<Root>.Unit.Test/<ProjectShortName>/<Folder>/<Type>Tests.cs` (ProjectShortName ∈ Api, Service, Repository, Entity, Dto, Common); integration tests by feature folder plus `Endpoints/`, `Health/`, `Middleware/`. `TestInfrastructure/` at each test project root holds every fixture, fake, builder, and collection definition — no helper types beside tests, no `*Tests` class inside it. A behaviour-named file (`<Behaviour>Tests.cs`) is allowed only when there is no single subject type. This skill is authoritative for the test-project layout; `csharp-xunit` for the test stack.
 - **Shipped assets move with their code** (prompt templates, fonts): the csproj item and the `AppContext.BaseDirectory` constant that reads it change in the same commit; keep the output path with `Link` when the source folder moves.
 
 ## Solution map
@@ -41,8 +41,8 @@ Placeholders: `<Root>` = solution prefix (`Contoso.Shop`); `<Feature>` = plural 
 <Root>.Entity       Base/ (BaseEntity, BaseCreatedEntity, BaseModifiedEntity, BaseEnumEntity) · <Feature>/ — plain classes, one file per entity, no mapping attributes
 <Root>.Dto          Actions/<Feature>/ (one action DTO + its validator per file) · <Feature>/ (one response DTO per file) · Pagination/
 <Root>.Common       Constants/ · Enums/ · Extensions/ · Validation/
-tests/<Root>.Unit.Test         Api/ Service/ Repository/ Entity/ Dto/ Common/ · TestInfrastructure/
-tests/<Root>.Integration.Test  Endpoints/ · <Feature>/ · Health/ · Middleware/ · TestInfrastructure/
+test/<Root>.Unit.Test         Api/ Service/ Repository/ Entity/ Dto/ Common/ · TestInfrastructure/
+test/<Root>.Integration.Test  Endpoints/ · <Feature>/ · Health/ · Middleware/ · TestInfrastructure/
 ```
 
 Full trees and what each folder holds: `references/project-layout.md`.
@@ -95,9 +95,9 @@ Full trees and what each folder holds: `references/project-layout.md`.
 | the exception handler | `Api/ExceptionHandlers/` | `GlobalExceptionHandler.cs`, the one `IExceptionHandler` (`aspnet-rest-apis` `references/exception-handling.md`); a new exception derives from a shared type instead of adding a handler |
 | a health check that is not a store probe | `Api/Health/` | `<Name>HealthCheck.cs`; registered in `HealthRegistration.cs` |
 | a startup validator | `Api/Startup/` | `<Name>Bootstrapper.cs` |
-| a unit test | `tests/<Root>.Unit.Test/<ProjectShortName>/<Folder>/` | `<Type>Tests.cs` |
-| an integration test | `tests/<Root>.Integration.Test/<Feature>/` or `Endpoints/` | `<Subject>IntegrationTests.cs` |
-| test infrastructure | `tests/<Root>.*.Test/TestInfrastructure/` | `<Subject>Fixture.cs`, `Fake<Name>.cs` implementing `I<Name>`, `<Name>Collection.cs` |
+| a unit test | `test/<Root>.Unit.Test/<ProjectShortName>/<Folder>/` | `<Type>Tests.cs` |
+| an integration test | `test/<Root>.Integration.Test/<Feature>/` or `Endpoints/` | `<Subject>IntegrationTests.cs` |
+| test infrastructure | `test/<Root>.*.Test/TestInfrastructure/` | `<Subject>Fixture.cs`, `Fake<Name>.cs` implementing `I<Name>`, `<Name>Collection.cs` |
 
 ## Never
 

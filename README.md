@@ -140,7 +140,7 @@ The loop works like this:
 ## Testing policy (.NET)
 
 - **Libraries.** Use xUnit v3 (latest, on Microsoft Testing Platform: `dotnet new xunit3`) with xUnit's `Assert`, and NSubstitute for test doubles. Never use FluentAssertions, AwesomeAssertions, Shouldly, Moq, FakeItEasy, NUnit, or MSTest.
-- **Layout.** Two test projects per solution under `tests/`, `<Root>.Unit.Test` and `<Root>.Integration.Test`, with folders mirroring the source projects and `TestInfrastructure/` at each root (`dotnet-api-architecture`).
+- **Layout.** Two test projects per solution under `test/`, `<Root>.Unit.Test` and `<Root>.Integration.Test`, with folders mirroring the source projects and `TestInfrastructure/` at each root (`dotnet-api-architecture`).
 - **Test databases.** Try these in order:
   1. Testcontainers
   2. SQLite in-memory
@@ -335,7 +335,7 @@ node scripts/sync-shared.mjs --from=copilot  # the other way, after an edit unde
 
 The helper copies byte for byte. It refuses to overwrite a file that carries uncommitted edits unless you pass `--force`. Exit codes: `0` in sync, `10` differences found by `--check`, `2` refused, `1` the script failed.
 
-**Bump versions on every change.** Installs are cached by version, so bump `version` in *both* manifests of every plugin you change, `claude/<name>/.claude-plugin/plugin.json` and `copilot/<name>/plugin.json`. CI enforces this on PRs with `--base`.
+**Bump versions on every change.** All plugins share one version. Installs are cached by version, so when any plugin changes, bump `version` in *both* manifests of every plugin, changed or not: `claude/<name>/.claude-plugin/plugin.json` and `copilot/<name>/plugin.json`. CI enforces this on PRs with `--base`.
 
 **Keep copies in sync.**
 
