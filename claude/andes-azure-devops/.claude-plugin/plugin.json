@@ -1,0 +1,20 @@
+{
+  "name": "andes-azure-devops",
+  "version": "1.1.0",
+  "description": "Azure DevOps backlog management: a scoped Azure DevOps MCP server (core, work, work-items domains), an approval-gated agent that creates, updates, and removes epics, features, and stories and always asks for assignee and iteration, and an init skill that records the project in AGENTS.md.",
+  "author": {
+    "name": "Rodrigo Rojas"
+  },
+  "homepage": "https://github.com/RorroRojas3/awesome-claude-copilot",
+  "repository": "https://github.com/RorroRojas3/awesome-claude-copilot",
+  "license": "MIT",
+  "keywords": [
+    "ado",
+    "azure-devops",
+    "work-items",
+    "backlog"
+  ],
+  "dependencies": [
+    "andes-core"
+  ]
+}

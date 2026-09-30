@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/RorroRojas3/awesome-claude-copilot/pulls)
 
-This repository is the **`andes` plugin marketplace**. It packages engineering standards for C#/.NET, Angular, GitHub Actions, and Terraform, plus Azure DevOps backlog management, as plugins for [Claude Code](https://code.claude.com) and [GitHub Copilot](https://github.com/features/copilot) (Copilot CLI, Copilot coding agent, github.com, and VS Code). Each plugin lives in one directory that serves both harnesses. You install only the stacks you use, and updates arrive through the marketplace instead of by re-copying files.
+This repository is the **`andes` plugin marketplace**. It packages engineering standards for C#/.NET, Angular, GitHub Actions, and Terraform, plus Azure DevOps backlog management, as plugins for [Claude Code](https://code.claude.com) and [GitHub Copilot](https://github.com/features/copilot) (Copilot CLI, Copilot coding agent, github.com, and VS Code). Each plugin ships once per harness, under `claude/` and `copilot/`, so each harness loads only its own files. You install only the stacks you use, and updates arrive through the marketplace instead of by re-copying files.
 
 It contains no application code, only assistant configuration: skills, agents, MCP servers, hooks, and a shared `AGENTS.md` block.
 
@@ -67,7 +67,7 @@ Re-run `andes-init` after you update the plugins. A run with nothing new changes
 
 ### GitHub Copilot CLI
 
-These commands follow GitHub's Copilot CLI plugin docs. They have **not yet been verified end to end** with these plugins; see the [Copilot checklist](docs/2026-09-plugin-architecture.md#not-yet-verified-github-copilot-checklist).
+These commands follow GitHub's Copilot CLI plugin docs. They have **not yet been verified end to end** with these plugins; see the [client checks](docs/2026-09-harness-trees.md#client-checks). Copilot reads its own marketplace file, `.github/plugin/marketplace.json`, and its own plugin tree, `copilot/`. The agents need Copilot CLI 1.0.85 or later.
 
 ```shell
 copilot plugin marketplace add RorroRojas3/awesome-claude-copilot
@@ -81,7 +81,7 @@ The Copilot agents declare no `target`, which GitHub defines as both environment
 
 ### VS Code (local Copilot): unverified
 
-The agents load in VS Code because they declare no `target`. They keep one frontmatter shape for every surface: plain tool aliases, exact `server/tool` MCP grants, and no VS Code tools (`vscode/askQuestions`, `vscode/memory`). The one exception is `andes-planner-expert`. It declares handoff buttons, which in a VS Code Local session pass the approved plan to its implementer. Copilot CLI and the cloud agent ignore the buttons. Nothing else has been verified in VS Code: installing the plugins, loading their skills, and starting their MCP servers are untested there. `andes-init` does not write VS Code settings, and the maintainer commands are skills rather than VS Code prompt files.
+The agents load in VS Code 1.133 or later because they declare no `target`. They keep one frontmatter shape for every surface: plain tool aliases, exact `server/tool` MCP grants, and no VS Code tools (`vscode/askQuestions`, `vscode/memory`). The one exception is `andes-planner-expert`. It declares handoff buttons, which in a VS Code Local session pass the approved plan to its implementer. Copilot CLI and the cloud agent ignore the buttons. Nothing else has been verified in VS Code: installing the plugins, loading their skills, and starting their MCP servers are untested there. `andes-init` does not write VS Code settings, and the maintainer commands are skills rather than VS Code prompt files.
 
 ---
 
@@ -177,10 +177,10 @@ These apply to every new or changed C# file. Existing code is migrated only when
 | `terraform` | `andes-terraform` | `docker run -i --rm hashicorp/terraform-mcp-server:1.3.0 --toolsets=registry` | Pinned image, public-registry toolset only. Requires Docker |
 | `azure-devops` | `andes-azure-devops` | `npx -y @azure-devops/mcp@2.10.0 ${ADO_ORG} -d core work work-items --authentication azcli` | Pinned. Only the `core`, `work`, and `work-items` domains (no test plans, repositories, pipelines, wiki, or search). Organization from `ADO_ORG`; authentication is your `az login` session. Requires Node.js 20+ and the Azure CLI |
 
-Each plugin declares its servers twice, with the same entries:
+Each plugin declares its servers once per harness tree, with the same entries:
 
-- `.mcp.json` for Claude Code.
-- `mcp.json` for Copilot, in Agent Plugins format. There, the remote servers (`microsoft-learn`, `context7`) use `type: streamable-http`.
+- `claude/<plugin>/.mcp.json` for Claude Code.
+- `copilot/<plugin>/mcp.json` for Copilot, in Agent Plugins format. There, the remote servers (`microsoft-learn`, `context7`) use `type: streamable-http`.
 
 The repo audit fails if the two drift (URL, command, args, headers, or env), and if a Claude tool name credits the wrong plugin for a server (`mcp__plugin_andes-core_context7__query-docs`, never `andes-dotnet`).
 
@@ -221,7 +221,7 @@ Tool scoping:
 | Always-on standards | `CLAUDE.md` 1,263 words; `copilot-instructions.md` 995 words | `AGENTS.md` block, about 640 words |
 | Loaded automatically on a `.cs` edit (Claude Code) | 4 rules, about 2,566 words | Nothing. Only the skills the change needs |
 
-Skill descriptions are the always-on price of each installed plugin. Measured on 2026-09-29 from the working tree with `claude --plugin-dir plugins/<name> plugin details <name>` (Claude Code 2.1.207):
+Skill descriptions are the always-on price of each installed plugin. Measured on 2026-09-29 from the working tree with `claude --plugin-dir claude/<name> plugin details <name>` (Claude Code 2.1.207):
 
 | Plugin | Tokens |
 | --- | --- |
@@ -279,17 +279,21 @@ What was renamed:
 
 ```text
 .
-├── .claude-plugin/marketplace.json     # the andes marketplace
-├── plugins/andes-<name>/
-│   ├── .claude-plugin/plugin.json      # Claude Code manifest; lists every claude-agents/ file
-│   ├── plugin.json                     # Copilot manifest (Agent Plugins 1.0): $schema + metadata only
-│   ├── skills/                         # shared by both harnesses
-│   ├── claude-agents/                  # Claude Code agents (*.md)
-│   ├── claude-hooks/hooks.json         # Claude Code hooks, declared in .claude-plugin/plugin.json (andes-core)
+├── .claude-plugin/marketplace.json     # the andes marketplace for Claude Code
+├── .github/plugin/marketplace.json     # the andes marketplace for Copilot (same name, same plugins)
+├── claude/andes-<name>/                # what Claude Code loads
+│   ├── .claude-plugin/plugin.json      # manifest: metadata and dependencies only
+│   ├── agents/                         # Claude Code agents (*.md)
+│   ├── hooks/hooks.json                # Claude Code hooks (andes-core)
+│   ├── skills/                         # shared; edit here, then sync
+│   ├── scripts/                        # shared hook scripts; edit here, then sync (andes-core)
+│   └── .mcp.json                       # Claude Code MCP servers (optional)
+├── copilot/andes-<name>/               # what Copilot loads
+│   ├── plugin.json                     # manifest (Agent Plugins 1.0): $schema + metadata only
 │   ├── com.github.copilot/agents/      # Copilot agents (*.agent.md)
 │   ├── com.github.copilot/hooks/       # Copilot hooks, hooks.json (andes-core)
-│   ├── scripts/                        # hook scripts both harnesses run (andes-core)
-│   ├── .mcp.json                       # Claude Code MCP servers (optional)
+│   ├── skills/                         # mirror of the Claude copy
+│   ├── scripts/                        # mirror of the Claude copy (andes-core)
 │   └── mcp.json                        # Copilot MCP servers, Agent Plugins format (optional; same servers)
 ├── AGENTS.md                           # the andes block (= andes-init template) + this repo's own sections
 ├── CLAUDE.md                           # exactly "@AGENTS.md"
@@ -298,37 +302,54 @@ What was renamed:
 ├── .mcp.json                           # maintainer MCP servers, copied from the plugins (audit: mcp/root-drift)
 ├── .github/workflows/repo-audit.yml    # CI
 ├── scripts/repo-audit.mjs              # structural audit
+├── scripts/sync-shared.mjs             # mirrors skills/ and scripts/ between the two trees
 ├── scripts/release.mjs                 # release: CHANGELOG roll, tag, GitHub Release
 ├── scripts/upstream-skills.lock.json   # hash pin for angular-developer
-├── scripts/tests/                      # node:test suites for the hook scripts
+├── scripts/tests/                      # node:test suites for the hook scripts, plus run.mjs
 └── docs/                               # ADRs and change records
 ```
 
 **Why this layout.**
 
-- **Copilot uses Agent Plugins 1.0.** Copilot switches to Agent Plugins 1.0 when a root `plugin.json` declares `"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"`. Skills (`skills/`), MCP (`mcp.json`), and Copilot agents (`com.github.copilot/agents/`) sit at fixed locations, so that manifest has no path fields.
+- **One folder, one format.** VS Code hands a plugin folder to more than one harness, and each reads the manifest it understands. A folder that held both formats loaded the wrong agents, so each harness now has its own tree ([ADR-003](docs/2026-09-harness-trees.md)).
+- **Each harness has its own marketplace file.** Claude Code reads only `.claude-plugin/marketplace.json`. Copilot CLI and VS Code read `.github/plugin/marketplace.json` first. Both are named `andes` and list the same plugins, so `andes-core@andes` resolves on either harness. A root `marketplace.json` or `.plugin/marketplace.json` would take over on Copilot, so the audit rejects both.
+- **Claude Code uses its default folders.** It finds `agents/`, `skills/`, `hooks/hooks.json`, and `.mcp.json` by itself, so the manifest declares no component keys.
+- **Copilot uses Agent Plugins 1.0.** A root `plugin.json` declares `"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"`. Skills (`skills/`), MCP (`mcp.json`), and the Copilot components under `com.github.copilot/` sit at fixed locations, so that manifest has no path fields either.
+- **Shared files are copied.** Neither harness loads a file outside a plugin root, and symbolic links do not survive a Windows checkout. `skills/` and `scripts/` therefore exist in both trees.
 - **Maintainer commands are skills.** `.claude/skills/` is read by Claude Code and by Copilot CLI (which also scans `.github/skills` and `.agents/skills`), so each command exists once. VS Code prompt files (`.github/prompts/`) never load in the CLI and are gone. No skill sets `disable-model-invocation: true`: Copilot CLI cannot invoke such a skill at all ([copilot-cli#4438](https://github.com/github/copilot-cli/issues/4438)), so skills guard in their body instead.
-- **Claude Code uses its own files.** It reads `.claude-plugin/plugin.json`, `.mcp.json`, and the listed `claude-agents/` files.
-- **Neither loads the other's agents or hooks.** Neither agent folder is a default `agents/` folder. The audit rejects `agents/`, `commands/`, `hooks/`, and `.github/` folders inside a plugin. Claude Code auto-loads a plugin's `hooks/` folder, and Copilot's legacy format and VS Code's Claude-format detection read it too, so Claude hooks live in `claude-hooks/hooks.json`, declared by `"hooks"` in `.claude-plugin/plugin.json`. Copilot's live in `com.github.copilot/hooks/hooks.json`, the only place Agent Plugins 1.0 reads them.
 
-**Develop against live files.** Load a plugin from its folder instead of the marketplace cache:
+**Develop against live files.** Load the plugins from the Claude tree instead of the marketplace cache:
 
 ```shell
-claude --plugin-dir plugins/andes-core --plugin-dir plugins/andes-<name>
+claude --plugin-dir claude                                      # every plugin
+claude --plugin-dir claude/andes-core --plugin-dir claude/andes-<name>
 ```
 
-**Bump versions on every change.** Installs are cached by version, so bump `version` in *both* manifests of every plugin you change. CI enforces this on PRs with `--base`.
+**Edit shared files once.** Change a skill or a hook script under `claude/`, then mirror it:
+
+```shell
+node scripts/sync-shared.mjs                 # copy claude/ to copilot/
+node scripts/sync-shared.mjs --check         # report differences, write nothing
+node scripts/sync-shared.mjs --from=copilot  # the other way, after an edit under copilot/
+```
+
+The helper copies byte for byte. It refuses to overwrite a file that carries uncommitted edits unless you pass `--force`. Exit codes: `0` in sync, `10` differences found by `--check`, `2` refused, `1` the script failed.
+
+**Bump versions on every change.** Installs are cached by version, so bump `version` in *both* manifests of every plugin you change, `claude/<name>/.claude-plugin/plugin.json` and `copilot/<name>/plugin.json`. CI enforces this on PRs with `--base`.
 
 **Keep copies in sync.**
 
+- **Shared files.** `skills/` and `scripts/` match between the two trees (`mirror/missing`, `mirror/drift`).
+- **Tree contents.** A plugin root holds only its own harness's entries (`isolation/*`). Agents are never mirrored.
 - **Agent twins.** A Claude agent and its Copilot twin change together, and their descriptions match apart from the word PROACTIVELY.
 - **Copilot agents.** No `target`, so they load in VS Code and `github-copilot`; `model` as a pair from the audit's `modelParity` table, CLI slug first and VS Code display name second (`[claude-sonnet-5.5, Claude Sonnet 5.5 (copilot)]`); `reasoning-effort` equal to the audit's `copilotEffort` table; plain tool aliases (`read`, `edit`, `search`, `execute`, `agent`, `web`, `todo`) and exact `server/tool` MCP grants; no `argument-hint` or `vscode/*` tools; no `handoffs` except on `andes-planner-expert`, whose targets must be marketplace agents or the built-in `agent`; an `agents:` list only together with the `agent` tool, and never pointing at an agent that has `disable-model-invocation: true`.
+- **Manifests and marketplaces.** Both manifests of a plugin carry the same `version` and `description`, and each marketplace entry repeats that description.
 - **MCP files.** `.mcp.json` and `mcp.json` list the same servers.
-- **Hook files.** `claude-hooks/hooks.json` and `com.github.copilot/hooks/hooks.json` run the same `scripts/*.mjs` for each event pair (`Notification`/`notification`, `Stop`/`agentStop`, `PostToolUse`/`postToolUse`). Hook scripts import only `node:` built-ins, because `andes-init` copies `check-links.mjs` into consumer repositories.
-- **The `AGENTS.md` block.** Edit `plugins/andes-core/skills/andes-init/assets/agents-block.md`, then copy it word for word between the markers in `AGENTS.md`.
+- **Hook files.** `claude/andes-core/hooks/hooks.json` and `copilot/andes-core/com.github.copilot/hooks/hooks.json` run the same `scripts/*.mjs` for each event pair (`Notification`/`notification`, `Stop`/`agentStop`, `PostToolUse`/`postToolUse`), and each passes its own `--harness` value. Hook scripts import only `node:` built-ins, because `andes-init` copies `check-links.mjs` into consumer repositories.
+- **The `AGENTS.md` block.** Edit `claude/andes-core/skills/andes-init/assets/agents-block.md`, sync, then copy it word for word between the markers in `AGENTS.md`.
 - **The review loop.** Copy its `## Review loop` section word for word into the Copilot implementers.
 
-**Never edit `angular-developer`.** `plugins/andes-angular/skills/angular-developer/` is vendored from upstream and hash-pinned in `scripts/upstream-skills.lock.json`. The audit fails on any local edit.
+**Never edit `angular-developer`.** Both copies, under `claude/andes-angular/skills/` and `copilot/andes-angular/skills/`, are vendored from upstream and hash-pinned in `scripts/upstream-skills.lock.json`. The audit fails on any local edit.
 
 **Conventions.**
 
@@ -343,11 +364,12 @@ claude --plugin-dir plugins/andes-core --plugin-dir plugins/andes-<name>
 node scripts/repo-audit.mjs                     # human-readable report
 node scripts/repo-audit.mjs --strict            # warnings also fail
 node scripts/repo-audit.mjs --base=origin/main  # also require version bumps for changed plugins
-claude plugin validate .                        # marketplace manifest
+node scripts/sync-shared.mjs --check            # shared files match in both trees
+claude plugin validate .                        # Claude marketplace manifest
 ```
 
-- **Checks:** `manifests`, `skills`, `harness-paths`, `agents`, `mcp`, `hooks`, `memory`, `testing-policy`, `csharp-policy`, `registry`, `changelog`, `links`.
-- **`links`** runs the hook's own checker on every Markdown file in the repository (except the vendored `angular-developer` and the `andes-init` templates), so a broken link fails CI and blocks `/release`. Check files directly with `node plugins/andes-core/scripts/check-links.mjs <file.md>…` (exit `0` clean, `10` findings, `1` error).
+- **Checks:** `manifests`, `isolation`, `mirror`, `skills`, `harness-paths`, `agents`, `mcp`, `hooks`, `memory`, `testing-policy`, `csharp-policy`, `registry`, `changelog`, `links`.
+- **`links`** runs the hook's own checker on every Markdown file in the repository (except the vendored `angular-developer`, the `andes-init` templates, and the mirrored copies under `copilot/`), so a broken link fails CI and blocks `/release`. Check files directly with `node claude/andes-core/scripts/check-links.mjs <file.md>…` (exit `0` clean, `10` findings, `1` error).
 - **Exit codes:** `0` clean, `10` findings, `1` the script failed.
 - **`/repo-audit`** runs the same checks inside Claude Code or Copilot CLI (it is a skill in `.claude/skills/`). It is report-only unless you pass `--fix`, which applies only mechanical repairs and never commits.
 
@@ -363,8 +385,8 @@ node scripts/release.mjs minor --dry-run   # the script underneath
 **CI.** `.github/workflows/repo-audit.yml` runs on PRs that touch plugin or config paths or any Markdown file, and on pushes to `main`.
 
 - Audit errors fail the job. Warnings stay advisory.
-- `claude plugin validate --strict` runs on the marketplace and on every plugin.
-- `node --test scripts/tests/check-links.test.mjs scripts/tests/notify.test.mjs` runs the hook-script tests. Name the files: `node --test <dir>` fails on Node 22.
+- `claude plugin validate --strict` runs on the Claude marketplace and on every plugin under `claude/`.
+- `node scripts/tests/run.mjs` runs the hook-script tests once per tree. To run one tree, set `ANDES_TREE` to `claude` or `copilot` and name the files (`node --test scripts/tests/check-links.test.mjs scripts/tests/notify.test.mjs`): `node --test <dir>` fails on Node 22.
 - Actions are SHA-pinned and kept current by Dependabot.
 
 **NgRx sync.** `ngrx-signal-store` is pinned to upstream NgRx doc snapshots in its `sources.json`. Check and refresh it with:
@@ -374,7 +396,7 @@ node scripts/release.mjs minor --dry-run   # the script underneath
 /ngrx-signals-sync --check-only # report drift only
 ```
 
-The underlying check is `node plugins/andes-angular/skills/ngrx-signal-store/scripts/check-updates.mjs`, with exit codes `0` current, `10` drifted, `1` failed. Set `GITHUB_TOKEN` to raise the API rate limit. Never hand-edit the shas in `sources.json`; use `--pin`. A sync leaves edits in the working tree for review and bumps `andes-angular`.
+The underlying check is `node claude/andes-angular/skills/ngrx-signal-store/scripts/check-updates.mjs`, with exit codes `0` current, `10` drifted, `1` failed. Set `GITHUB_TOKEN` to raise the API rate limit. Never hand-edit the shas in `sources.json`; use `--pin`. A sync leaves edits in the working tree for review, mirrors them into `copilot/`, and bumps `andes-angular`.
 
 **Requirements:**
 
@@ -387,7 +409,8 @@ The underlying check is `node plugins/andes-angular/skills/ngrx-signal-store/scr
 
 ## Docs
 
-- [docs/2026-09-plugin-architecture.md](docs/2026-09-plugin-architecture.md) is the ADR for this layout. It covers verification results, the Copilot checklist, and fallbacks.
+- [docs/2026-09-plugin-architecture.md](docs/2026-09-plugin-architecture.md) is the ADR for the marketplace. It covers verification results, the Copilot checklist, and fallbacks. Its one-folder layout is replaced by ADR-003.
+- [docs/2026-09-harness-trees.md](docs/2026-09-harness-trees.md) is ADR-003. It records why each harness has its own plugin tree and marketplace file, how shared files are mirrored, the `isolation` and `mirror` audit checks, and the client checks still to run.
 - [docs/2026-09-copilot-harness-and-release.md](docs/2026-09-copilot-harness-and-release.md) records the move to the `github-copilot` harness, the planner → PRD direction, Context7 in `andes-core`, the C# non-negotiables, maintainer skills, and the release process.
 - [docs/2026-09-architecture-skills.md](docs/2026-09-architecture-skills.md) records the `dotnet-api-architecture` and `angular-ui-architecture` skills: the split between `SKILL.md` and `references/`, the routing rows, and the decisions on EF mapping, test layout, and styling.
 - [docs/2026-09-persistence-layout-and-ef-core-entity-skills.md](docs/2026-09-persistence-layout-and-ef-core-entity-skills.md) records one type per file with `Models/` subfolders, a plumbing-only Repository (its repositories-in-Service rule is superseded), and the `ef-core-base-entities` and `ef-core-enum-reference-tables` skills.
@@ -396,7 +419,7 @@ The underlying check is `node plugins/andes-angular/skills/ngrx-signal-store/scr
 - [docs/2026-09-planner-handoffs.md](docs/2026-09-planner-handoffs.md) records why the planner declares handoff buttons for VS Code Local sessions, the audit exemption, and when the buttons will be removed.
 - [docs/2026-09-maintainer-mcp-servers.md](docs/2026-09-maintainer-mcp-servers.md) records why this repository starts its own MCP servers from the root `.mcp.json` and never installs its own marketplace, and the audit rules that keep the root entries in step with the plugins.
 - [docs/2026-09-services-own-data-access-and-scaffold.md](docs/2026-09-services-own-data-access-and-scaffold.md) records why services query the `DbContext` directly with no repository layer, `Add` over `AddAsync`, the single `GlobalExceptionHandler`, `DateTimeOffset` timestamps, and the `andes-scaffold` skill.
-- [docs/2026-09-notification-and-link-hooks.md](docs/2026-09-notification-and-link-hooks.md) records the `andes-core` notification and link-check hooks: why the files sit in `claude-hooks/` and `com.github.copilot/hooks/`, the event map, each harness's output channel, the cloud-agent copy `andes-init` installs, the audit's `hooks` and `links` checks, and the Copilot checklist.
+- [docs/2026-09-notification-and-link-hooks.md](docs/2026-09-notification-and-link-hooks.md) records the `andes-core` notification and link-check hooks: where the hook files sit, the event map, each harness's output channel, the cloud-agent copy `andes-init` installs, the audit's `hooks` and `links` checks, and the Copilot checklist.
 - The `docs/2026-08-*.md` files record earlier decisions. Parts of them are superseded by the ADR.
 - [CHANGELOG.md](CHANGELOG.md)
 

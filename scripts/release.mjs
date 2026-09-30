@@ -120,12 +120,13 @@ const updated = [
 ].join('\n');
 
 // --- release notes ----------------------------------------------------------------
-const pluginRows = readdirSync(join(ROOT, 'plugins'), { withFileTypes: true })
+// The audit holds both trees to one version per plugin (manifests/version-drift), so either manifest serves.
+const pluginRows = readdirSync(join(ROOT, 'claude'), { withFileTypes: true })
   .filter((e) => e.isDirectory())
   .map((e) => e.name)
   .sort()
   .map((p) => {
-    const manifest = JSON.parse(readFileSync(join(ROOT, 'plugins', p, '.claude-plugin', 'plugin.json'), 'utf8'));
+    const manifest = JSON.parse(readFileSync(join(ROOT, 'claude', p, '.claude-plugin', 'plugin.json'), 'utf8'));
     return `| \`${p}\` | ${manifest.version} |`;
   });
 const notes = [

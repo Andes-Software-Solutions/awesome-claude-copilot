@@ -1,0 +1,20 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "andes-dotnet",
+  "version": "1.5.0",
+  "description": "C#/.NET standards as on-demand skills (C# 14, ASP.NET Core Minimal APIs, FluentValidation, Azure Functions, MCP servers, EF Core, xUnit v3 + NSubstitute) and a report-only C# reviewer.",
+  "author": {
+    "name": "Rodrigo Rojas"
+  },
+  "homepage": "https://github.com/RorroRojas3/awesome-claude-copilot",
+  "repository": "https://github.com/RorroRojas3/awesome-claude-copilot",
+  "license": "MIT",
+  "keywords": [
+    "csharp",
+    "dotnet",
+    "aspnet",
+    "azure-functions",
+    "ef-core",
+    "xunit"
+  ]
+}

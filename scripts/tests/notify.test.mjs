@@ -2,9 +2,11 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { planNotification } from '../../plugins/andes-core/scripts/notify.mjs';
 
-const SCRIPT = fileURLToPath(new URL('../../plugins/andes-core/scripts/notify.mjs', import.meta.url));
+// Each harness tree ships its own copy; scripts/tests/run.mjs runs this suite once per tree.
+const SCRIPT_URL = new URL(`../../${process.env.ANDES_TREE ?? 'claude'}/andes-core/scripts/notify.mjs`, import.meta.url);
+const SCRIPT = fileURLToPath(SCRIPT_URL);
+const { planNotification } = await import(SCRIPT_URL.href);
 const everywhere = (c) => `/usr/bin/${c}`;
 const nowhere = () => null;
 const plan = (over = {}) => planNotification({ platform: 'darwin', env: {}, harness: 'claude', event: 'notification', payload: { cwd: '/w/shop', message: 'Claude needs your permission to use Bash' }, which: everywhere, ...over });

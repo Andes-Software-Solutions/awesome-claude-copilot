@@ -1,0 +1,46 @@
+{
+  "name": "andes",
+  "owner": {
+    "name": "Rodrigo Rojas"
+  },
+  "metadata": {
+    "description": "Andes: C#/.NET, Angular, GitHub Actions, Terraform, and Azure DevOps standards for GitHub Copilot."
+  },
+  "plugins": [
+    {
+      "name": "andes-core",
+      "source": "./copilot/andes-core",
+      "description": "Shared AGENTS.md standards (via andes-init), PRD generation, technical writing with CHANGELOG ownership, and desktop-notification and Markdown link-check hooks."
+    },
+    {
+      "name": "andes-dotnet",
+      "source": "./copilot/andes-dotnet",
+      "description": "C#/.NET standards as on-demand skills (C# 14, ASP.NET Core Minimal APIs, FluentValidation, Azure Functions, MCP servers, EF Core, xUnit v3 + NSubstitute) and a report-only C# reviewer."
+    },
+    {
+      "name": "andes-dotnet-wasm",
+      "source": "./copilot/andes-dotnet-wasm",
+      "description": "Blazor WebAssembly (standalone, .NET 10) standards as an on-demand skill; builds on andes-dotnet."
+    },
+    {
+      "name": "andes-angular",
+      "source": "./copilot/andes-angular",
+      "description": "Angular and NgRx Signal Store skills, a read-only Angular CLI MCP server, and a report-only Angular reviewer."
+    },
+    {
+      "name": "andes-github",
+      "source": "./copilot/andes-github",
+      "description": "GitHub Actions hardening, CI-efficiency, and runtime-upgrade skills with a report-only workflow reviewer."
+    },
+    {
+      "name": "andes-terraform",
+      "source": "./copilot/andes-terraform",
+      "description": "Terraform conventions as an on-demand skill and the Terraform MCP server limited to the public registry toolset."
+    },
+    {
+      "name": "andes-azure-devops",
+      "source": "./copilot/andes-azure-devops",
+      "description": "Azure DevOps backlog management: a scoped Azure DevOps MCP server (core, work, work-items domains), an approval-gated agent that creates, updates, and removes epics, features, and stories and always asks for assignee and iteration, and an init skill that records the project in AGENTS.md."
+    }
+  ]
+}
