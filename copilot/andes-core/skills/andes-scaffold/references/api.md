@@ -5,21 +5,22 @@ These are the order of work and the commands. Load `csharp-standards` and `dotne
 ```text
 <name>-api/
 ├─ <Root>.slnx  global.json  Directory.Build.props  Directory.Packages.props  .editorconfig  .gitignore
-├─ src/
-│  ├─ <Root>.Api/  <Root>.Service/  <Root>.Repository/
-│  └─ <Root>.Entity/  <Root>.Dto/  <Root>.Common/
-└─ tests/
+├─ <Root>.Api/  <Root>.Service/  <Root>.Repository/
+├─ <Root>.Entity/  <Root>.Dto/  <Root>.Common/
+└─ test/
    ├─ <Root>.Unit.Test/
    └─ <Root>.Integration.Test/
 ```
+
+The six projects sit directly in `<name>-api/`, with no `src/` folder; only the test projects get their own `test/` folder.
 
 ## 1. Solution and projects
 
 1. `dotnet new sln --name <Root>`. .NET 10 writes `<Root>.slnx`.
 2. `dotnet new globaljson` pinned to the installed SDK with `--roll-forward latestFeature`, and `dotnet new gitignore`.
-3. `dotnet new webapi --name <Root>.Api --output src/<Root>.Api`. Minimal APIs is the template default; never pass `--use-controllers`.
-4. `dotnet new classlib` for `<Root>.Service`, `<Root>.Repository`, `<Root>.Entity`, `<Root>.Dto`, and `<Root>.Common` under `src/`.
-5. `dotnet new xunit3` for `<Root>.Unit.Test` and `<Root>.Integration.Test` under `tests/`, with the Microsoft Testing Platform settings from `csharp-xunit`. Install the template first if it is missing (`dotnet new install xunit.v3.templates`).
+3. `dotnet new webapi --name <Root>.Api --output <Root>.Api`. Minimal APIs is the template default; never pass `--use-controllers`.
+4. `dotnet new classlib` for `<Root>.Service`, `<Root>.Repository`, `<Root>.Entity`, `<Root>.Dto`, and `<Root>.Common`, each with `--output <Root>.<Project>`.
+5. `dotnet new xunit3` for `<Root>.Unit.Test` and `<Root>.Integration.Test`, each with `--output test/<Root>.<Project>`. Apply the Microsoft Testing Platform settings from `csharp-xunit`. Install the template first if it is missing (`dotnet new install xunit.v3.templates`).
 6. `dotnet sln add` every project.
 7. Add project references exactly as the layering in `dotnet-api-architecture` lists them:
    - `Api` → `Service`, `Repository`, `Dto`, `Common`
@@ -27,7 +28,7 @@ These are the order of work and the commands. Load `csharp-standards` and `dotne
    - `Repository` → `Entity`
    - `Entity` → `Common`
    - `Dto` → `Common`
-   - `Unit.Test` → every `src/` project
+   - `Unit.Test` → all six source projects
    - `Integration.Test` → `Api`
 8. Delete the template leftovers: `WeatherForecast`, the sample endpoint in `Program.cs`, `Class1.cs`, `UnitTest1.cs`, and the `.http` file.
 
@@ -68,7 +69,7 @@ No initial migration: the first one comes with the first entity (`dotnet ef migr
 
 ## 4. Tests
 
-- `tests/<Root>.Unit.Test/Api/ExceptionHandlers/GlobalExceptionHandlerTests.cs`: one row per mapping, per `references/exception-handling.md`.
-- `tests/<Root>.Unit.Test/Repository/<Provider>/Interceptors/`: the stamp and soft-delete tests with `FakeTimeProvider` (`ef-core-base-entities`).
-- `tests/<Root>.Integration.Test/TestInfrastructure/`: the `WebApplicationFactory<Program>` subclass and the Testcontainers fixture for the chosen engine, which applies migrations when there are any (`csharp-xunit`).
-- `tests/<Root>.Integration.Test/Health/`: the health endpoint returns 200, which proves the host and store wiring.
+- `test/<Root>.Unit.Test/Api/ExceptionHandlers/GlobalExceptionHandlerTests.cs`: one row per mapping, per `references/exception-handling.md`.
+- `test/<Root>.Unit.Test/Repository/<Provider>/Interceptors/`: the stamp and soft-delete tests with `FakeTimeProvider` (`ef-core-base-entities`).
+- `test/<Root>.Integration.Test/TestInfrastructure/`: the `WebApplicationFactory<Program>` subclass and the Testcontainers fixture for the chosen engine, which applies migrations when there are any (`csharp-xunit`).
+- `test/<Root>.Integration.Test/Health/`: the health endpoint returns 200, which proves the host and store wiring.

@@ -15,8 +15,8 @@
 //   node scripts/repo-audit.mjs --json              machine-readable report
 //   node scripts/repo-audit.mjs --strict            warnings also fail (exit 10)
 //   node scripts/repo-audit.mjs --check=a,b         run a subset of checks
-//   node scripts/repo-audit.mjs --base=origin/main  also require a version bump for every
-//                                                   plugin whose files changed since <base>
+//   node scripts/repo-audit.mjs --base=origin/main  also require a version bump when any
+//                                                   plugin's files changed since <base>
 //
 // Exit codes are the contract that /repo-audit and CI branch on:
 //   0  clean (warnings allowed)     10  findings     1  error (the script itself failed)
@@ -378,6 +378,13 @@ if (runs('manifests')) {
       if (!plugins.includes(depName)) add('manifests', 'dependency-ghost', 'error', `Dependency '${depName}' is not a plugin in this marketplace`, [cPath]);
     }
   }
+  // Every plugin ships at one marketplace-wide version, bumped together even when a plugin is unchanged.
+  const versions = [...new Set(seen.values())];
+  if (versions.length > 1) {
+    add('manifests', 'version-lockstep', 'error', `Plugins carry ${versions.length} versions (${versions.join(', ')}); every plugin must share one`,
+      [...seen.keys()].flatMap((p) => [`${C(p)}/.claude-plugin/plugin.json`, `${G(p)}/plugin.json`]), Object.fromEntries(seen),
+      'Set every manifest to the highest version.');
+  }
 
   const listed = {};
   for (const [tree, file] of Object.entries(CONFIG.marketplaces)) {
@@ -423,7 +430,7 @@ if (runs('manifests')) {
       const before = versionAt(`${C(p)}/.claude-plugin/plugin.json`) ?? versionAt(`${legacy(p)}/.claude-plugin/plugin.json`);
       if (before !== undefined && before === seen.get(p)) {
         add('manifests', 'version-bump', 'error', `'${p}' changed since ${BASE} but its version is still ${before} — installed copies are cached by version and will not update`,
-          [`${C(p)}/.claude-plugin/plugin.json`, `${G(p)}/plugin.json`], undefined, 'Bump the version in both manifests.');
+          [`${C(p)}/.claude-plugin/plugin.json`, `${G(p)}/plugin.json`], undefined, 'Bump the shared version in every manifest of every plugin.');
       }
     }
   }

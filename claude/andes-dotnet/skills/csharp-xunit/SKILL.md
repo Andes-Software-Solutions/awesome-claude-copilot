@@ -14,12 +14,12 @@ description: "Use when writing or reviewing .NET tests: xUnit v3 (latest, Micros
 
 ## Project and naming
 
-- Two test projects per solution under `tests/`: `<Root>.Unit.Test` and `<Root>.Integration.Test`, their folders mirroring the source projects (`Api/`, `Service/`, `Repository/`, …), with `TestInfrastructure/` at each root for fixtures, fakes, builders, and collection definitions; test classes mirror the class under test (`OrderServiceTests`). Layout detail in `dotnet-api-architecture`. Existing per-project suites are migrated only when asked.
+- Two test projects per solution under `test/`: `<Root>.Unit.Test` and `<Root>.Integration.Test`, their folders mirroring the source projects (`Api/`, `Service/`, `Repository/`, …), with `TestInfrastructure/` at each root for fixtures, fakes, builders, and collection definitions; test classes mirror the class under test (`OrderServiceTests`). Layout detail in `dotnet-api-architecture`. Existing per-project suites are migrated only when asked.
 - Name tests `MethodName_Scenario_ExpectedBehavior`.
 - Arrange-Act-Assert structure, with **no** `// Arrange` / `// Act` / `// Assert` comments — blank lines separate the phases.
 - One behavior per test; tests are independent and order-agnostic.
 - Test code follows `csharp-standards`: fixtures arrive through a primary constructor (`public sealed class OrderServiceTests(DbFixture fixture) : IClassFixture<DbFixture>`), locals use `var`, `TheoryData` rows and expected collections use collection expressions, and private helpers sit in the `Private methods` region.
-- Run with `dotnet test` (Microsoft Testing Platform; `dotnet run --project tests/<Root>.Unit.Test -- --filter-method "*Scenario*"` for one test).
+- Run with `dotnet test` (Microsoft Testing Platform; `dotnet run --project test/<Root>.Unit.Test -- --filter-method "*Scenario*"` for one test).
 - Use the latest stable package versions — check NuGet or the repo's `Directory.Packages.props`, never versions from memory.
 
 ## xUnit v3

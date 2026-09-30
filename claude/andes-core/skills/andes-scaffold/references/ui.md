@@ -40,7 +40,7 @@ src/testing/
 
 ## 5. Talking to the API (when both parts are scaffolded)
 
-- Add `proxy.conf.json` mapping `/api` to the `https` URL in `<name>-api/src/<Root>.Api/Properties/launchSettings.json` (`"secure": false` for the dev certificate), and reference it from the `serve` target in `angular.json`.
+- Add `proxy.conf.json` mapping `/api` to the `https` URL in `<name>-api/<Root>.Api/Properties/launchSettings.json` (`"secure": false` for the dev certificate), and reference it from the `serve` target in `angular.json`.
 - Components and stores call relative `/api/...` URLs. The base URL for other environments lives in `core/config/`, never in a component.
 
 ## 6. Tests

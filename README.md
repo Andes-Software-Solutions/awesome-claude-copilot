@@ -335,7 +335,7 @@ node scripts/sync-shared.mjs --from=copilot  # the other way, after an edit unde
 
 The helper copies byte for byte. It refuses to overwrite a file that carries uncommitted edits unless you pass `--force`. Exit codes: `0` in sync, `10` differences found by `--check`, `2` refused, `1` the script failed.
 
-**Bump versions on every change.** Installs are cached by version, so bump `version` in *both* manifests of every plugin you change, `claude/<name>/.claude-plugin/plugin.json` and `copilot/<name>/plugin.json`. CI enforces this on PRs with `--base`.
+**Bump versions on every change.** All plugins share one version. Installs are cached by version, so when any plugin changes, bump `version` in *both* manifests of every plugin, changed or not: `claude/<name>/.claude-plugin/plugin.json` and `copilot/<name>/plugin.json`. CI enforces this on PRs with `--base`.
 
 **Keep copies in sync.**
 

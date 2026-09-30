@@ -1,6 +1,6 @@
 {
   "name": "andes-dotnet-wasm",
-  "version": "1.1.0",
+  "version": "1.7.1",
   "description": "Blazor WebAssembly (standalone, .NET 10) standards as an on-demand skill; builds on andes-dotnet.",
   "author": {
     "name": "Rodrigo Rojas"

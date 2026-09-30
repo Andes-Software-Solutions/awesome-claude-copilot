@@ -68,7 +68,7 @@ node scripts/sync-shared.mjs --plugin=andes-angular
 
 ## 5. Bump the plugin version
 
-Installed copies of `andes-angular` are cached by version, so an edited skill reaches no one until the version moves. Bump the patch number of `version` in **both** `claude/andes-angular/.claude-plugin/plugin.json` and `copilot/andes-angular/plugin.json` (they must stay equal).
+Installed copies of `andes-angular` are cached by version, so an edited skill reaches no one until the version moves. All plugins share one version, so bump the patch number of `version` in **both** manifests of **every** plugin (`claude/<name>/.claude-plugin/plugin.json` and `copilot/<name>/plugin.json`), not only `andes-angular`.
 
 ## 6. Report, and leave the diff for review
 

@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // Release the andes marketplace from `main`.
 //
-// Plugins are versioned individually and bumped in the PR that changes them (repo-audit --base
-// enforces it). A release is the marketplace-level event: the CHANGELOG's `## [Unreleased]`
+// All plugins share one version, bumped together in any PR that changes a plugin (repo-audit
+// enforces both with manifests/version-lockstep and --base). A release is the marketplace-level event: the CHANGELOG's `## [Unreleased]`
 // section becomes `## [X.Y.Z] - <date>`, that roll is committed and tagged `vX.Y.Z`, both are
 // pushed, and a GitHub Release carries the section plus a table of the plugin versions it ships.
 //

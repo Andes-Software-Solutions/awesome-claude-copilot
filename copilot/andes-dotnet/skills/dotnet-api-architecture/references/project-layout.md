@@ -122,14 +122,14 @@ Entities are plain classes: no mapping attributes, no EF Core package reference,
 ## Tests
 
 ```text
-tests/<Root>.Unit.Test/
+test/<Root>.Unit.Test/
 ├─ Api/<Folder>/<Type>Tests.cs      mirrors <Root>.Api
 ├─ Service/<Feature>/<Type>Tests.cs   services (against the csharp-xunit database ladder), mappers; <Technique>/ nested
 ├─ Repository/<Provider>/           configurations, interceptors, scripts, provisioning
 ├─ Entity/  Dto/  Common/
 └─ TestInfrastructure/              fixtures, fakes, builders, collection definitions, KnownIds.cs
 
-tests/<Root>.Integration.Test/
+test/<Root>.Integration.Test/
 ├─ Endpoints/<Entity>EndpointsIntegrationTests.cs
 ├─ <Feature>/<Subject>IntegrationTests.cs
 ├─ Health/  Middleware/             infrastructure behaviour through the real pipeline

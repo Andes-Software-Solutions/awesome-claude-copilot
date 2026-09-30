@@ -146,7 +146,7 @@ app.UseStatusCodePages();
 
 ## Tests
 
-- **Unit** (`tests/<Root>.Unit.Test/Api/ExceptionHandlers/GlobalExceptionHandlerTests.cs`): add one `[Theory]` row per mapping. Use a `DefaultHttpContext`, a substituted `IProblemDetailsService`, and `NullLogger<GlobalExceptionHandler>.Instance`. Assert the status code and the `ProblemDetails` the service received.
+- **Unit** (`test/<Root>.Unit.Test/Api/ExceptionHandlers/GlobalExceptionHandlerTests.cs`): add one `[Theory]` row per mapping. Use a `DefaultHttpContext`, a substituted `IProblemDetailsService`, and `NullLogger<GlobalExceptionHandler>.Instance`. Assert the status code and the `ProblemDetails` the service received.
 
   ```csharp
   [Fact]

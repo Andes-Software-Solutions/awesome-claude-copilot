@@ -39,7 +39,7 @@ One user-invoked skill creates `<name>-api/` and/or `<name>-ui/` at the reposito
 
 - **Why `andes-core`.** It is a single entry point that handles `api`, `ui`, or `both`. A per-stack pair of skills would split the naming rule and the proxy wiring across two plugins. When a stack plugin is missing, the skill says so and skips that part.
 - **Commands only, no code.** `references/api.md` and `references/ui.md` hold the order of work and the commands. Every file they create is written to the stack skill named beside it. The scaffold therefore cannot drift from the standards, and it has no templates of its own to maintain.
-- **Layout choice.** The .NET solution puts its projects under `src/` and its tests under `tests/`. `dotnet-api-architecture` already placed tests under `tests/`, and `src/` keeps the solution root down to its build files.
+- **Layout choice.** The six .NET projects sit directly in `<name>-api/` beside `<Root>.slnx`, with no `src/` folder, and the two test projects go under `test/`. `<name>-api/` is already scoped to one API, so a `src/` level adds depth without separating anything. The Angular CLI owns the UI layout: `ng new` creates `<name>-ui/` and its own `src/app/`, and the UI dev proxy reads `<name>-api/<Root>.Api/Properties/launchSettings.json`.
 - **Not included.** The scaffold ships no sample feature and no initial migration. The first entity brings both through the normal flow.
 
 ## Enforcement

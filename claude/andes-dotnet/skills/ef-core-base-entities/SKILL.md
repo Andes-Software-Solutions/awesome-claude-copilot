@@ -169,7 +169,7 @@ catch (DbUpdateConcurrencyException)
 
 - Inject `FakeTimeProvider` (`Microsoft.Extensions.TimeProvider.Testing`) into the interceptors, `Advance(...)` between saves, and assert `DateCreated` / `DateModified` exactly. xUnit v3 + NSubstitute per `csharp-xunit`; the fake is the double, no substitute for `TimeProvider` is needed.
 - Database through the `csharp-xunit` ladder: `rowversion` and `ExecuteDelete` exist only on the real engine, so concurrency and purge tests run on Testcontainers or the dedicated test database; SQLite in-memory covers stamps and the soft-delete filter (`== null` is an equality test), but it cannot compare or order `DateTimeOffset` in SQL, so anything that filters or sorts by a stamp (`DateDeleted < cutoff`) needs rung 1 or 3; the EF Core InMemory provider is a last resort and generates no row version.
-- Interceptor tests live under `tests/<Root>.Unit.Test/Repository/<Provider>/Interceptors/`; service behaviour (translation to `ConflictException`, purge, restore) under `tests/<Root>.Unit.Test/Service/<Feature>/`.
+- Interceptor tests live under `test/<Root>.Unit.Test/Repository/<Provider>/Interceptors/`; service behaviour (translation to `ConflictException`, purge, restore) under `test/<Root>.Unit.Test/Service/<Feature>/`.
 
 ## Never
 
