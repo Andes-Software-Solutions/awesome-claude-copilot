@@ -19,8 +19,8 @@ The six projects sit directly in `<name>-api/`, with no `src/` folder; only the 
 1. `dotnet new sln --name <Root>`. .NET 10 writes `<Root>.slnx`.
 2. `dotnet new globaljson` pinned to the installed SDK with `--roll-forward latestFeature`, and `dotnet new gitignore`.
 3. `dotnet new webapi --name <Root>.Api --output <Root>.Api`. Minimal APIs is the template default; never pass `--use-controllers`.
-4. `dotnet new classlib` for `<Root>.Service`, `<Root>.Repository`, `<Root>.Entity`, `<Root>.Dto`, and `<Root>.Common`, each with `--output <Root>.<Project>`.
-5. `dotnet new xunit3` for `<Root>.Unit.Test` and `<Root>.Integration.Test`, each with `--output test/<Root>.<Project>`. Apply the Microsoft Testing Platform settings from `csharp-xunit`. Install the template first if it is missing (`dotnet new install xunit.v3.templates`).
+4. `dotnet new classlib --name <Root>.Service --output <Root>.Service`, and the same for `<Root>.Repository`, `<Root>.Entity`, `<Root>.Dto`, and `<Root>.Common`.
+5. `dotnet new xunit3 --name <Root>.Unit.Test --output test/<Root>.Unit.Test`, and the same for `<Root>.Integration.Test`. Apply the Microsoft Testing Platform settings from `csharp-xunit`. Install the template first if it is missing (`dotnet new install xunit.v3.templates`).
 6. `dotnet sln add` every project.
 7. Add project references exactly as the layering in `dotnet-api-architecture` lists them:
    - `Api` → `Service`, `Repository`, `Dto`, `Common`

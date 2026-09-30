@@ -140,7 +140,7 @@ The loop works like this:
 ## Testing policy (.NET)
 
 - **Libraries.** Use xUnit v3 (latest, on Microsoft Testing Platform: `dotnet new xunit3`) with xUnit's `Assert`, and NSubstitute for test doubles. Never use FluentAssertions, AwesomeAssertions, Shouldly, Moq, FakeItEasy, NUnit, or MSTest.
-- **Layout.** Two test projects per solution under `tests/`, `<Root>.Unit.Test` and `<Root>.Integration.Test`, with folders mirroring the source projects and `TestInfrastructure/` at each root (`dotnet-api-architecture`).
+- **Layout.** Two test projects per solution under `test/`, `<Root>.Unit.Test` and `<Root>.Integration.Test`, with folders mirroring the source projects and `TestInfrastructure/` at each root (`dotnet-api-architecture`).
 - **Test databases.** Try these in order:
   1. Testcontainers
   2. SQLite in-memory
