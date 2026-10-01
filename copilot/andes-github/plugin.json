@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "andes-github",
-  "version": "1.8.0",
+  "version": "1.9.0",
   "description": "GitHub Actions hardening, CI-efficiency, and runtime-upgrade skills with a report-only workflow reviewer.",
   "author": {
     "name": "Rodrigo Rojas"

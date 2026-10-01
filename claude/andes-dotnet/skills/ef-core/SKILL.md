@@ -51,7 +51,8 @@ description: "Use when writing or reviewing Entity Framework Core code: DbContex
 
 ## Change Tracking & Saving
 
-- Start tracking new entities with `Add` / `AddRange` (on the DbSet or the DbContext), never `AddAsync` / `AddRangeAsync`. Adding only marks entities `Added` and does not touch the database; the async overloads exist solely for the HiLo value generator, which these standards never configure (Guid keys are generated client-side, `ef-core-base-entities`). The round trip is `SaveChangesAsync`, which stays async. [Add versus AddAsync](https://learn.microsoft.com/ef/core/change-tracking/miscellaneous#add-versus-addasync)
+- Start tracking new entities with `_ctx.Add` / `_ctx.AddRange`, never `AddAsync` / `AddRangeAsync`. Adding only marks entities `Added` and does not touch the database; the async overloads exist solely for the HiLo value generator, which these standards never configure (Guid keys are generated client-side, `ef-core-base-entities`). The round trip is `SaveChangesAsync`, which stays async. [Add versus AddAsync](https://learn.microsoft.com/ef/core/change-tracking/miscellaneous#add-versus-addasync)
+- Write through the DbContext, never the DbSet: `_ctx.Add(product)`, `_ctx.Update(product)`, `_ctx.Remove(product)` (and `AddRange` / `UpdateRange` / `RemoveRange` / `Attach`), not `_ctx.Products.Add(product)`. EF Core resolves the entity type from the instance; DbSets are for queries (`_ctx.Products.Where(...)`). The one exception is a shared-type entity (such as a `Dictionary<string, object>` join), which writes through `_ctx.Set<T>("Name")`. Change a tracked entity in place and save; call `Update` only for a detached one, since it marks every property modified. [DbContext versus DbSet methods](https://learn.microsoft.com/ef/core/change-tracking/miscellaneous#dbcontext-versus-dbset-methods)
 - Use appropriate change tracking strategies
 - Batch your SaveChanges() calls
 - Implement concurrency control for multi-user scenarios

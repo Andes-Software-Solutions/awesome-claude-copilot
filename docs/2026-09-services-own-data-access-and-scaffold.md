@@ -17,6 +17,8 @@
 
 EF Core documents that `AddAsync` exists "only to allow special value generators, such as … SequenceHiLo, to access the database asynchronously". These standards never configure HiLo: Guid keys are generated on the client. `Add` therefore does all the work of `AddAsync` without allocating a `ValueTask`, and it keeps the only real round trip, `SaveChangesAsync`, as the obvious await.
 
+**Amended 2026-10-01: writes go on the `DbContext`.** `Add`, `Update`, `Attach`, and `Remove` behave exactly the same on the `DbContext` and on a `DbSet`, because each CLR type maps to one entity type. Services therefore call `_ctx.Add(product)`, not `_ctx.Products.Add(product)`, and DbSets appear only in queries. The exception is a shared-type entity, such as a `Dictionary<string, object>` many-to-many join, whose CLR type maps to more than one entity type. It writes through `_ctx.Set<T>("Name")`.
+
 ### D3. One `GlobalExceptionHandler`
 
 A single `IExceptionHandler` maps every exception to Problem Details.
@@ -56,6 +58,7 @@ One user-invoked skill creates `<name>-api/` and/or `<name>-ui/` at the reposito
 ## References
 
 - EF Core, Add versus AddAsync: <https://learn.microsoft.com/ef/core/change-tracking/miscellaneous#add-versus-addasync>
+- EF Core, DbContext versus DbSet methods: <https://learn.microsoft.com/ef/core/change-tracking/miscellaneous#dbcontext-versus-dbset-methods>
 - ASP.NET Core, `IExceptionHandler` and Problem Details: <https://learn.microsoft.com/aspnet/core/fundamentals/error-handling>
 - .NET 10 breaking change, exception diagnostics suppressed: <https://learn.microsoft.com/aspnet/core/breaking-changes/10/exception-handler-diagnostics-suppressed>
 - SQLite provider query limitations: <https://learn.microsoft.com/ef/core/providers/sqlite/limitations>

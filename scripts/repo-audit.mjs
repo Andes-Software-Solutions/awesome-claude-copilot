@@ -213,8 +213,8 @@ const CONFIG = {
   // andes-init detects and removes the old drop-in layout, so it must name those paths.
   harnessPathAllow: ['claude/andes-core/skills/andes-init/'],
   bannedTestLibs: /\b(FluentAssertions|AwesomeAssertions|Shouldly|Moq|FakeItEasy|NUnit|MSTest|UseInMemoryDatabase)\b|fluent assertions/i,
-  // C# non-negotiables: Minimal APIs and FluentValidation only, no repository layer, sync Add/AddRange. Lines phrased as prohibitions pass.
-  bannedCsharpPatterns: /\[ApiController\]|AddControllers\(|MapControllers\(|DataAnnotationsValidator|DataAnnotations|--use-controllers|\bAdd(Range)?Async\b|\b[A-Z]\w+Repository\b|<Entity>Repository/,
+  // C# non-negotiables: Minimal APIs and FluentValidation only, no repository layer, sync Add/AddRange, writes on the DbContext not a DbSet. Lines phrased as prohibitions pass.
+  bannedCsharpPatterns: /\[ApiController\]|AddControllers\(|MapControllers\(|DataAnnotationsValidator|DataAnnotations|--use-controllers|\bAdd(Range)?Async\b|\b[A-Z]\w+Repository\b|<Entity>Repository|\b_?(ctx|context|db|dbContext)\.[A-Z]\w*\.(Add|Update|Remove|Attach)(Range)?\(/,
   policyLine: /\b(never|not|no|don't|banned|instead of|last resort|avoid|only|flag)\b/i,
   textExt: /\.(md|json|mjs|js|ts|yml|yaml)$/,
 };
@@ -953,7 +953,7 @@ if (runs('csharp-policy')) {
     if (!f.endsWith('.md')) continue;
     read(f).split('\n').forEach((line, i) => {
       if (CONFIG.bannedCsharpPatterns.test(line) && !CONFIG.policyLine.test(line)) {
-        add('csharp-policy', 'banned-pattern', 'error', 'A banned C# pattern is recommended (Minimal APIs, FluentValidation, no repositories, Add over AddAsync)', [`${f}:${i + 1}`],
+        add('csharp-policy', 'banned-pattern', 'error', 'A banned C# pattern is recommended (Minimal APIs, FluentValidation, no repositories, Add over AddAsync, writes on the DbContext)', [`${f}:${i + 1}`],
           { line: line.trim().slice(0, 200) }, 'Rewrite the line to the csharp-standards non-negotiables, or phrase it as a prohibition.');
       }
     });
