@@ -52,6 +52,11 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ### Changed
 
+- **EF Core retries transient failures by default** (all plugins 1.9.0). Every relational `DbContext` now registers with `EnableRetryOnFailure()`, using the provider defaults of 6 retries and a 30-second maximum delay. `UseAzureSql` / `UseAzureSynapse` already retry.
+  - **Explicit transactions.** One `SaveChangesAsync` needs no transaction. A unit that spans several saves, or a save plus `ExecuteUpdateAsync` / `ExecuteDeleteAsync`, runs inside `_ctx.Database.CreateExecutionStrategy().ExecuteAsync(...)`, with every read and write inside the delegate. A `BeginTransactionAsync` outside it now throws.
+  - **Tests.** The Testcontainers fixture builds its own options without retry, so per-test rollback keeps working. `WebApplicationFactory` tests, and tests of a service that opens its own transaction, delete their rows or use a fresh database per test class.
+  - **Reviewers.** Both `andes-csharp-code-reviewer` twins flag a registration without retry as Medium, and a transaction outside the execution strategy as High.
+  - See `docs/2026-10-ef-core-connection-resiliency.md`.
 - **EF Core writes go through the `DbContext`, never a DbSet** (all plugins 1.9.0). Use `_ctx.Add(product)`, `_ctx.Update(product)`, `_ctx.Remove(product)`, and their `Range` forms, not `_ctx.Products.Add(product)`. EF Core resolves the entity type from the instance, and DbSets are only for queries. The exception is a shared-type entity, such as a many-to-many join, which writes through `_ctx.Set<T>("Name")`. `ef-core` also says to change a tracked entity in place and to call `Update` only for a detached one.
   - **Reviewers.** Both `andes-csharp-code-reviewer` twins flag a write through a DbSet as Medium.
   - **Audit.** `csharp-policy/banned-pattern` also catches `ctx.<Set>.Add/Update/Remove/Attach(…)` in skill and agent text. Lines worded as prohibitions still pass.

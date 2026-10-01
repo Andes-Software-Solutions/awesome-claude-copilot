@@ -161,6 +161,7 @@ These apply to every new or changed C# file. Existing code is migrated only when
 - **File layout.** Fields and properties, then interface implementations, then `#region Private methods`, `#region Public static methods`, and `#region Logging` (the `[LoggerMessage]` methods), in that order and always last (`csharp-standards`).
 - **Primary constructors**, **collection expressions**, and **`var`** wherever the initializer has a type; logging only through `[LoggerMessage]` source-generated methods.
 - **No repository layer.** Services inject the `DbContext` and query it; `Add` / `AddRange`, never `AddAsync`; writes go on the `DbContext` (`_ctx.Add(product)`), never a DbSet (`dotnet-api-architecture`, `ef-core`).
+- **Retry on failure.** Every relational `DbContext` registers with `EnableRetryOnFailure()`, and explicit transactions run inside the execution strategy (`ef-core`).
 - **One exception handler.** `GlobalExceptionHandler` turns every exception into Problem Details, with no exception detail in a 5xx (`aspnet-rest-apis`).
 
 `andes-csharp-code-reviewer` reports new controllers, DataAnnotations, or exception detail in a 5xx body as High. It reports layout, `var`, logging, repository, `AddAsync`, DbSet-write, and extra-handler violations as Medium. The repo audit (`csharp-policy`) fails if any plugin text recommends controllers, DataAnnotations, repositories, `AddAsync`, or writes through a DbSet.
@@ -419,6 +420,7 @@ The underlying check is `node claude/andes-angular/skills/ngrx-signal-store/scri
 - [docs/2026-09-planner-handoffs.md](docs/2026-09-planner-handoffs.md) records why the planner declares handoff buttons for VS Code Local sessions, the audit exemption, and when the buttons will be removed.
 - [docs/2026-09-maintainer-mcp-servers.md](docs/2026-09-maintainer-mcp-servers.md) records why this repository starts its own MCP servers from the root `.mcp.json` and never installs its own marketplace, and the audit rules that keep the root entries in step with the plugins.
 - [docs/2026-09-services-own-data-access-and-scaffold.md](docs/2026-09-services-own-data-access-and-scaffold.md) records why services query the `DbContext` directly with no repository layer, `Add` over `AddAsync`, the single `GlobalExceptionHandler`, `DateTimeOffset` timestamps, and the `andes-scaffold` skill.
+- [docs/2026-10-ef-core-connection-resiliency.md](docs/2026-10-ef-core-connection-resiliency.md) records why every relational `DbContext` retries on failure, the execution-strategy rule for explicit transactions, and why test fixtures build their options without retry.
 - [docs/2026-09-notification-and-link-hooks.md](docs/2026-09-notification-and-link-hooks.md) records the `andes-core` notification and link-check hooks: where the hook files sit, the event map, each harness's output channel, the cloud-agent copy `andes-init` installs, the audit's `hooks` and `links` checks, and the Copilot checklist.
 - The `docs/2026-08-*.md` files record earlier decisions. Parts of them are superseded by the ADR.
 - [CHANGELOG.md](CHANGELOG.md)

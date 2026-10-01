@@ -56,8 +56,27 @@ description: "Use when writing or reviewing Entity Framework Core code: DbContex
 - Use appropriate change tracking strategies
 - Batch your SaveChanges() calls
 - Implement concurrency control for multi-user scenarios
-- Consider using transactions for multiple operations
+- One `SaveChangesAsync` is already atomic; open an explicit transaction only for a unit that spans several saves, or a save plus `ExecuteUpdateAsync` / `ExecuteDeleteAsync` / raw SQL, and run it inside the execution strategy (Connection resiliency, below)
 - Use appropriate DbContext lifetimes (scoped for web apps)
+
+## Connection resiliency
+
+- Every relational registration retries transient failures: `UseSqlServer(cs, sql => sql.EnableRetryOnFailure())`, `UseNpgsql(cs, npgsql => npgsql.EnableRetryOnFailure())`. `UseAzureSql` / `UseAzureSynapse` already retry, and SQLite has no retrying strategy. Keep the provider defaults (6 retries, 30-second maximum delay); tune them only for a measured reason. [Connection resiliency](https://learn.microsoft.com/ef/core/miscellaneous/connection-resiliency)
+- With retry on, each query and each `SaveChangesAsync` is retried on its own, and `BeginTransactionAsync` or a `TransactionScope` outside the strategy throws. Run the whole unit through the strategy, with every read and write inside the delegate, because a retry runs the delegate again:
+
+```csharp
+var strategy = _ctx.Database.CreateExecutionStrategy();
+await strategy.ExecuteAsync(async ct =>
+{
+    _ctx.ChangeTracker.Clear();   // a retry replays the unit from a clean tracker
+    await using var transaction = await _ctx.Database.BeginTransactionAsync(ct);
+    // ...every read and write of the unit...
+    await transaction.CommitAsync(ct);
+}, cancellationToken);
+```
+
+- If the connection drops during commit, the strategy replays the unit as if it rolled back. Client-generated Guid keys (`ef-core-base-entities`) turn a replay of a commit that did succeed into a duplicate-key failure instead of a duplicate row.
+- Retry buffers each result set in memory, so page large reads (`Skip` / `Take`) instead of streaming one unbounded `AsAsyncEnumerable`.
 
 ## Security
 
