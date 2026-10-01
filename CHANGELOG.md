@@ -52,6 +52,13 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ### Changed
 
+- **Plans under `docs/plans/` are never committed** (all plugins 1.8.0, andes block `v1.5.0`). Plans are working files for following an implementation, so they stay out of git.
+  - **Andes block.** The block now says never to commit `docs/plans/` and to keep the folder in `.gitignore`. Rerun `andes-init` to pick it up.
+  - **`andes-init`** now offers to add `docs/plans/` to the root `.gitignore`.
+  - **`andes-planner-expert`** creates `docs/plans/.gitignore` containing `*` if the file is missing, so plans stay untracked even in repos that have not rerun `andes-init`.
+  - **Copilot cloud agent.** Because the folder is ignored, the cloud agent no longer commits the plan file. There, the plan in the planner's reply is the only record.
+- **The planner writes only under `docs/plans/`.** `andes-planner-expert` states that `edit` is for its plan file alone. It never creates, edits, renames, or deletes anything else, including `docs/prd/`, `CHANGELOG.md`, `.gitignore`, and source files. Copilot has no path-scoped edit tool, so this rule lives in the agent's instructions.
+  - **Audit.** The new `agents/planner-scope` rule requires the planner to keep `edit`, never be granted `execute`, and state its `docs/plans/` write scope in its body.
 - **All seven plugins share one version** (1.7.1, the highest already in use, so none moves backwards). Any change to any plugin now bumps that version in every manifest in both trees, changed or not, because installs are cached by version. The audit enforces it with the new `manifests/version-lockstep` error alongside the unchanged `--base` `version-bump` check, and `AGENTS.md`, `README.md`, `scripts/release.mjs`, and the `/repo-audit`, `/release`, and `/ngrx-signals-sync` skills describe the shared version.
 - **Breaking: each harness has its own plugin tree** (`andes-core` 1.7.0, `andes-dotnet` 1.5.0, `andes-angular` 1.3.0, and 1.1.0 for `andes-dotnet-wasm`, `andes-github`, `andes-terraform`, and `andes-azure-devops`). VS Code hands one plugin folder to several harnesses, and each reads the manifest it understands, so a folder that held both formats loaded the wrong agents. See `docs/2026-09-harness-trees.md`.
   - **Update your install.** The old plugin folders are gone, so refresh the marketplace and then each plugin. In Claude Code run `claude plugin marketplace update andes`, then `claude plugin update <plugin>@andes`. In Copilot CLI run `copilot plugin marketplace update`, then `copilot plugin update --all`. Plugin names, skills, agents, and the `AGENTS.md` block are unchanged.

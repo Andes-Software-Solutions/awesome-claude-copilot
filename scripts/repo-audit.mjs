@@ -147,6 +147,9 @@ const CONFIG = {
   // Only the planner keeps them, as a bridge to the implementer until VS Code runs the CLI harness.
   copilotHandoffAgents: ['andes-planner-expert'],
   copilotBuiltinHandoffTargets: ['agent'],
+  // Copilot has no path-scoped edit tool, so the planner's write scope rests on its tools (edit, never
+  // execute) and on its body stating the path.
+  plannerWriteScope: { agent: 'andes-planner-expert', path: 'docs/plans/' },
   // MCP tools each research or implementer agent must be granted, in Copilot `server/tool` form.
   // A Claude twin is checked through the plugin that ships the server. This is what guarantees the
   // planner and the writers ground version-specific answers in the right server, not in memory.
@@ -689,6 +692,17 @@ if (runs('agents')) {
       }
       for (const req of CONFIG.requiredMcpGrants[a.stem] ?? []) {
         if (!tools.includes(req)) add('agents', 'required-mcp', 'error', `Agent must be granted '${req}'`, [a.path]);
+      }
+      const scope = CONFIG.plannerWriteScope;
+      if (a.stem === scope.agent) {
+        if (!tools.includes('edit')) add('agents', 'planner-scope', 'error', "Planner must be granted 'edit' to write its plan file", [a.path]);
+        if (tools.some((t) => t === 'execute' || t.startsWith('execute/'))) {
+          add('agents', 'planner-scope', 'error', "Planner is granted 'execute'; commands would let it write outside its plan folder", [a.path]);
+        }
+        const path = scope.path.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+        if (!new RegExp(`\\bonly\\b[^.\\n]*\`${path}\``).test(a.body)) {
+          add('agents', 'planner-scope', 'error', `Planner body must state that its only writes are under \`${scope.path}\``, [a.path]);
+        }
       }
     }
   }
