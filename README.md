@@ -97,13 +97,13 @@ In Claude Code, the main session writes the code and delegates review, docs, and
 | `andes-prd-generator` | `andes-core` | yes | yes | Writes PRDs under `docs/prd/` with the `PRD-STATUS` report contract on both harnesses; creates GitHub issues only after you approve |
 | `andes-se-technical-writer` | `andes-core` | yes | yes | Writes `docs/` and owns `CHANGELOG.md` |
 | `andes-ado-backlog-manager` | `andes-azure-devops` | yes | yes | Creates, updates, and removes (State = Removed) Epics, Features, and User Stories in Azure DevOps, also from a PRD; previews first with the `ADO-STATUS` contract and always asks for assignee and iteration |
-| `andes-planner-expert` | `andes-core` | — | yes | Researches and plans; invokes `andes-prd-generator` first when a feature needs requirements; writes the plan to `docs/plans/` and names the implementer to run next (handoff buttons in VS Code) |
+| `andes-planner-expert` | `andes-core` | — | yes | Researches and plans; invokes `andes-prd-generator` first when a feature needs requirements; writes the plan to `docs/plans/` (untracked) and names the implementer to run next (handoff buttons in VS Code) |
 | `andes-full-stack-expert` | `andes-core` | — | yes | Writes the API contract, delegates the back end and front end in parallel, documents once. Needs `andes-dotnet` and `andes-angular` |
 | `andes-csharp-expert` | `andes-dotnet` | — | yes | Implements C#/.NET code: APIs, Functions, MCP servers, Blazor, EF Core |
 | `andes-csharp-dotnet-janitor` | `andes-dotnet` | — | yes | Cleanup and modernization in small, tested batches |
 | `andes-angular-expert` | `andes-angular` | — | yes | Implements Angular code: components, signals, forms, routing, Signal Store |
 
-The typical Copilot flow is `andes-planner-expert` (which invokes `andes-prd-generator` when a feature has no PRD and its requirements are unclear) → implementer → reviewer → `andes-se-technical-writer`. You can also run `andes-prd-generator` directly. The PRD generator never invokes the planner. Plans live under `docs/plans/` and, like PRDs, get no changelog entry.
+The typical Copilot flow is `andes-planner-expert` (which invokes `andes-prd-generator` when a feature has no PRD and its requirements are unclear) → implementer → reviewer → `andes-se-technical-writer`. You can also run `andes-prd-generator` directly. The PRD generator never invokes the planner. Plans live under `docs/plans/`, are never committed (`andes-init` offers the `.gitignore` line), and, like PRDs, get no changelog entry.
 
 Every research and implementer agent is granted exact MCP tools for its stack — `microsoft-learn` for .NET, `angular-cli` for Angular, `context7` (from `andes-core`) for any other library — and the repo audit fails if a required grant is missing.
 

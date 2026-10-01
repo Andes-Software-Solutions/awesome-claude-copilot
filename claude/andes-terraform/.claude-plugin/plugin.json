@@ -1,6 +1,6 @@
 {
   "name": "andes-terraform",
-  "version": "1.7.1",
+  "version": "1.8.0",
   "description": "Terraform conventions as an on-demand skill and the Terraform MCP server limited to the public registry toolset.",
   "author": {
     "name": "Rodrigo Rojas"
