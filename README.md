@@ -160,10 +160,10 @@ These apply to every new or changed C# file. Existing code is migrated only when
 - **FluentValidation only.** One `AbstractValidator<T>` per request type, run from a shared endpoint filter. No DataAnnotations, no `AddValidation()`, not in Blazor forms either.
 - **File layout.** Fields and properties, then interface implementations, then `#region Private methods`, `#region Public static methods`, and `#region Logging` (the `[LoggerMessage]` methods), in that order and always last (`csharp-standards`).
 - **Primary constructors**, **collection expressions**, and **`var`** wherever the initializer has a type; logging only through `[LoggerMessage]` source-generated methods.
-- **No repository layer.** Services inject the `DbContext` and query it; `Add` / `AddRange`, never `AddAsync` (`dotnet-api-architecture`, `ef-core`).
+- **No repository layer.** Services inject the `DbContext` and query it; `Add` / `AddRange`, never `AddAsync`; writes go on the `DbContext` (`_ctx.Add(product)`), never a DbSet (`dotnet-api-architecture`, `ef-core`).
 - **One exception handler.** `GlobalExceptionHandler` turns every exception into Problem Details, with no exception detail in a 5xx (`aspnet-rest-apis`).
 
-`andes-csharp-code-reviewer` reports new controllers, DataAnnotations, or exception detail in a 5xx body as High. It reports layout, `var`, logging, repository, `AddAsync`, and extra-handler violations as Medium. The repo audit (`csharp-policy`) fails if any plugin text recommends controllers, DataAnnotations, repositories, or `AddAsync`.
+`andes-csharp-code-reviewer` reports new controllers, DataAnnotations, or exception detail in a 5xx body as High. It reports layout, `var`, logging, repository, `AddAsync`, DbSet-write, and extra-handler violations as Medium. The repo audit (`csharp-policy`) fails if any plugin text recommends controllers, DataAnnotations, repositories, `AddAsync`, or writes through a DbSet.
 
 ---
 

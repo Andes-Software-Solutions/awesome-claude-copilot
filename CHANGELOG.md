@@ -52,6 +52,9 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ### Changed
 
+- **EF Core writes go through the `DbContext`, never a DbSet** (all plugins 1.9.0). Use `_ctx.Add(product)`, `_ctx.Update(product)`, `_ctx.Remove(product)`, and their `Range` forms, not `_ctx.Products.Add(product)`. EF Core resolves the entity type from the instance, and DbSets are only for queries. The exception is a shared-type entity, such as a many-to-many join, which writes through `_ctx.Set<T>("Name")`. `ef-core` also says to change a tracked entity in place and to call `Update` only for a detached one.
+  - **Reviewers.** Both `andes-csharp-code-reviewer` twins flag a write through a DbSet as Medium.
+  - **Audit.** `csharp-policy/banned-pattern` also catches `ctx.<Set>.Add/Update/Remove/Attach(…)` in skill and agent text. Lines worded as prohibitions still pass.
 - **Plans under `docs/plans/` are never committed** (all plugins 1.8.0, andes block `v1.5.0`). Plans are working files for following an implementation, so they stay out of git.
   - **Andes block.** The block now says never to commit `docs/plans/` and to keep the folder in `.gitignore`. Rerun `andes-init` to pick it up.
   - **`andes-init`** now offers to add `docs/plans/` to the root `.gitignore`.

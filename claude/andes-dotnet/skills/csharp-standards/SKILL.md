@@ -113,7 +113,8 @@ Exempt: `[McpServerToolType]` static tool classes (`csharp-mcp-server`), records
 ## Data access
 
 - Use Entity Framework Core (`ef-core` skill) straight from the service; tests pick a provider from the database ladder in the `csharp-xunit` skill.
-- Track new entities with `Add` / `AddRange`, never `AddAsync` / `AddRangeAsync` — nothing touches the database until `SaveChangesAsync` (`ef-core`).
+- Track new entities with `_ctx.Add` / `_ctx.AddRange`, never `AddAsync` / `AddRangeAsync` — nothing touches the database until `SaveChangesAsync` (`ef-core`).
+- Write through the `DbContext`, never the DbSet: `_ctx.Add(product)` / `_ctx.Update(product)` / `_ctx.Remove(product)`, not `_ctx.Products.Add(product)` (`ef-core`).
 - Manage schema with migrations; avoid N+1 and over-fetching.
 
 ## Logging and performance
