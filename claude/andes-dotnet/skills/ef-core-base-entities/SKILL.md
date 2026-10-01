@@ -139,7 +139,9 @@ services.TryAddSingleton(TimeProvider.System);
 services.AddSingleton<SoftDeleteInterceptor>();
 services.AddSingleton<AuditTimestampInterceptor>();
 services.AddDbContext<ContosoDbContext>((sp, options) => options
-    .UseSqlServer(sp.GetRequiredService<IOptions<SqlDbOptions>>().Value.ConnectionString)
+    .UseSqlServer(
+        sp.GetRequiredService<IOptions<SqlDbOptions>>().Value.ConnectionString,
+        sql => sql.EnableRetryOnFailure())   // ef-core: Connection resiliency
     .AddInterceptors(sp.GetRequiredService<SoftDeleteInterceptor>(), sp.GetRequiredService<AuditTimestampInterceptor>()));
 ```
 

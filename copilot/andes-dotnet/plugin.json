@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "andes-dotnet",
-  "version": "1.9.0",
+  "version": "1.10.0",
   "description": "C#/.NET standards as on-demand skills (C# 14, ASP.NET Core Minimal APIs, FluentValidation, Azure Functions, MCP servers, EF Core, xUnit v3 + NSubstitute) and a report-only C# reviewer.",
   "author": {
     "name": "Rodrigo Rojas"
