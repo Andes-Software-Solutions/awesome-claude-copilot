@@ -52,7 +52,7 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ### Changed
 
-- **EF Core retries transient failures by default** (all plugins 1.9.0). Every relational `DbContext` now registers with `EnableRetryOnFailure()`, using the provider defaults of 6 retries and a 30-second maximum delay. `UseAzureSql` / `UseAzureSynapse` already retry.
+- **EF Core retries transient failures by default** (all plugins 1.10.0). Every relational `DbContext` now registers with `EnableRetryOnFailure()`, using the provider defaults of 6 retries and a 30-second maximum delay. `UseAzureSql` / `UseAzureSynapse` already retry.
   - **Explicit transactions.** One `SaveChangesAsync` needs no transaction. A unit that spans several saves, or a save plus `ExecuteUpdateAsync` / `ExecuteDeleteAsync`, runs inside `_ctx.Database.CreateExecutionStrategy().ExecuteAsync(...)`, with every read and write inside the delegate. A `BeginTransactionAsync` outside it now throws.
   - **Tests.** The Testcontainers fixture builds its own options without retry, so per-test rollback keeps working. `WebApplicationFactory` tests, and tests of a service that opens its own transaction, delete their rows or use a fresh database per test class.
   - **Reviewers.** Both `andes-csharp-code-reviewer` twins flag a registration without retry as Medium, and a transaction outside the execution strategy as High.
