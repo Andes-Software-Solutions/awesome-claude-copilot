@@ -32,7 +32,7 @@ public abstract class BaseEnumEntity<TEnum>
     public string? Description { get; set; }
 }
 
-// Common/Limits/BaseEnumEntityLimits.cs — the BaseEnumEntity columns
+// Common/Limits/Base/BaseEnumEntityLimits.cs — the BaseEnumEntity columns
 public static class BaseEnumEntityLimits
 {
     public const int NameMaxLength = 64;

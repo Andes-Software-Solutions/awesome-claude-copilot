@@ -33,7 +33,7 @@
 | Store provisioning | `<Provider>ResourceProvisioner` creates resources; `<Provider>SchemaMigrator` applies migrations | `MongoResourceProvisioner`, `SqlSchemaMigrator` |
 | Startup | `<Name>Bootstrapper` | `SchemaBootstrapper` |
 | Enums | plural, one per file | `JobStatuses`, `SortDirections` |
-| Entity limits | `<Entity>Limits` in `Common/Limits/`, static, const-only, named for the class that declares the property; members `<Property>MaxLength`, `<Property>MinLength`, `<Property>Length` (fixed), `<Property>Precision`, `<Property>Scale`, `<Property>MinValue`, `<Property>MaxValue` | `ProductLimits.NameMaxLength`, `BaseEnumEntityLimits.NameMaxLength` |
+| Entity limits | `<Entity>Limits` in `Common/Limits/<Feature>/` mirroring `Entity/<Feature>/` (`Common/Limits/Base/` for an `Entity/Base/` class), static, const-only, named for the class that declares the property; members `<Property>MaxLength`, `<Property>MinLength`, `<Property>Length` (fixed), `<Property>Precision`, `<Property>Scale`, `<Property>MinValue`, `<Property>MaxValue` | `ProductLimits.NameMaxLength`, `BaseEnumEntityLimits.NameMaxLength` |
 | Enum wire names | `<Enum>Names` | `JobStatusNames` |
 | Actions | `Actions/<Feature>/<Verb><Entity>ActionDto.cs`, one DTO per file with its validator | `Actions/Orders/CreateOrderActionDto.cs` |
 | Exceptions | `<Condition>Exception`, one per file in the owning folder's `Exceptions/`; shared: `NotFoundException`, `ForbiddenException`, `ConflictException` | `StoreUnavailableException` |

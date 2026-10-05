@@ -90,7 +90,7 @@ A non-EF store simply has no `DbContexts/`, `Configurations/`, `Interceptors/`, 
 └─ <Feature>/                       one file per entity: <Entity>.cs, <Entity><Child>.cs, <EnumSingular>.cs for an enum reference table; Models/ and Constants/ for non-relational documents
 ```
 
-Entities are plain classes: no mapping attributes, no EF Core package reference, `Entity → Common` only. Keys, column lengths and precision, row versions, relationships, indexes, check constraints, value conversions, and seed data all live in `Repository/<Provider>/Configurations/` (`ef-core` for the practice); the length, precision, and range numbers come from `Common/Limits/<Entity>Limits`.
+Entities are plain classes: no mapping attributes, no EF Core package reference, `Entity → Common` only. Keys, column lengths and precision, row versions, relationships, indexes, check constraints, value conversions, and seed data all live in `Repository/<Provider>/Configurations/` (`ef-core` for the practice); the length, precision, and range numbers come from `Common/Limits/<Feature>/<Entity>Limits`.
 
 ## `<Root>.Dto`
 
@@ -105,7 +105,7 @@ Entities are plain classes: no mapping attributes, no EF Core package reference,
 └─ Pagination/                      PaginatedResponseDto.cs and other shapes every feature shares, one per file
 ```
 
-`List<Entities>ActionDto` is validated only where the endpoint attaches the validation filter (`options-and-validation.md`). Length, precision, and range rules read `Common/Limits/<Entity>Limits`, the constants the entity's EF configuration maps.
+`List<Entities>ActionDto` is validated only where the endpoint attaches the validation filter (`options-and-validation.md`). Length, precision, and range rules read `Common/Limits/<Feature>/<Entity>Limits`, the constants the entity's EF configuration maps.
 
 ## `<Root>.Common`
 
@@ -114,7 +114,9 @@ Entities are plain classes: no mapping attributes, no EF Core package reference,
 ├─ Constants/                       <Catalog>.cs — const / static readonly string and Guid catalogs, no methods
 ├─ Enums/                           <Enums>.cs — one enum per file, plural name
 ├─ Extensions/                      <Type>Extensions.cs — extension methods on BCL or Common types
-├─ Limits/                          <Entity>Limits.cs — static, const-only length, precision, scale, and range bounds of one entity's properties, read by its EF configuration and its request validators
+├─ Limits/                          static, const-only length, precision, scale, and range bounds, one class per entity, read by its EF configuration and its request validators
+│  ├─ Base/                         <BaseEntity>Limits.cs for the Entity/Base/ classes (BaseEnumEntityLimits.cs)
+│  └─ <Feature>/                    <Entity>Limits.cs, mirroring Entity/<Feature>/
 └─ Validation/                      the FluentValidation-to-IValidateOptions adapter and its OptionsBuilder extension
 ```
 
