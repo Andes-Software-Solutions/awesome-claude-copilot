@@ -116,6 +116,7 @@ Exempt: `[McpServerToolType]` static tool classes (`csharp-mcp-server`), records
 - Track new entities with `_ctx.Add` / `_ctx.AddRange`, never `AddAsync` / `AddRangeAsync` — nothing touches the database until `SaveChangesAsync` (`ef-core`).
 - Write through the `DbContext`, never the DbSet: `_ctx.Add(product)` / `_ctx.Update(product)` / `_ctx.Remove(product)`, not `_ctx.Products.Add(product)` (`ef-core`).
 - Every relational `DbContext` retries on failure (`EnableRetryOnFailure()`), so an explicit transaction runs inside `_ctx.Database.CreateExecutionStrategy().ExecuteAsync` (`ef-core`).
+- Lengths, precision, and ranges come from the entity's `Common/Limits/<Entity>Limits` constants, read by both its EF configuration and its request validators — never a literal in either (`ef-core`).
 - Manage schema with migrations; avoid N+1 and over-fetching.
 
 ## Logging and performance

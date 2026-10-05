@@ -13,7 +13,7 @@
 - One `AbstractValidator<T>` per validated type, declared in the same file as the type it validates — one of the two sanctioned exceptions to file-name-equals-type-name (`naming.md`).
 - Cross-field rules go in the validator, not in a `.Validate(lambda, message)` call on the options builder. Chain `.Cascade(CascadeMode.Stop)` before a rule whose predicate would throw on the value the previous rule rejects.
 - A validator is `internal` unless another project registers it. Options validators stay `internal`: the owning project's `Add…` extension registers them. Request-DTO validators live in `<Root>.Dto` (`Dto/Actions/<Feature>/<Verb><Entity>ActionDto.cs`, one DTO per file with its validator) and are registered by Api from that assembly — `AddValidatorsFromAssemblyContaining<PaginatedResponseDto>(includeInternalTypes: true)` — so they can stay `internal` too; a scan rooted at `Program` finds nothing in `Dto`.
-- A validation limit both a DTO validator and a store configuration must agree on is a catalog in `Common/Constants/`, not a constant on either.
+- Length, precision, and range rules on a request DTO read the entity's `Common/Limits/<Entity>Limits` constants, the same ones its EF configuration maps (`ef-core`); never a literal, and never a constant on the validator or the configuration.
 
 ## Where validation runs
 

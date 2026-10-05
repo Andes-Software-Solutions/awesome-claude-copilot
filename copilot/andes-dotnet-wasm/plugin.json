@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "andes-dotnet-wasm",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "Blazor WebAssembly (standalone, .NET 10) standards as an on-demand skill; builds on andes-dotnet.",
   "author": {
     "name": "Rodrigo Rojas"

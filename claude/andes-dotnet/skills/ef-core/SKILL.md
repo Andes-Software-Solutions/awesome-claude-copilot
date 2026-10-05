@@ -1,6 +1,6 @@
 ---
 name: ef-core
-description: "Use when writing or reviewing Entity Framework Core code: DbContext and entity design, queries, change tracking, migrations, performance, security, and database testing (Testcontainers first, EF InMemory last)."
+description: "Use when writing or reviewing Entity Framework Core code: DbContext and entity design, column limits shared with validators (`Common/Limits/<Entity>Limits`), queries, change tracking, migrations, performance, security, and database testing (Testcontainers first, EF InMemory last)."
 ---
 
 # Entity Framework Core Best Practices
@@ -20,9 +20,48 @@ description: "Use when writing or reviewing Entity Framework Core code: DbContex
 - Model a fixed set of values (status, type, category) as an enum-backed reference table per `ef-core-enum-reference-tables`
 - Use meaningful primary keys (consider natural vs surrogate keys)
 - Implement proper relationships (one-to-one, one-to-many, many-to-many)
-- Configure keys, constraints, and mappings with the fluent API in `IEntityTypeConfiguration<T>` classes only; never put DataAnnotations mapping attributes on entities, and never validate with them (validation is FluentValidation on request types)
+- Configure keys, constraints, and mappings with the fluent API in `IEntityTypeConfiguration<T>` classes only; never put DataAnnotations mapping attributes on entities, and never validate with them (validation is FluentValidation on request types). Lengths, precision, and ranges come from the entity's `Common/Limits/` class (Column limits, below)
 - Implement appropriate navigational properties
 - Consider using owned entity types for value objects
+
+## Column limits
+
+- Every length, precision, scale, and range bound of an entity's properties is a `const` in one static class per entity, `Common/Limits/<Entity>Limits.cs` (`dotnet-api-architecture`), named for the class that declares the property (`BaseEnumEntityLimits` for the `BaseEnumEntity` columns). Members are `<Property>MaxLength`, `<Property>MinLength`, `<Property>Length` (fixed), `<Property>Precision`, `<Property>Scale`, `<Property>MinValue`, `<Property>MaxValue`.
+- The entity's `IEntityTypeConfiguration<T>` and the validator of every request DTO that writes the entity read the same constant, so a column and its API validation cannot drift. Never a literal in either, and never a second constant on the validator or the configuration.
+- Changing a limit changes the model: add the migration in the same commit, and check existing rows before narrowing a column. Migrations and the model snapshot keep the literal values they were generated with; never edit them to reference a limit.
+
+```csharp
+// Common/Limits/ProductLimits.cs
+public static class ProductLimits
+{
+    public const int NameMaxLength = 200;
+    public const int DescriptionMaxLength = 2000;
+    public const int PricePrecision = 18;
+    public const int PriceScale = 2;
+}
+
+// Repository/Sql/Configurations/Products/ProductConfiguration.cs
+public sealed class ProductConfiguration : BaseModifiedEntityConfiguration<Product>
+{
+    protected override void ConfigureEntity(EntityTypeBuilder<Product> builder)
+    {
+        builder.Property(p => p.Name).HasMaxLength(ProductLimits.NameMaxLength).IsRequired();
+        builder.Property(p => p.Description).HasMaxLength(ProductLimits.DescriptionMaxLength);
+        builder.Property(p => p.Price).HasPrecision(ProductLimits.PricePrecision, ProductLimits.PriceScale);
+    }
+}
+
+// Dto/Actions/Products/CreateProductActionDto.cs — UpdateProductActionDtoValidator reads the same constants
+internal sealed class CreateProductActionDtoValidator : AbstractValidator<CreateProductActionDto>
+{
+    public CreateProductActionDtoValidator()
+    {
+        RuleFor(p => p.Name).NotEmpty().MaximumLength(ProductLimits.NameMaxLength);
+        RuleFor(p => p.Description).MaximumLength(ProductLimits.DescriptionMaxLength);
+        RuleFor(p => p.Price).PrecisionScale(ProductLimits.PricePrecision, ProductLimits.PriceScale, ignoreTrailingZeros: true);
+    }
+}
+```
 
 ## Performance
 

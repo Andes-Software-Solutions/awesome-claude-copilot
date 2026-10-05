@@ -80,7 +80,7 @@ public sealed class OrderConfiguration : BaseModifiedEntityConfiguration<Order>
 {
     protected override void ConfigureEntity(EntityTypeBuilder<Order> builder)
     {
-        builder.Property(o => o.Number).HasMaxLength(32).IsRequired();
+        builder.Property(o => o.Number).HasMaxLength(OrderLimits.NumberMaxLength).IsRequired();
         builder.HasIndex(o => o.Number).IsUnique();
     }
 }

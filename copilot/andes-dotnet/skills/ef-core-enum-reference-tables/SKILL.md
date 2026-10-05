@@ -32,6 +32,13 @@ public abstract class BaseEnumEntity<TEnum>
     public string? Description { get; set; }
 }
 
+// Common/Limits/BaseEnumEntityLimits.cs — the BaseEnumEntity columns
+public static class BaseEnumEntityLimits
+{
+    public const int NameMaxLength = 64;
+    public const int DescriptionMaxLength = 256;
+}
+
 // Entity/Orders/OrderStatus.cs — the singular of the enum, sealed, no members
 public sealed class OrderStatus : BaseEnumEntity<OrderStatuses>
 {
@@ -56,9 +63,9 @@ public abstract class BaseEnumEntityConfiguration<TEntity, TEnum> : IEntityTypeC
     {
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).ValueGeneratedNever();
-        builder.Property(e => e.Name).HasMaxLength(64).IsRequired();
+        builder.Property(e => e.Name).HasMaxLength(BaseEnumEntityLimits.NameMaxLength).IsRequired();
         builder.HasIndex(e => e.Name).IsUnique();
-        builder.Property(e => e.Description).HasMaxLength(256);
+        builder.Property(e => e.Description).HasMaxLength(BaseEnumEntityLimits.DescriptionMaxLength);
         builder.HasData(Enum.GetValues<TEnum>().Select(value => new
         {
             Id = value,

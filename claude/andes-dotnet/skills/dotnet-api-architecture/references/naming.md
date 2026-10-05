@@ -5,7 +5,7 @@
 | Thing | Convention | Examples |
 |---|---|---|
 | Projects | `<Root>.<Layer>`; tests `<Root>.Unit.Test`, `<Root>.Integration.Test` | `Contoso.Shop.Service` |
-| Folders — collections of like types | plural | `Endpoints`, `Enums`, `Options`, `Configurations`, `HealthChecks`, `Interceptors`, `Models`, `Exceptions`, `Constants`, `Scripts`, `<Feature>` |
+| Folders — collections of like types | plural | `Endpoints`, `Enums`, `Options`, `Configurations`, `HealthChecks`, `Interceptors`, `Limits`, `Models`, `Exceptions`, `Constants`, `Scripts`, `<Feature>` |
 | Folders — techniques and infrastructure | gerund or mass noun | `Extraction`, `Caching`, `Middleware`, `Health`, `Observability`, `Configuration`, `Provisioning`, `Validation` |
 | Folders — persistence providers | the technology's proper name | `Sql`, `Mongo`, `Blob` |
 | File names | == the type name, with two exceptions: an interface with its single implementation, a validator beside the type it validates | `OrderService.cs` (holds `IOrderService` too); `SessionCache.cs` (holds `ISessionCache` too); `ExportOptions.cs` holding `ExportOptionsValidator` |
@@ -33,6 +33,7 @@
 | Store provisioning | `<Provider>ResourceProvisioner` creates resources; `<Provider>SchemaMigrator` applies migrations | `MongoResourceProvisioner`, `SqlSchemaMigrator` |
 | Startup | `<Name>Bootstrapper` | `SchemaBootstrapper` |
 | Enums | plural, one per file | `JobStatuses`, `SortDirections` |
+| Entity limits | `<Entity>Limits` in `Common/Limits/`, static, const-only, named for the class that declares the property; members `<Property>MaxLength`, `<Property>MinLength`, `<Property>Length` (fixed), `<Property>Precision`, `<Property>Scale`, `<Property>MinValue`, `<Property>MaxValue` | `ProductLimits.NameMaxLength`, `BaseEnumEntityLimits.NameMaxLength` |
 | Enum wire names | `<Enum>Names` | `JobStatusNames` |
 | Actions | `Actions/<Feature>/<Verb><Entity>ActionDto.cs`, one DTO per file with its validator | `Actions/Orders/CreateOrderActionDto.cs` |
 | Exceptions | `<Condition>Exception`, one per file in the owning folder's `Exceptions/`; shared: `NotFoundException`, `ForbiddenException`, `ConflictException` | `StoreUnavailableException` |
