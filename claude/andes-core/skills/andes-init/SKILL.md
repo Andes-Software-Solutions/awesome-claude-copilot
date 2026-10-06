@@ -1,6 +1,6 @@
 ---
 name: andes-init
-description: "Install or refresh the shared Andes standards in this repository: writes the managed block in the root AGENTS.md (read by Claude Code and GitHub Copilot), scaffolds the project's own sections on first install, wires CLAUDE.md to it, and offers opt-in settings and cleanup of old drop-in copies. Run on request only."
+description: "Install or refresh the shared Andes standards in this repository: writes the managed block in the root AGENTS.md (read by Claude Code and GitHub Copilot), scaffolds the project's own sections on first install, wires CLAUDE.md and .github/copilot-instructions.md to it, and offers opt-in settings and cleanup of old drop-in copies. Run on request only."
 ---
 
 # andes-init
@@ -20,13 +20,16 @@ Read the template. Then, in the repo root:
 - **No markers** → append a blank line and the template to the end of the file.
 - **Anything else** (one marker without the other, several pairs, nested markers) → stop, show the user the marker lines found, and ask how to proceed. Do not guess.
 
-## 2. CLAUDE.md
+## 2. CLAUDE.md and .github/copilot-instructions.md
 
-Claude Code reads `AGENTS.md` natively only when no `CLAUDE.md`, `.claude/CLAUDE.md`, or `CLAUDE.local.md` exists — one personal `CLAUDE.local.md` silently turns it off. An `@AGENTS.md` import is immune to that and never loads the file twice.
+Both files are a one-line `@AGENTS.md` import, so project-specific text lives in `AGENTS.md` after the andes markers, where both harnesses read it.
+
+Claude Code reads `AGENTS.md` natively only when no `CLAUDE.md`, `.claude/CLAUDE.md`, or `CLAUDE.local.md` exists — one personal `CLAUDE.local.md` silently turns it off. An `@AGENTS.md` import is immune to that and never loads the file twice. Copilot CLI resolves the same `@` import in `.github/copilot-instructions.md` and drops duplicate copies of identical instructions.
 
 - If `CLAUDE.md` or `.claude/CLAUDE.md` exists and neither contains a line that is exactly `@AGENTS.md`, add that line at the top of the one that exists (root first).
 - If neither exists, create `CLAUDE.md` containing exactly `@AGENTS.md`.
-- If `.github/copilot-instructions.md` exists, tell the user Copilot loads it **and** `AGENTS.md`; offer to move anything project-specific into `AGENTS.md` (outside the markers) and delete it. Never delete it without a yes.
+- If `.github/copilot-instructions.md` is missing, create it containing exactly `@AGENTS.md`.
+- If it exists without a line that is exactly `@AGENTS.md`, add that line at the top and keep the rest. If anything else remains in the file, offer to move it into `AGENTS.md` after `<!-- andes:end -->`, so Claude Code sees it too, leaving the file as exactly `@AGENTS.md`. Move only on a yes, and never delete the file.
 
 ## 3. Detect the stacks
 
@@ -60,4 +63,4 @@ These load the same guidance twice or contradict the plugins. Offer to delete th
 
 ## 6. Report
 
-End with a short list: files created or changed (name the placeholder sections if you scaffolded them), settings applied or declined, whether `docs/plans/` is git-ignored, leftovers kept, and plugins still to install (`/plugin install <name>@andes` in Claude Code; `copilot plugin install <name>@andes` in Copilot CLI).
+End with a short list: files created or changed (name the placeholder sections if you scaffolded them), whether `.github/copilot-instructions.md` was created, given the import, or still holds project text, settings applied or declined, whether `docs/plans/` is git-ignored, leftovers kept, and plugins still to install (`/plugin install <name>@andes` in Claude Code; `copilot plugin install <name>@andes` in Copilot CLI).

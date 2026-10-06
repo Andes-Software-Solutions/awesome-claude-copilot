@@ -44,6 +44,14 @@ The `Stop` / `agentStop` turn-finished notification and the `PostToolUse` / `pos
 
 The current Angular CLI MCP server no longer exposes `find_examples`: [angular.dev/ai/mcp](https://angular.dev/ai/mcp) lists `ai_tutor`, `devserver.*`, `get_best_practices`, `list_projects`, `onpush_zoneless_migration`, `run_target`, and `search_documentation`. Because the server floats on `@latest`, the grant could never resolve. It is gone from both `andes-angular-code-reviewer` twins, from `andes-angular-expert`, from the `andes-angular-expert` entry in `requiredMcpGrants`, and from the `angular-standards` and `ngrx-signal-store` workflows.
 
+### D7. `.github/copilot-instructions.md` is an `@AGENTS.md` stub, like `CLAUDE.md`
+
+Added after 1.11.0 shipped; it ships in 1.11.1. `andes-init` now creates `.github/copilot-instructions.md` containing exactly `@AGENTS.md`. When the file already exists, it adds that line at the top. It then offers to move any other text into `AGENTS.md` after the andes markers. It never deletes the file. This repository carries the same stub.
+
+- **Why.** Copilot CLI resolves `@<relative path>` in `.github/copilot-instructions.md`, `AGENTS.md`, and `CLAUDE.md`, and it drops duplicate copies of identical repository and agent instructions. A stub that only imports `AGENTS.md` therefore adds no second copy of the standards. That cost is the reason [2026-09-plugin-architecture.md](2026-09-plugin-architecture.md) deleted the file, and this decision supersedes that deletion.
+- **Project text stays in `AGENTS.md`.** Claude Code never reads `copilot-instructions.md`, so text left there would reach Copilot only.
+- **Audit.** `memory/shadowing-file` no longer covers `.github/copilot-instructions.md`. The new `memory/copilot-stub` requires the file, when present, to be exactly `@AGENTS.md`, mirroring `memory/claude-stub`.
+
 ## Enforcement
 
 - **Reviewers.** Both `andes-csharp-code-reviewer` twins load `dotnet-api-architecture` for a length, precision, or scale in a configuration or validator. A literal instead of `<Entity>Limits` is Medium.
@@ -53,6 +61,7 @@ The current Angular CLI MCP server no longer exposes `find_examples`: [angular.d
 
 - **Copilot CLI.** The `copilot mcp add azure-devops …` registration has not been run against a real organization, and it is not yet known whether the plugin's own `azure-devops` entry shadows the user-level one.
 - **The notification hook** on Copilot CLI and Windows, as before.
+- **Import dedupe.** Copilot CLI documents that it removes identical copies, but not whether that covers `AGENTS.md` pulled in through an `@` import. `CLAUDE.md` already carries the same exposure.
 
 ## References
 
@@ -60,4 +69,5 @@ The current Angular CLI MCP server no longer exposes `find_examples`: [angular.d
 - Copilot CLI command reference, MCP server configuration: <https://docs.github.com/en/copilot/reference/copilot-cli-reference/cli-command-reference>
 - Azure DevOps MCP server: <https://github.com/microsoft/azure-devops-mcp>
 - Angular CLI MCP server tools: <https://angular.dev/ai/mcp>
+- Copilot CLI custom instructions and `@` imports: <https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-custom-instructions>
 - EF Core, generated values: <https://learn.microsoft.com/ef/core/modeling/generated-properties>

@@ -898,11 +898,13 @@ if (runs('hooks')) {
 
 // --- memory ------------------------------------------------------------------
 if (runs('memory')) {
-  for (const f of ['.claude/CLAUDE.md', '.github/copilot-instructions.md']) {
-    if (exists(f)) add('memory', 'shadowing-file', 'error', `${f} would load a second copy of the instructions (or shadow AGENTS.md)`, [f]);
-  }
+  if (exists('.claude/CLAUDE.md')) add('memory', 'shadowing-file', 'error', '.claude/CLAUDE.md would load a second copy of the instructions (or shadow AGENTS.md)', ['.claude/CLAUDE.md']);
   if (exists('CLAUDE.md') && read('CLAUDE.md').trim() !== '@AGENTS.md') {
     add('memory', 'claude-stub', 'error', 'Root CLAUDE.md must contain exactly "@AGENTS.md"', ['CLAUDE.md']);
+  }
+  // Copilot CLI resolves the import; any other text would be a Copilot-only copy of project instructions.
+  if (exists('.github/copilot-instructions.md') && read('.github/copilot-instructions.md').trim() !== '@AGENTS.md') {
+    add('memory', 'copilot-stub', 'error', '.github/copilot-instructions.md must contain exactly "@AGENTS.md"', ['.github/copilot-instructions.md']);
   }
   if (!exists('AGENTS.md') || !exists(CONFIG.agentsTemplate)) {
     add('memory', 'missing', 'error', 'AGENTS.md or the andes-init template is missing', ['AGENTS.md', CONFIG.agentsTemplate]);

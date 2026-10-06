@@ -50,10 +50,10 @@ When you run `andes-init`, it reports which plugins match your repository (for e
 /andes-core:andes-init
 ```
 
-Install each stack plugin you need. Its dependencies install with it, so `andes-dotnet` brings in `andes-core`. Then run `andes-init` once per repository. It asks before it changes anything except the `andes` block and the `CLAUDE.md` import:
+Install each stack plugin you need. Its dependencies install with it, so `andes-dotnet` brings in `andes-core`. Then run `andes-init` once per repository. It asks before it changes anything except the `andes` block and the `@AGENTS.md` imports:
 
 1. **`AGENTS.md`.** Writes or refreshes the managed block between `<!-- andes:begin … -->` and `<!-- andes:end -->`. Text outside the markers is never touched. When it creates the file, it also appends placeholder sections (About this repository, Layout, Build/test/run, Conventions) for the team to fill in.
-2. **`CLAUDE.md`.** Adds an `@AGENTS.md` import, or creates `CLAUDE.md` with just that line. The import matters: a `CLAUDE.local.md` silently turns off Claude Code's native `AGENTS.md` loading, and the import still works when one exists.
+2. **`CLAUDE.md` and `.github/copilot-instructions.md`.** Adds an `@AGENTS.md` import to each, or creates the file with just that line, so project-specific text lives only in `AGENTS.md`. The import matters: a `CLAUDE.local.md` silently turns off Claude Code's native `AGENTS.md` loading, and the import still works when one exists. Copilot CLI resolves the same import and drops duplicate copies. If `.github/copilot-instructions.md` already holds other text, `andes-init` offers to move it into `AGENTS.md`.
 3. **Opt-in settings**, offered one at a time, each shown as a diff first:
    - the `andes` marketplace and `enabledPlugins` for a team rollout
    - a `permissions.deny` for the Angular CLI `ai_tutor` tool
@@ -255,7 +255,7 @@ The pre-plugin layout is commit [`97943de`](https://github.com/RorroRojas3/aweso
    - `.claude/skills/<name>` and `.github/skills/<name>` for any skill a plugin now ships
    - the MCP servers in `.mcp.json` and `.vscode/mcp.json`
    - `microsoft-docs@claude-plugins-official`, which starts a second Microsoft Learn server
-3. **Move project-specific text** from `.github/copilot-instructions.md` into `AGENTS.md`, outside the markers. Copilot loads both files, so `andes-init` offers to delete it afterward.
+3. **Move project-specific text** from `.github/copilot-instructions.md` into `AGENTS.md`, outside the markers. `andes-init` adds an `@AGENTS.md` import at the top of the file and offers the move, leaving the file as just that import.
 
 Why cleanup matters: in Copilot CLI, project-level agents and skills win over plugin ones (first found wins). An old `.claude/skills/csharp-async` would silently shadow the plugin's `csharp-async`.
 
@@ -295,6 +295,7 @@ What was renamed:
 │   └── mcp.json                        # Copilot MCP servers, Agent Plugins format (optional; same servers)
 ├── AGENTS.md                           # the andes block (= andes-init template) + this repo's own sections
 ├── CLAUDE.md                           # exactly "@AGENTS.md"
+├── .github/copilot-instructions.md     # exactly "@AGENTS.md" (audit: memory/copilot-stub)
 ├── .claude/skills/                     # maintainer-only /repo-audit, /ngrx-signals-sync, /release (not shipped)
 ├── .claude/settings.json               # maintainer settings; never registers the andes marketplace or its plugins
 ├── .mcp.json                           # maintainer MCP servers, copied from the plugins (audit: mcp/root-drift)
@@ -419,7 +420,7 @@ The underlying check is `node claude/andes-angular/skills/ngrx-signal-store/scri
 - [docs/2026-09-services-own-data-access-and-scaffold.md](docs/2026-09-services-own-data-access-and-scaffold.md) records why services query the `DbContext` directly with no repository layer, `Add` over `AddAsync`, the single `GlobalExceptionHandler`, `DateTimeOffset` timestamps, and the `andes-scaffold` skill.
 - [docs/2026-10-ef-core-connection-resiliency.md](docs/2026-10-ef-core-connection-resiliency.md) records why every relational `DbContext` retries on failure, the execution-strategy rule for explicit transactions, and why test fixtures build their options without retry.
 - [docs/2026-09-notification-and-link-hooks.md](docs/2026-09-notification-and-link-hooks.md) records the `andes-core` notification and link-check hooks: where the hook files sit, the event map, each harness's output channel, the cloud-agent copy `andes-init` installs, the audit's `hooks` and `links` checks, and the Copilot checklist. The Stop and link-check hooks were later removed.
-- [docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md](docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md) records `<Entity>Limits` in `Common/Constants/<Feature>/`, generic base entities with `Guid` or `int` keys, the floating Azure DevOps server and its Copilot CLI registration, the notification-only hook set, and the removed `find_examples` grant.
+- [docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md](docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md) records `<Entity>Limits` in `Common/Constants/<Feature>/`, generic base entities with `Guid` or `int` keys, the floating Azure DevOps server and its Copilot CLI registration, the notification-only hook set, the removed `find_examples` grant, and the `@AGENTS.md` stub in `.github/copilot-instructions.md`.
 - The `docs/2026-08-*.md` files record earlier decisions. Parts of them are superseded by the ADR.
 - [CHANGELOG.md](CHANGELOG.md)
 
