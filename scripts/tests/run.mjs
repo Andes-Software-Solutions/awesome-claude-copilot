@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-// Runs the hook-script suites once per harness tree, because each tree ships its own copy.
+// Runs the script suites once per harness tree, because each tree ships its own copy of the hook
+// scripts. Suites for repo-root tooling ignore ANDES_TREE and simply run twice.
 //
 //   node scripts/tests/run.mjs
 //

@@ -26,7 +26,7 @@ How it fits together:
 
 | Plugin | Ships | Depends on |
 | --- | --- | --- |
-| `andes-core` | **Skills:** `andes-init`, `andes-scaffold`, `prd`, `technical-writing`<br>**Agents:** `andes-prd-generator`, `andes-se-technical-writer`<br>**Copilot-only agents:** `andes-planner-expert`, `andes-full-stack-expert`<br>**MCP:** `context7`<br>**Hooks:** desktop notification when the agent needs you or finishes a turn; broken-link check after Markdown edits (see [Hooks](#hooks)) | — |
+| `andes-core` | **Skills:** `andes-init`, `andes-scaffold`, `prd`, `technical-writing`<br>**Agents:** `andes-prd-generator`, `andes-se-technical-writer`<br>**Copilot-only agents:** `andes-planner-expert`, `andes-full-stack-expert`<br>**MCP:** `context7`<br>**Hooks:** desktop notification when the agent needs you (see [Hooks](#hooks)) | — |
 | `andes-dotnet` | **Skills:** `csharp-standards`, `dotnet-api-architecture`, `aspnet-rest-apis`, `azure-functions-csharp`, `csharp-mcp-server`, `csharp-async`, `csharp-docs`, `csharp-xunit`, `ef-core`, `ef-core-base-entities`, `ef-core-enum-reference-tables`, `microsoft-agent-framework`, `microsoft-docs`<br>**Agents:** `andes-csharp-code-reviewer`<br>**Copilot-only agents:** `andes-csharp-expert`, `andes-csharp-dotnet-janitor`<br>**MCP:** `microsoft-learn` | `andes-core` |
 | `andes-dotnet-wasm` | **Skills:** `blazor-wasm` (standalone Blazor WebAssembly, .NET 10) | `andes-core`, `andes-dotnet` |
 | `andes-angular` | **Skills:** `angular-standards`, `angular-ui-architecture`, `ngrx-signal-store`, `angular-developer` (official Angular team skill, vendored)<br>**Agents:** `andes-angular-code-reviewer`<br>**Copilot-only agents:** `andes-angular-expert`<br>**MCP:** `angular-cli` | `andes-core` |
@@ -58,12 +58,12 @@ Install each stack plugin you need. Its dependencies install with it, so `andes-
    - the `andes` marketplace and `enabledPlugins` for a team rollout
    - a `permissions.deny` for the Angular CLI `ai_tutor` tool
    - `"effortLevel": "xhigh"`
-   - the broken-link check for the Copilot cloud agent, which never loads plugins: `.github/hooks/andes-links.json` plus a copy of the script at `.github/hooks/andes/check-links.mjs`, refreshed on a re-run
-4. **Cleanup.** Offers to delete old drop-in copies.
+   - a `docs/plans/` line in `.gitignore`
+4. **Cleanup.** Offers to delete old drop-in copies, including the cloud-agent link check (`.github/hooks/andes-links.json`, `.github/hooks/andes/check-links.mjs`) that earlier versions installed.
 
 Re-run `andes-init` after you update the plugins. A run with nothing new changes nothing. Plugin agents appear as `andes-<plugin>:andes-<role>`, for example `andes-dotnet:andes-csharp-code-reviewer`. Verified with Claude Code 2.1.283.
 
-**Azure DevOps.** After installing `andes-azure-devops`, set `ADO_ORG` to your organization name in the environment that starts Claude Code, run `az login`, restart, then run `/andes-azure-devops:azure-devops-init` once per repository. It records the project, team, area path, process, iteration root, and assignable people in `AGENTS.md`; `andes-ado-backlog-manager` refuses to write until that section exists.
+**Azure DevOps.** After installing `andes-azure-devops`, set `ADO_ORG` to your organization name in the environment that starts Claude Code, run `az login`, restart, then run `/andes-azure-devops:azure-devops-init` once per repository. It records the project, team, area path, process, iteration root, and assignable people in `AGENTS.md`; `andes-ado-backlog-manager` refuses to write until that section exists. Copilot CLI does not expand `${ADO_ORG}` in a plugin server's arguments, so on Copilot CLI register the server once with the organization written out: `azure-devops-init` gives you the `copilot mcp add azure-devops …` command.
 
 ### GitHub Copilot CLI
 
@@ -174,9 +174,9 @@ These apply to every new or changed C# file. Existing code is migrated only when
 | --- | --- | --- | --- |
 | `microsoft-learn` | `andes-dotnet` | HTTP `https://learn.microsoft.com/api/mcp` | Grounds .NET and Azure answers in official docs |
 | `context7` | `andes-core` | HTTP `https://mcp.context7.com/mcp` | Remote and anonymous (no API key; anonymous rate limit). Ships with `andes-core` so every research agent can ground any other library's docs |
-| `angular-cli` | `andes-angular` | `npx -y @angular/cli@latest mcp --read-only` | Floats on `@latest` on purpose, so the MCP tool set (including `find_examples`) tracks the current CLI. `--read-only` drops the `run_target` and devserver tools |
+| `angular-cli` | `andes-angular` | `npx -y @angular/cli@latest mcp --read-only` | Floats on `@latest` on purpose, so the MCP tool set tracks the current CLI. `--read-only` drops `run_target`, `devserver.start`, and `devserver.stop` |
 | `terraform` | `andes-terraform` | `docker run -i --rm hashicorp/terraform-mcp-server:1.3.0 --toolsets=registry` | Pinned image, public-registry toolset only. Requires Docker |
-| `azure-devops` | `andes-azure-devops` | `npx -y @azure-devops/mcp@2.10.0 ${ADO_ORG} -d core work work-items --authentication azcli` | Pinned. Only the `core`, `work`, and `work-items` domains (no test plans, repositories, pipelines, wiki, or search). Organization from `ADO_ORG`; authentication is your `az login` session. Requires Node.js 20+ and the Azure CLI |
+| `azure-devops` | `andes-azure-devops` | `npx -y @azure-devops/mcp@latest ${ADO_ORG} -d core work work-items --authentication azcli` | Floats on `@latest`, so the tool set tracks the current server. Only the `core`, `work`, and `work-items` domains (no test plans, repositories, pipelines, wiki, or search). Organization from `ADO_ORG`; authentication is your `az login` session. Requires Node.js 20+ and the Azure CLI |
 
 Each plugin declares its servers once per harness tree, with the same entries:
 
@@ -190,7 +190,7 @@ Tool scoping:
 - **Exact grants.** Every agent lists exact MCP tools, never a whole server.
   - Claude tool names look like `mcp__plugin_andes-angular_angular-cli__get_best_practices`.
   - Copilot tool names look like `angular-cli/get_best_practices`.
-- **Unknown names are ignored.** So `find_examples` (which exists only on Angular CLI 21) can be granted safely. The same goes for the `microsoft-learn` tools granted to the `andes-core` agents when `andes-dotnet` is not installed.
+- **Unknown names are ignored.** So the `microsoft-learn` tools granted to the `andes-core` agents are harmless when `andes-dotnet` is not installed.
 - **`ai_tutor`.** The Angular CLI server has no flag to remove its `ai_tutor` tool. No agent is granted it, and `andes-init` offers a `permissions.deny` for Claude's main session.
 - **Node version.** Angular CLI 22.2 requires Node ≥ 22.22.3.
 - **No delete.** The Azure DevOps server has no delete tool. `andes-ado-backlog-manager` sets `System.State` to `Removed`, which hides the item from every backlog and board; the Basic process has no such state.
@@ -199,18 +199,15 @@ Tool scoping:
 
 ## Hooks
 
-`andes-core` ships two hooks for both harnesses. They run Node scripts, so they need **Node.js 18 or later on `PATH`** wherever Claude Code or Copilot runs.
+`andes-core` ships one hook for both harnesses. It runs a Node script, so it needs **Node.js 18 or later on `PATH`** wherever Claude Code or Copilot runs.
 
 | When | Claude Code | Copilot CLI | What happens |
 | --- | --- | --- | --- |
 | The agent needs permission or input | `Notification` | `notification` | Desktop notification |
-| The agent finishes a turn | `Stop` | `agentStop` | Desktop notification |
-| The agent writes or edits a Markdown file | `PostToolUse` (`Write`, `Edit`) | `postToolUse` (`edit`, `create`) | Local link check; broken links go back to the agent |
 
 - **Notifications.** macOS uses `osascript`, Linux uses `notify-send` in a desktop session, and Windows shows a toast from Windows PowerShell 5.1. With no notifier, or over SSH, the terminal bell rings instead. Cloud, CI, and headless sessions stay silent. On macOS, the first notification may need you to allow notifications for Script Editor.
-- **Link check.** Local only; nothing is fetched. It checks relative files and images, reference definitions, HTML `href` and `src`, `/`-rooted paths, `#anchors` (GitHub's heading slugs), and exact letter case. A new file reports every broken link; an edit reports only the links it added, plus the file's own anchors. It skips files outside the project (plans, memory), `node_modules`, and files over 1 MB. On Claude Code the finding reaches the model as a block reason (the edit has already happened); on Copilot, as added context.
-- **Switches.** Set these in the environment that starts the harness. `ANDES_NOTIFY=all` (default), `attention` (no turn-finished alerts), or `off`. `ANDES_LINK_CHECK=off` turns the link check off. If your terminal already shows Claude Code's own notifications (iTerm2, kitty, Ghostty), use `attention` or `off` to avoid doubles.
-- **Copilot cloud agent.** It never loads plugins, so the plugin hooks do not run there. `andes-init` offers to install the link check as `.github/hooks/andes-links.json` plus a copy of the script at `.github/hooks/andes/check-links.mjs`; commit both. Copilot CLI then runs the repository copy, and the plugin's own link hook stands down. The cloud agent has no notification event.
+- **Switch.** `ANDES_NOTIFY=off`, set in the environment that starts the harness, turns notifications off. Use it if your terminal already shows Claude Code's own notifications (iTerm2, kitty, Ghostty), to avoid doubles.
+- **Copilot cloud agent.** It never loads plugins and has no notification event, so the hook does not run there.
 - **Verified on Claude Code only.** Copilot CLI, the cloud agent, desktop pop-ups, Windows, and VS Code are untested; see the [Copilot checklist](docs/2026-09-notification-and-link-hooks.md#not-verified-copilot-checklist).
 
 ---
@@ -346,7 +343,7 @@ The helper copies byte for byte. It refuses to overwrite a file that carries unc
 - **Copilot agents.** No `target`, so they load in VS Code and `github-copilot`; `model` as a pair from the audit's `modelParity` table, CLI slug first and VS Code display name second (`[claude-sonnet-5.5, Claude Sonnet 5.5 (copilot)]`); `reasoning-effort` equal to the audit's `copilotEffort` table; plain tool aliases (`read`, `edit`, `search`, `execute`, `agent`, `web`, `todo`) and exact `server/tool` MCP grants; no `argument-hint` or `vscode/*` tools; no `handoffs` except on `andes-planner-expert`, whose targets must be marketplace agents or the built-in `agent`; an `agents:` list only together with the `agent` tool, and never pointing at an agent that has `disable-model-invocation: true`.
 - **Manifests and marketplaces.** Both manifests of a plugin carry the same `version` and `description`, and each marketplace entry repeats that description.
 - **MCP files.** `.mcp.json` and `mcp.json` list the same servers.
-- **Hook files.** `claude/andes-core/hooks/hooks.json` and `copilot/andes-core/com.github.copilot/hooks/hooks.json` run the same `scripts/*.mjs` for each event pair (`Notification`/`notification`, `Stop`/`agentStop`, `PostToolUse`/`postToolUse`), and each passes its own `--harness` value. Hook scripts import only `node:` built-ins, because `andes-init` copies `check-links.mjs` into consumer repositories.
+- **Hook files.** `claude/andes-core/hooks/hooks.json` and `copilot/andes-core/com.github.copilot/hooks/hooks.json` run the same `scripts/*.mjs` for the one event pair (`Notification`/`notification`), and each passes its own `--harness` value. Hook scripts import only `node:` built-ins, because an installed plugin has no `node_modules`.
 - **The `AGENTS.md` block.** Edit `claude/andes-core/skills/andes-init/assets/agents-block.md`, sync, then copy it word for word between the markers in `AGENTS.md`.
 - **The review loop.** Copy its `## Review loop` section word for word into the Copilot implementers.
 
@@ -370,7 +367,7 @@ claude plugin validate .                        # Claude marketplace manifest
 ```
 
 - **Checks:** `manifests`, `isolation`, `mirror`, `skills`, `harness-paths`, `agents`, `mcp`, `hooks`, `memory`, `testing-policy`, `csharp-policy`, `registry`, `changelog`, `links`.
-- **`links`** runs the hook's own checker on every Markdown file in the repository (except the vendored `angular-developer`, the `andes-init` templates, and the mirrored copies under `copilot/`), so a broken link fails CI and blocks `/release`. Check files directly with `node claude/andes-core/scripts/check-links.mjs <file.md>…` (exit `0` clean, `10` findings, `1` error).
+- **`links`** runs `scripts/check-links.mjs` on every Markdown file in the repository (except the vendored `angular-developer`, the `andes-init` templates, and the mirrored copies under `copilot/`), so a broken link fails CI and blocks `/release`. Check files directly with `node scripts/check-links.mjs <file.md>…` (exit `0` clean, `10` findings, `1` error).
 - **Exit codes:** `0` clean, `10` findings, `1` the script failed.
 - **`/repo-audit`** runs the same checks inside Claude Code or Copilot CLI (it is a skill in `.claude/skills/`). It is report-only unless you pass `--fix`, which applies only mechanical repairs and never commits.
 
@@ -387,7 +384,7 @@ node scripts/release.mjs minor --dry-run   # the script underneath
 
 - Audit errors fail the job. Warnings stay advisory.
 - `claude plugin validate --strict` runs on the Claude marketplace and on every plugin under `claude/`.
-- `node scripts/tests/run.mjs` runs the hook-script tests once per tree. To run one tree, set `ANDES_TREE` to `claude` or `copilot` and name the files (`node --test scripts/tests/check-links.test.mjs scripts/tests/notify.test.mjs`): `node --test <dir>` fails on Node 22.
+- `node scripts/tests/run.mjs` runs the script tests once per tree (the link-checker suite has one copy and simply runs twice). To run one tree, set `ANDES_TREE` to `claude` or `copilot` and name the files (`node --test scripts/tests/check-links.test.mjs scripts/tests/notify.test.mjs`): `node --test <dir>` fails on Node 22.
 - Actions are SHA-pinned and kept current by Dependabot.
 
 **NgRx sync.** `ngrx-signal-store` is pinned to upstream NgRx doc snapshots in its `sources.json`. Check and refresh it with:
@@ -421,7 +418,8 @@ The underlying check is `node claude/andes-angular/skills/ngrx-signal-store/scri
 - [docs/2026-09-maintainer-mcp-servers.md](docs/2026-09-maintainer-mcp-servers.md) records why this repository starts its own MCP servers from the root `.mcp.json` and never installs its own marketplace, and the audit rules that keep the root entries in step with the plugins.
 - [docs/2026-09-services-own-data-access-and-scaffold.md](docs/2026-09-services-own-data-access-and-scaffold.md) records why services query the `DbContext` directly with no repository layer, `Add` over `AddAsync`, the single `GlobalExceptionHandler`, `DateTimeOffset` timestamps, and the `andes-scaffold` skill.
 - [docs/2026-10-ef-core-connection-resiliency.md](docs/2026-10-ef-core-connection-resiliency.md) records why every relational `DbContext` retries on failure, the execution-strategy rule for explicit transactions, and why test fixtures build their options without retry.
-- [docs/2026-09-notification-and-link-hooks.md](docs/2026-09-notification-and-link-hooks.md) records the `andes-core` notification and link-check hooks: where the hook files sit, the event map, each harness's output channel, the cloud-agent copy `andes-init` installs, the audit's `hooks` and `links` checks, and the Copilot checklist.
+- [docs/2026-09-notification-and-link-hooks.md](docs/2026-09-notification-and-link-hooks.md) records the `andes-core` notification and link-check hooks: where the hook files sit, the event map, each harness's output channel, the cloud-agent copy `andes-init` installs, the audit's `hooks` and `links` checks, and the Copilot checklist. The Stop and link-check hooks were later removed.
+- [docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md](docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md) records `<Entity>Limits` in `Common/Constants/<Feature>/`, generic base entities with `Guid` or `int` keys, the floating Azure DevOps server and its Copilot CLI registration, the notification-only hook set, and the removed `find_examples` grant.
 - The `docs/2026-08-*.md` files record earlier decisions. Parts of them are superseded by the ADR.
 - [CHANGELOG.md](CHANGELOG.md)
 

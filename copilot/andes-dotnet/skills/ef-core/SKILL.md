@@ -16,7 +16,8 @@ description: "Use when writing or reviewing Entity Framework Core code: DbContex
 
 ## Entity Design
 
-- Derive entities from the `Entity/Base/` classes (`BaseEntity`, `BaseCreatedEntity`, `BaseModifiedEntity`) per `ef-core-base-entities`: Guid keys, soft delete, UTC audit stamps, and a row-version token, all mapped fluently and stamped by interceptors
+- Derive entities from the `Entity/Base/` classes (`BaseEntity<TKey>`, `BaseCreatedEntity<TKey>`, `BaseModifiedEntity<TKey>`) per `ef-core-base-entities`: a `Guid` key by default or an `int` key where it fits, soft delete, UTC audit stamps, and a row-version token, all mapped fluently and stamped by interceptors
+- Put every length, precision, and scale limit of an entity in `Common/Constants/<Feature>/<Entity>Limits.cs` (`dotnet-api-architecture`): the configuration's `HasMaxLength` / `HasPrecision` and the request validator's `MaximumLength` / `PrecisionScale` read the same constant, so the column and the 400 never disagree
 - Model a fixed set of values (status, type, category) as an enum-backed reference table per `ef-core-enum-reference-tables`
 - Use meaningful primary keys (consider natural vs surrogate keys)
 - Implement proper relationships (one-to-one, one-to-many, many-to-many)
@@ -51,7 +52,7 @@ description: "Use when writing or reviewing Entity Framework Core code: DbContex
 
 ## Change Tracking & Saving
 
-- Start tracking new entities with `_ctx.Add` / `_ctx.AddRange`, never `AddAsync` / `AddRangeAsync`. Adding only marks entities `Added` and does not touch the database; the async overloads exist solely for the HiLo value generator, which these standards never configure (Guid keys are generated client-side, `ef-core-base-entities`). The round trip is `SaveChangesAsync`, which stays async. [Add versus AddAsync](https://learn.microsoft.com/ef/core/change-tracking/miscellaneous#add-versus-addasync)
+- Start tracking new entities with `_ctx.Add` / `_ctx.AddRange`, never `AddAsync` / `AddRangeAsync`. Adding only marks entities `Added` and does not touch the database; the async overloads exist solely for the HiLo value generator, which these standards never configure (Guid keys are generated client-side and int keys by an identity column, `ef-core-base-entities`). The round trip is `SaveChangesAsync`, which stays async. [Add versus AddAsync](https://learn.microsoft.com/ef/core/change-tracking/miscellaneous#add-versus-addasync)
 - Write through the DbContext, never the DbSet: `_ctx.Add(product)`, `_ctx.Update(product)`, `_ctx.Remove(product)` (and `AddRange` / `UpdateRange` / `RemoveRange` / `Attach`), not `_ctx.Products.Add(product)`. EF Core resolves the entity type from the instance; DbSets are for queries (`_ctx.Products.Where(...)`). The one exception is a shared-type entity (such as a `Dictionary<string, object>` join), which writes through `_ctx.Set<T>("Name")`. Change a tracked entity in place and save; call `Update` only for a detached one, since it marks every property modified. [DbContext versus DbSet methods](https://learn.microsoft.com/ef/core/change-tracking/miscellaneous#dbcontext-versus-dbset-methods)
 - Use appropriate change tracking strategies
 - Batch your SaveChanges() calls
@@ -75,7 +76,7 @@ await strategy.ExecuteAsync(async ct =>
 }, cancellationToken);
 ```
 
-- If the connection drops during commit, the strategy replays the unit as if it rolled back. Client-generated Guid keys (`ef-core-base-entities`) turn a replay of a commit that did succeed into a duplicate-key failure instead of a duplicate row.
+- If the connection drops during commit, the strategy replays the unit as if it rolled back. Client-generated Guid keys (`ef-core-base-entities`) turn a replay of a commit that did succeed into a duplicate-key failure instead of a duplicate row. An int identity key gives no such protection: the replay inserts a second row unless the table has a unique natural key.
 - Retry buffers each result set in memory, so page large reads (`Skip` / `Take`) instead of streaming one unbounded `AsAsyncEnumerable`.
 
 ## Security

@@ -12,7 +12,6 @@ tools:
     angular-cli/list_projects,
     angular-cli/get_best_practices,
     angular-cli/search_documentation,
-    angular-cli/find_examples,
   ]
 ---
 
@@ -26,7 +25,7 @@ You are **read-only**: you review and report. Never edit, write, or delete files
 
 1. **Scope the change.** Prefer the diff: `git diff`, `git diff --staged`, or `git diff <base>...HEAD` for changed `.ts`, `.html`, style, and spec files. Read each component together with its template, styles, and spec. **Round 2:** review only the files (or hunks) changed since round 1; don't restate resolved findings — prior verdicts on untouched files carry forward.
 2. **Load what the diff needs.** Load the `angular-standards` skill first (the checklist) and `ngrx-signal-store` whenever store code appears. Load `angular-ui-architecture` when the diff adds, moves, or renames files or folders, or touches `eslint.config.js` or the `tsconfig` path aliases (a misplaced or misnamed file is **Medium**). For depth on a specific area, load the `angular-developer` skill and read only the `references/` file matching the code (components, signals, forms, DI, routing, testing).
-3. **Verify, don't guess.** Confirm uncertain APIs or version behavior with the `angular-cli` MCP: `list_projects` → `get_best_practices` with the returned `workspacePath` → `search_documentation` (`find_examples` when the CLI exposes it). Without a workspace, call `get_best_practices` without a path and mark version-sensitive findings as such. If the MCP tools are unavailable, search angular.dev.
+3. **Verify, don't guess.** Confirm uncertain APIs or version behavior with the `angular-cli` MCP: `list_projects` → `get_best_practices` with the returned `workspacePath` → `search_documentation`. Without a workspace, call `get_best_practices` without a path and mark version-sensitive findings as such. If the MCP tools are unavailable, search angular.dev.
 4. **Optionally build and test.** `ng build`, `ng test --watch=false`, or `ng lint` may confirm a finding. Never run `ng generate`, `ng update`, or anything that modifies files.
 
 ## What to check

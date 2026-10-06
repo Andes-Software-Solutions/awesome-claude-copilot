@@ -9,7 +9,7 @@ const SCRIPT = fileURLToPath(SCRIPT_URL);
 const { planNotification } = await import(SCRIPT_URL.href);
 const everywhere = (c) => `/usr/bin/${c}`;
 const nowhere = () => null;
-const plan = (over = {}) => planNotification({ platform: 'darwin', env: {}, harness: 'claude', event: 'notification', payload: { cwd: '/w/shop', message: 'Claude needs your permission to use Bash' }, which: everywhere, ...over });
+const plan = (over = {}) => planNotification({ platform: 'darwin', env: {}, harness: 'claude', payload: { cwd: '/w/shop', message: 'Claude needs your permission to use Bash' }, which: everywhere, ...over });
 
 test('macOS passes title and body as osascript argv, never inside the script', () => {
   const p = plan();
@@ -37,13 +37,12 @@ test('Windows runs a PowerShell 5.1 toast with the text in env vars', () => {
   assert.match(script, /SecurityElement\]::Escape\(\$env:ANDES_NOTIFY_BODY\)/);
 });
 
-test('stop events say the turn finished', () => {
-  assert.equal(plan({ event: 'stop' }).args.at(-1), 'Finished — ready for your next message');
+test('a payload without a message still says why', () => {
+  assert.equal(plan({ payload: {} }).args.at(-1), 'Needs your attention');
 });
 
-test('ANDES_NOTIFY controls what fires', () => {
+test('ANDES_NOTIFY=off silences it; any other value notifies', () => {
   assert.equal(plan({ env: { ANDES_NOTIFY: 'off' } }).kind, 'skip');
-  assert.equal(plan({ env: { ANDES_NOTIFY: 'attention' }, event: 'stop' }).kind, 'skip');
   assert.equal(plan({ env: { ANDES_NOTIFY: 'attention' } }).kind, 'spawn');
 });
 
@@ -55,10 +54,6 @@ test('headless, cloud, and CI sessions stay silent; SSH rings the bell', () => {
   assert.equal(plan({ env: { SSH_CONNECTION: '1 2 3 4' } }).kind, 'bell');
 });
 
-test('a Stop hook that is already continuing the turn does not notify', () => {
-  assert.equal(plan({ event: 'stop', payload: { stop_hook_active: true } }).kind, 'skip');
-});
-
 test('long messages are clipped to one line', () => {
   const body = plan({ payload: { message: `line one\n${'x'.repeat(400)}` } }).args.at(-1);
   assert.equal(body.length, 200);
@@ -67,14 +62,14 @@ test('long messages are clipped to one line', () => {
 
 test('Copilot never prints to stdout; Claude prints only a bell sequence', () => {
   const env = { PATH: '', HOME: process.env.HOME };
-  const run = (harness) => execFileSync(process.execPath, [SCRIPT, `--harness=${harness}`, '--event=notification', '--platform=linux'],
+  const run = (harness) => execFileSync(process.execPath, [SCRIPT, `--harness=${harness}`, '--platform=linux'],
     { input: JSON.stringify({ message: 'hi' }), encoding: 'utf8', env, stdio: ['pipe', 'pipe', 'ignore'] });
   assert.equal(run('copilot'), '');
   assert.deepEqual(JSON.parse(run('claude')), { terminalSequence: '\u0007' });
 });
 
 test('--dry-run prints the plan to stderr and nothing to stdout', () => {
-  const out = execFileSync(process.execPath, [SCRIPT, '--harness=copilot', '--event=stop', '--dry-run'],
+  const out = execFileSync(process.execPath, [SCRIPT, '--harness=copilot', '--dry-run'],
     { input: '{}', encoding: 'utf8', env: { PATH: '', CI: 'true' }, stdio: ['pipe', 'pipe', 'pipe'] });
   assert.equal(out, '');
 });

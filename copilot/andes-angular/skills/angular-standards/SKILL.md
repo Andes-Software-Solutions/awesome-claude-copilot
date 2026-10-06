@@ -9,7 +9,7 @@ Detailed how-to lives in the `angular-developer` skill (read the `references/` f
 
 ## Workflow
 
-1. Ground in the workspace's pinned version with the `angular-cli` MCP server: `list_projects` (workspace path, Angular version, test framework, style language) → `get_best_practices` with that `workspacePath` (without it when there is no `angular.json`) → `search_documentation` whenever an API or version behavior is uncertain (`find_examples` too, on CLIs that expose it). angular.dev is the source of truth — don't assert version-specific behavior from memory.
+1. Ground in the workspace's pinned version with the `angular-cli` MCP server: `list_projects` (workspace path, Angular version, test framework, style language) → `get_best_practices` with that `workspacePath` (without it when there is no `angular.json`) → `search_documentation` whenever an API or version behavior is uncertain. angular.dev is the source of truth — don't assert version-specific behavior from memory.
 2. Follow the project's own conventions first; reuse existing code; keep changes small.
 3. After changing code, run `ng build`, then `ng test --watch=false` when specs exist or were added. Never run `ng update` unless asked.
 

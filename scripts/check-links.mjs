@@ -2,26 +2,16 @@
 // Broken local-link check for Markdown: relative files, images, reference definitions, and
 // #heading anchors (GitHub slug rules). No network — external URLs are never fetched.
 //
-//   node check-links.mjs --harness=claude|copilot [--defer-to-repo-hook]
-//                                      hook mode: reads the post-edit payload on stdin
-//   node check-links.mjs <file.md>...  CLI mode: prints file:line findings
+//   node scripts/check-links.mjs <file.md>...  prints file:line findings
 //
-// Hook mode always exits 0: a checker bug must never fail an edit. Findings reach the model as
-// {"decision":"block"} on Claude Code (the tool already ran; the reason is fed back) and as
-// {"additionalContext"} on Copilot, where exit 2 would reach only the user.
-// CLI mode exits 0 clean, 10 findings, 1 error — the repo-audit contract.
-//
-// Only node: imports, on purpose: andes-init copies this one file into a consumer repo's
-// .github/hooks/andes/ because the Copilot cloud agent never loads plugin hooks.
+// Exits 0 clean, 10 findings, 1 error — the repo-audit contract. repo-audit's `links` check
+// imports findBrokenLinks directly.
 
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { basename, dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const MARKDOWN = new Set(['.md', '.mdx', '.markdown']);
-const MAX_FINDINGS = 20;
-const MAX_CHARS = 9000;
-const MAX_BYTES = 1024 * 1024;
 
 const blank = (s) => s.replace(/[^\n]/g, ' ');
 const normalize = (s) => (s.charCodeAt(0) === 0xfeff ? s.slice(1) : s).replace(/\r\n?/g, '\n');
@@ -300,87 +290,21 @@ export function findBrokenLinks(absFile, { root = findRoot(dirname(absFile)) ?? 
   return broken;
 }
 
-function parseArgs(argv) {
-  const opts = { harness: null, defer: false, files: [] };
-  for (const a of argv) {
-    if (a.startsWith('--harness=')) opts.harness = a.slice('--harness='.length);
-    else if (a === '--defer-to-repo-hook') opts.defer = true;
-    else if (!a.startsWith('--')) opts.files.push(a);
-  }
-  return opts;
-}
-
-/** The edited file and the text the edit introduced, from a Claude Code, Copilot, or VS Code payload. */
-export function readPayload(payload) {
-  let args = payload.tool_input ?? payload.toolArgs ?? payload.toolInput ?? {};
-  if (typeof args === 'string') {
-    try { args = JSON.parse(args); } catch { args = {}; }
-  }
-  const edits = Array.isArray(args.edits) ? args.edits : [];
-  const pick = (...keys) => keys.map((k) => args[k]).filter((v) => typeof v === 'string');
-  const newText = [...pick('new_string', 'new_str', 'newString', 'content', 'file_text', 'newText'),
-    ...edits.map((e) => e?.new_string ?? e?.newString).filter((v) => typeof v === 'string')].join('\n');
-  const partial = pick('old_string', 'old_str', 'oldString').length > 0 || edits.length > 0;
-  return {
-    file: args.file_path ?? args.path ?? args.filePath ?? null,
-    cwd: payload.cwd || process.cwd(),
-    newText,
-    partial,
-    failed: typeof payload.toolResult?.resultType === 'string' && payload.toolResult.resultType !== 'success',
-  };
-}
-
-/** What the hook prints for a payload, or null for silence. Pure apart from reading files. */
-export function runHook(payload, { harness, defer = false, env = process.env } = {}) {
-  if (['off', '0', 'false'].includes(String(env.ANDES_LINK_CHECK ?? '').toLowerCase())) return null;
-  const h = harness ?? ('toolArgs' in payload ? 'copilot' : 'claude');
-  const { file, cwd, newText, partial, failed } = readPayload(payload);
-  if (!file || failed || !MARKDOWN.has(extname(file).toLowerCase())) return null;
-  const abs = resolve(cwd, file);
-  const rel = relative(cwd, abs);
-  // Plan, memory, and session files live outside the project and link into it from elsewhere.
-  if (!rel || rel.startsWith('..') || isAbsolute(rel) || rel.split(sep).includes('node_modules')) return null;
-  if (!existsSync(abs) || statSync(abs).size > MAX_BYTES) return null;
-  const root = findRoot(dirname(abs)) ?? cwd;
-  if (defer && existsSync(join(root, '.github/hooks/andes-links.json')) && existsSync(join(root, '.github/hooks/andes/check-links.mjs'))) return null;
-
-  let broken = findBrokenLinks(abs, { root });
-  // An edit reports only what it touched, so links that were already broken do not nag on every change.
-  if (partial) broken = broken.filter((b) => b.target.startsWith('#') || newText.includes(b.target));
-  if (!broken.length) return null;
-
-  const shown = rel.split(sep).join('/');
-  const lines = [`Broken local links in ${shown} (andes link check). Fix each link, or ignore one whose target you are about to create:`];
-  for (const b of broken.slice(0, MAX_FINDINGS)) lines.push(`- line ${b.line}: \`${b.target}\` — ${b.reason}`);
-  if (broken.length > MAX_FINDINGS) lines.push(`- … and ${broken.length - MAX_FINDINGS} more`);
-  let message = lines.join('\n');
-  if (message.length > MAX_CHARS) message = `${message.slice(0, MAX_CHARS)}\n- … (truncated)`;
-  return h === 'copilot' ? { additionalContext: message } : { decision: 'block', reason: message };
-}
-
 function main() {
-  const opts = parseArgs(process.argv.slice(2));
-  if (opts.files.length) {
-    let found = 0;
-    for (const f of opts.files) {
-      const abs = resolve(f);
-      for (const b of findBrokenLinks(abs)) {
-        found++;
-        console.log(`${f}:${b.line}: ${b.target} — ${b.reason}`);
-      }
-    }
-    process.exitCode = found ? 10 : 0;
+  const files = process.argv.slice(2).filter((a) => !a.startsWith('--'));
+  if (!files.length) {
+    process.stderr.write('usage: node scripts/check-links.mjs <file.md>...\n');
+    process.exitCode = 1;
     return;
   }
-  try {
-    if (process.stdin.isTTY) return;
-    const input = readFileSync(0, 'utf8');
-    if (!input.trim()) return;
-    const out = runHook(JSON.parse(input), { harness: opts.harness, defer: opts.defer });
-    if (out) process.stdout.write(`${JSON.stringify(out)}\n`);
-  } catch (err) {
-    process.stderr.write(`andes check-links: ${err.message}\n`);
+  let found = 0;
+  for (const f of files) {
+    for (const b of findBrokenLinks(resolve(f))) {
+      found++;
+      console.log(`${f}:${b.line}: ${b.target} — ${b.reason}`);
+    }
   }
+  process.exitCode = found ? 10 : 0;
 }
 
 const isMain = (() => {
@@ -389,6 +313,6 @@ const isMain = (() => {
 if (isMain) {
   try { main(); } catch (err) {
     process.stderr.write(`andes check-links: ${err.message}\n`);
-    process.exitCode = parseArgs(process.argv.slice(2)).files.length ? 1 : 0;
+    process.exitCode = 1;
   }
 }

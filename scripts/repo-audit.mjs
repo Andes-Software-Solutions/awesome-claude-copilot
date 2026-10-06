@@ -81,7 +81,7 @@ const CONFIG = {
   claudeHooksFile: 'hooks/hooks.json',
   copilotHooksFile: 'com.github.copilot/hooks/hooks.json',
   // Each Claude event must run the same scripts as its Copilot counterpart.
-  hookEventMap: { Notification: 'notification', Stop: 'agentStop', PostToolUse: 'postToolUse' },
+  hookEventMap: { Notification: 'notification' },
   hookScriptRef: {
     claude: /\$\{CLAUDE_PLUGIN_ROOT\}\/scripts\/([\w.-]+\.mjs)/g,
     bash: /\$PLUGIN_ROOT\/scripts\/([\w.-]+\.mjs)/g,
@@ -176,7 +176,7 @@ const CONFIG = {
       'context7/resolve-library-id', 'context7/query-docs',
     ],
     'andes-angular-expert': [
-      'angular-cli/get_best_practices', 'angular-cli/search_documentation', 'angular-cli/find_examples',
+      'angular-cli/get_best_practices', 'angular-cli/search_documentation',
       'context7/resolve-library-id', 'context7/query-docs',
     ],
     // The backlog manager writes to Azure DevOps; without these it can only report.
@@ -186,8 +186,8 @@ const CONFIG = {
     ],
   },
   // npx servers that deliberately float instead of pinning; the package must carry exactly this
-  // suffix so the MCP tool set tracks the latest CLI release.
-  floatingMcpServers: { 'angular-cli': '@latest' },
+  // suffix so the MCP tool set tracks the latest release.
+  floatingMcpServers: { 'angular-cli': '@latest', 'azure-devops': '@latest' },
   requiredMcpArgs: {
     'angular-cli': ['--read-only'],
     terraform: ['--toolsets=registry'],
@@ -204,8 +204,8 @@ const CONFIG = {
   maintainerMcpServers: ['microsoft-learn', 'angular-cli', 'context7', 'azure-devops', 'terraform'],
   // Skills whose bytes are pinned to an upstream source and must not be edited here.
   upstreamLock: 'scripts/upstream-skills.lock.json',
-  // The link checker the andes-core hook runs; the audit reuses it so CI and the hook agree.
-  linkChecker: 'claude/andes-core/scripts/check-links.mjs',
+  // Maintainer tooling only; no plugin ships it.
+  linkChecker: 'scripts/check-links.mjs',
   // Consumer templates: their links resolve in the repo andes-init writes them into.
   linkCheckExclude: ['claude/andes-core/skills/andes-init/assets/'],
   // Paths that only exist in the old drop-in layout; plugin content must name skills instead.
@@ -887,7 +887,7 @@ if (runs('hooks')) {
         const path = `${root}/scripts/${s}`;
         if (!exists(path)) { add('hooks', 'script-missing', 'error', `A hook runs scripts/${s}, which does not exist`, [path]); continue; }
         if (root !== C(p)) continue;
-        // andes-init copies hook scripts into consumer repos, where no plugin dependencies exist.
+        // An installed plugin has no node_modules, so a hook script can rely only on Node itself.
         const specifiers = [...read(path).matchAll(/^\s*import\s[^'"]*?['"]([^'"]+)['"]|\bimport\s*\(\s*['"]([^'"]+)['"]/gm)].map((m) => m[1] ?? m[2]);
         const foreign = specifiers.filter((x) => !x.startsWith('node:'));
         if (foreign.length) add('hooks', 'script-imports', 'error', 'Hook scripts must import only node: built-ins', [path], { imports: foreign });

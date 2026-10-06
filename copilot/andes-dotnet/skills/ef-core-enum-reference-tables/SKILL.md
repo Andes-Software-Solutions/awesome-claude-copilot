@@ -23,6 +23,13 @@ public enum OrderStatuses
     Cancelled = 3,
 }
 
+// Common/Constants/Base/BaseEnumEntityLimits.cs — mirrors Entity/Base/, like every <Entity>Limits
+public static class BaseEnumEntityLimits
+{
+    public const int NameMaxLength = 64;
+    public const int DescriptionMaxLength = 256;
+}
+
 // Entity/Base/BaseEnumEntity.cs
 public abstract class BaseEnumEntity<TEnum>
     where TEnum : struct, Enum
@@ -38,7 +45,7 @@ public sealed class OrderStatus : BaseEnumEntity<OrderStatuses>
 }
 
 // Entity/Orders/Order.cs — the dependent keeps the enum and the navigation
-public sealed class Order : BaseModifiedEntity
+public sealed class Order : BaseModifiedEntity<Guid>
 {
     public OrderStatuses StatusId { get; set; }
     public OrderStatus? Status { get; set; }
@@ -56,9 +63,9 @@ public abstract class BaseEnumEntityConfiguration<TEntity, TEnum> : IEntityTypeC
     {
         builder.HasKey(e => e.Id);
         builder.Property(e => e.Id).ValueGeneratedNever();
-        builder.Property(e => e.Name).HasMaxLength(64).IsRequired();
+        builder.Property(e => e.Name).HasMaxLength(BaseEnumEntityLimits.NameMaxLength).IsRequired();
         builder.HasIndex(e => e.Name).IsUnique();
-        builder.Property(e => e.Description).HasMaxLength(256);
+        builder.Property(e => e.Description).HasMaxLength(BaseEnumEntityLimits.DescriptionMaxLength);
         builder.HasData(Enum.GetValues<TEnum>().Select(value => new
         {
             Id = value,
@@ -112,4 +119,5 @@ builder.HasOne(o => o.Status).WithMany().HasForeignKey(o => o.StatusId).OnDelete
 - No lookup row inserted, edited, or deleted at runtime; the enum is the source of truth.
 - No enum declared in `Entity` or `Dto` — they live in `Common/Enums/`, plural, one per file.
 - No `HasConversion<string>()` on these keys: the column is an `int`, so renaming a member costs one data update, not a rewrite of every foreign key.
-- No `BaseEntity` members on a reference table — no Guid, no soft delete, no audit stamps.
+- No `BaseEntity<TKey>` members on a reference table — no surrogate key, no soft delete, no audit stamps.
+- No literal length in `BaseEnumEntityConfiguration` — read `BaseEnumEntityLimits`.

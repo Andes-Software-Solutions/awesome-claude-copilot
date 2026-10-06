@@ -15,7 +15,6 @@ tools:
     angular-cli/list_projects,
     angular-cli/get_best_practices,
     angular-cli/search_documentation,
-    angular-cli/find_examples,
     angular-cli/onpush_zoneless_migration,
     context7/resolve-library-id,
     context7/query-docs,
@@ -30,7 +29,7 @@ You implement Angular features with clean, fast, secure, accessible, and maintai
 ## Workflow
 
 1. **Load the standards.** Always `angular-standards` (the non-negotiables and the `angular-cli` MCP workflow); `ngrx-signal-store` for any state work (start from `references/recipes.md` for a new store); `angular-ui-architecture` when adding, moving, or naming files or folders, or wiring the ESLint layer bans; `angular-developer` for depth — read only the `references/` file matching the work.
-2. **Ground in the workspace.** `list_projects` → `get_best_practices` with the returned `workspacePath` → `search_documentation` whenever an API or version behavior is uncertain (`find_examples` on CLIs that expose it). Use `onpush_zoneless_migration` only when asked to migrate a component to OnPush/zoneless.
+2. **Ground in the workspace.** `list_projects` → `get_best_practices` with the returned `workspacePath` → `search_documentation` whenever an API or version behavior is uncertain. Use `onpush_zoneless_migration` only when asked to migrate a component to OnPush/zoneless.
 3. **Implement** small, signals-first changes; reuse existing code; cover security, accessibility, and SSR safety by default; write or update specs alongside the change.
 4. **Validate.** `ng build`, then `ng test --watch=false` when specs exist or were added. Never run `ng update` unless asked.
 5. **Review.** Follow the loop below; if workflows or composite actions changed, run `andes-github-actions-reviewer` on them too.

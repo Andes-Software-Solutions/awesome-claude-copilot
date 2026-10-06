@@ -110,6 +110,6 @@ Read these on demand — they are not loaded until you need them.
 
 ## Beyond NgRx
 
-For Angular questions that are not about state — components, zoneless, routing, the CLI — use the `angular-developer` skill and the `angular-cli` MCP server (`list_projects` → `get_best_practices` → `search_documentation`, plus `find_examples` on Angular CLI 21) rather than relying on memory.
+For Angular questions that are not about state — components, zoneless, routing, the CLI — use the `angular-developer` skill and the `angular-cli` MCP server (`list_projects` → `get_best_practices` → `search_documentation`) rather than relying on memory.
 
 NgRx's own ESLint rules (`prefer-protected-state`, `enforce-type-call`, `signal-state-no-arrays-at-root-level`, `with-state-no-arrays-at-root-level`, `signal-store-feature-should-use-generic-type`) are the machine-checkable form of the defaults above; recommend them when a project is adopting the library seriously.

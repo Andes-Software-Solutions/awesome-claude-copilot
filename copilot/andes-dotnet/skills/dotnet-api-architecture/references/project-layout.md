@@ -86,11 +86,11 @@ A non-EF store simply has no `DbContexts/`, `Configurations/`, `Interceptors/`, 
 
 ```text
 <Root>.Entity/
-├─ Base/                            BaseEntity.cs, BaseCreatedEntity.cs, BaseModifiedEntity.cs (ef-core-base-entities); BaseEnumEntity.cs (ef-core-enum-reference-tables); other abstract Base<Thing>.cs shared by aggregates
+├─ Base/                            BaseEntity.cs, BaseCreatedEntity.cs, BaseModifiedEntity.cs — each IBase<Thing> + Base<Thing><TKey> (ef-core-base-entities); BaseEnumEntity.cs (ef-core-enum-reference-tables); other abstract Base<Thing>.cs shared by aggregates
 └─ <Feature>/                       one file per entity: <Entity>.cs, <Entity><Child>.cs, <EnumSingular>.cs for an enum reference table; Models/ and Constants/ for non-relational documents
 ```
 
-Entities are plain classes: no mapping attributes, no EF Core package reference, `Entity → Common` only. Keys, column lengths and precision, row versions, relationships, indexes, check constraints, value conversions, and seed data all live in `Repository/<Provider>/Configurations/` (`ef-core` for the practice).
+Entities are plain classes: no mapping attributes, no EF Core package reference, `Entity → Common` only. Each names its key type (`BaseModifiedEntity<Guid>` or `<int>`). Keys, column lengths and precision (values from `Common/Constants/<Feature>/<Entity>Limits.cs`), row versions, relationships, indexes, check constraints, value conversions, and seed data all live in `Repository/<Provider>/Configurations/` (`ef-core` for the practice).
 
 ## `<Root>.Dto`
 
@@ -112,6 +112,7 @@ Entities are plain classes: no mapping attributes, no EF Core package reference,
 ```text
 <Root>.Common/
 ├─ Constants/                       <Catalog>.cs — const / static readonly string and Guid catalogs, no methods
+│  └─ <Feature>/                    <Entity>Limits.cs mirroring Entity/<Feature>/ (Base/ for base classes) — const int lengths, precision, scale; read by the EF configuration and the request validator
 ├─ Enums/                           <Enums>.cs — one enum per file, plural name
 ├─ Extensions/                      <Type>Extensions.cs — extension methods on BCL or Common types
 └─ Validation/                      the FluentValidation-to-IValidateOptions adapter and its OptionsBuilder extension

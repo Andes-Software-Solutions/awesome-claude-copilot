@@ -39,7 +39,11 @@ Ask as one block, prefilled from the existing section on a refresh:
 
 ## 4. Copilot CLI
 
-If `/mcp` in Copilot CLI shows the `azure-devops` server failing, or an organization literally named `${ADO_ORG}`, the CLI did not expand the variable. Register the server yourself under the same name, `azure-devops`, with the organization written out: `npx -y @azure-devops/mcp@2.10.0 <org> -d core work work-items --authentication azcli` (add `--tenant <id>` if `TF400813` appears). The agent's tool grants resolve only if the server name matches.
+Copilot CLI expands only `${PLUGIN_ROOT}` and `${PLUGIN_DATA}` in a plugin server's arguments, so the plugin's `azure-devops` server usually receives the organization as the literal text `${ADO_ORG}`, and `/mcp` shows it failing. When the user runs Copilot CLI, give them this command to register the server under the same name, with the organization written out:
+
+`copilot mcp add azure-devops --tools "*" -- npx -y @azure-devops/mcp@latest <org> -d core work work-items --authentication azcli`
+
+Add `--tenant <id>` after `azcli` if `TF400813` appears. Keep the name `azure-devops`: the agent's tool grants resolve only through it. Then restart Copilot CLI and confirm with `/mcp` that `azure-devops` is connected.
 
 ## 5. Report
 

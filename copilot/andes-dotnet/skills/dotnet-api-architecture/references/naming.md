@@ -25,9 +25,10 @@
 | Health checks | `<Name>HealthCheck` | `DatabaseHealthCheck` |
 | DbContext | `<Prefix>DbContext` in `Repository/<Provider>/DbContexts/` | `ContosoDbContext` |
 | An injected `DbContext` | primary-constructor parameter `ctx`, field `_ctx`, whatever the context type — never `_dbContext` or `_context` | `private readonly ContosoDbContext _ctx = ctx;` |
-| Base entities | `Base<Thing>Entity` in `Entity/Base/` | `BaseEntity`, `BaseCreatedEntity`, `BaseModifiedEntity`, `BaseEnumEntity<TEnum>` |
+| Base entities | `Base<Thing>Entity<TKey>` in `Entity/Base/`, each beside its `IBase<Thing>Entity`; `TKey` is `Guid` or `int` | `BaseEntity<TKey>`, `BaseCreatedEntity<TKey>`, `BaseModifiedEntity<TKey>`, `BaseEnumEntity<TEnum>` |
+| Entity limits | `<Entity>Limits` in `Common/Constants/<Feature>/`; members `<Property>MaxLength`, `<Property>MinLength`, `<Property>Precision`, `<Property>Scale` | `OrderLimits.NumberMaxLength`, `BaseEnumEntityLimits.NameMaxLength` |
 | Enum reference tables | the singular of the enum, sealed, `: BaseEnumEntity<<Enums>>` | `OrderStatus : BaseEnumEntity<OrderStatuses>` |
-| EF configurations | `<Entity>Configuration`, deriving from a shared `Base<Thing>Configuration<T>` in `Configurations/Base/` | `OrderConfiguration : BaseModifiedEntityConfiguration<Order>` |
+| EF configurations | `<Entity>Configuration`, deriving from a shared `Base<Thing>Configuration<T, TKey>` in `Configurations/Base/` | `OrderConfiguration : BaseModifiedEntityConfiguration<Order, Guid>` |
 | EF interceptors | `<Name>Interceptor`, named for what it does | `AuditTimestampInterceptor`, `SoftDeleteInterceptor` |
 | SQL scripts | `<Verb><Subject>.sql`, named after the migration that runs it | `CreateOrderSummaryView.sql` ↔ migration `CreateOrderSummaryView` |
 | Store provisioning | `<Provider>ResourceProvisioner` creates resources; `<Provider>SchemaMigrator` applies migrations | `MongoResourceProvisioner`, `SqlSchemaMigrator` |

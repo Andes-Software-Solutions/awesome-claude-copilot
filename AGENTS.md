@@ -49,10 +49,10 @@ This repository is the `andes` plugin marketplace: engineering standards for C#/
 - `.claude-plugin/marketplace.json` — the Claude Code marketplace. `.github/plugin/marketplace.json` — the Copilot marketplace, which Copilot CLI and VS Code read first. Both are named `andes` and list the same seven plugins.
 - `claude/andes-<name>/` — what Claude Code loads: `.claude-plugin/plugin.json` (metadata and dependencies, no component keys), `agents/`, `hooks/hooks.json`, `.mcp.json`, and the editing copies of `skills/` and `scripts/`.
 - `copilot/andes-<name>/` — what Copilot loads: the Agent Plugins 1.0 root `plugin.json`, `mcp.json`, `com.github.copilot/agents/`, `com.github.copilot/hooks/hooks.json`, and mirrors of `skills/` and `scripts/`.
-- `claude/andes-core/scripts/` — `notify.mjs` and `check-links.mjs`, the scripts both harnesses' hooks run (Node built-ins only).
-- `claude/andes-core/skills/andes-init/assets/` — `agents-block.md` (the block above), `project-section.md` (the scaffold for sections like these), and `copilot-hooks.json` (the link-check hook `andes-init` offers for the Copilot cloud agent).
+- `claude/andes-core/scripts/` — `notify.mjs`, the script both harnesses' notification hooks run (Node built-ins only).
+- `claude/andes-core/skills/andes-init/assets/` — `agents-block.md` (the block above) and `project-section.md` (the scaffold for sections like these).
 - `.claude/skills/` — maintainer-only skills `/repo-audit`, `/ngrx-signals-sync`, `/release`; read by Claude Code and Copilot CLI, not shipped in any plugin.
-- `scripts/` — `repo-audit.mjs` (structural audit), `sync-shared.mjs` (mirrors `skills/` and `scripts/` between the trees), `release.mjs` (release), `upstream-skills.lock.json` (hash pin for the vendored `angular-developer` skill), `tests/` (`node:test` suites for the hook scripts, run per tree by `run.mjs`).
+- `scripts/` — `repo-audit.mjs` (structural audit), `check-links.mjs` (the Markdown link checker the audit's `links` check uses), `sync-shared.mjs` (mirrors `skills/` and `scripts/` between the trees), `release.mjs` (release), `upstream-skills.lock.json` (hash pin for the vendored `angular-developer` skill), `tests/` (`node:test` suites for the hook script and the link checker, run per tree by `run.mjs`).
 - `docs/` — dated design records. `CHANGELOG.md` — Keep a Changelog, rolled by `/release`.
 - `.github/workflows/repo-audit.yml` — CI: the audit, `claude plugin validate --strict`, and the hook-script tests on every PR.
 - `.mcp.json` — the MCP servers maintainers query for current docs and backlog data: `microsoft-learn`, `angular-cli`, `context7`, `azure-devops` (needs `ADO_ORG` and `az login`), and `terraform` (needs Docker). Each entry is a verbatim copy of the plugin that ships it; the audit fails on drift (`mcp/root-drift`).
@@ -68,7 +68,7 @@ This repository is the `andes` plugin marketplace: engineering standards for C#/
 - Never edit either copy of `angular-developer` (vendored upstream, hash-pinned). Refresh `ngrx-signal-store` with `/ngrx-signals-sync`.
 - No skill sets `disable-model-invocation: true` — it makes the skill unreachable on Copilot CLI (github/copilot-cli#4438); skills guard in their body instead.
 - MCP servers are declared once per tree (`claude/<name>/.mcp.json`, `copilot/<name>/mcp.json`) with the same entries; Claude tool names carry the plugin that ships the server (`mcp__plugin_andes-core_context7__query-docs`).
-- Hooks are declared once per tree too: `claude/andes-core/hooks/hooks.json` and `copilot/andes-core/com.github.copilot/hooks/hooks.json` run the same `scripts/*.mjs` per event pair (`Notification`/`notification`, `Stop`/`agentStop`, `PostToolUse`/`postToolUse`; `hooks/harness-drift`), and each passes its own `--harness` value. A hook script imports only `node:` built-ins, prints nothing on a Copilot `notification`, and exits 0 on its own errors.
+- Hooks are declared once per tree too: `claude/andes-core/hooks/hooks.json` and `copilot/andes-core/com.github.copilot/hooks/hooks.json` run the same `scripts/*.mjs` for the one event pair, `Notification`/`notification` (`hooks/harness-drift`), and each passes its own `--harness` value. A hook script imports only `node:` built-ins, prints nothing on a Copilot `notification`, and exits 0 on its own errors.
 
 ## Commands
 

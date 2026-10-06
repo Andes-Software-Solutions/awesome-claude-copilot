@@ -1,16 +1,16 @@
 #!/usr/bin/env node
-// Desktop notification when the agent needs you (permission or input) or finishes a turn.
+// Desktop notification when the agent needs you (a permission prompt or a question).
 //
-//   node notify.mjs --harness=claude|copilot --event=notification|stop [--dry-run] [--platform=<os>]
+//   node notify.mjs --harness=claude|copilot [--dry-run] [--platform=<os>]
 //
-// The payload arrives on stdin; the event is also passed in argv so a shell that drops stdin
-// still notifies. Always exits 0 — a notifier must never interrupt the session.
+// The payload arrives on stdin; a shell that drops stdin still notifies, with a generic body.
+// Always exits 0 — a notifier must never interrupt the session.
 //
 // Output contract:
 //   Claude Code  prints nothing, or {"terminalSequence":"\u0007"} when no desktop notifier exists.
 //   Copilot      prints nothing, ever: a notification hook's stdout becomes a user message.
 //
-// ANDES_NOTIFY=all (default) | attention (skip turn-finished alerts) | off.
+// ANDES_NOTIFY=off silences it; any other value notifies.
 
 import { openSync, readFileSync, realpathSync, statSync, writeSync, closeSync } from 'node:fs';
 import { spawn } from 'node:child_process';
@@ -53,11 +53,9 @@ const clip = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
  * Decides how to notify, without side effects:
  * { kind: 'spawn', cmd, args, env } | { kind: 'bell', reason } | { kind: 'skip', reason }.
  */
-export function planNotification({ platform = process.platform, env = process.env, harness = 'claude', event = 'notification', payload = {}, which = (c) => onPath(c, { env, platform }) } = {}) {
+export function planNotification({ platform = process.platform, env = process.env, harness = 'claude', payload = {}, which = (c) => onPath(c, { env, platform }) } = {}) {
   const mode = String(env.ANDES_NOTIFY ?? 'all').toLowerCase();
   if (['off', '0', 'false', 'none'].includes(mode)) return { kind: 'skip', reason: 'ANDES_NOTIFY=off' };
-  if (event === 'stop' && mode === 'attention') return { kind: 'skip', reason: 'ANDES_NOTIFY=attention' };
-  if (event === 'stop' && payload.stop_hook_active) return { kind: 'skip', reason: 'another Stop hook is continuing the turn' };
   if (env.CLAUDE_CODE_REMOTE === 'true' || env.CI || env.GITHUB_ACTIONS || /^(sdk-|remote)/.test(env.CLAUDE_CODE_ENTRYPOINT ?? '')) {
     return { kind: 'skip', reason: 'headless or cloud session' };
   }
@@ -65,7 +63,7 @@ export function planNotification({ platform = process.platform, env = process.en
   const app = harness === 'copilot' ? 'GitHub Copilot' : 'Claude Code';
   const project = basename(payload.cwd || process.cwd());
   const title = clip(project ? `${app} — ${project}` : app, 80);
-  const text = event === 'stop' ? 'Finished — ready for your next message' : payload.message || payload.title || 'Needs your attention';
+  const text = payload.message || payload.title || 'Needs your attention';
   const body = clip(String(text).replace(/\s+/g, ' ').replace(/^-+\s*/, '').trim(), 200);
 
   // Over SSH a desktop notifier would fire on the remote machine; the bell travels to the local terminal.
@@ -118,9 +116,8 @@ function main() {
       if (input.trim()) payload = JSON.parse(input);
     }
   } catch { /* notify without payload details */ }
-  const event = arg('event') ?? (/stop/i.test(payload.hook_event_name ?? '') ? 'stop' : 'notification');
 
-  const plan = planNotification({ platform, harness, event, payload });
+  const plan = planNotification({ platform, harness, payload });
   if (argv.includes('--dry-run')) {
     process.stderr.write(`${JSON.stringify(plan)}\n`);
     return;

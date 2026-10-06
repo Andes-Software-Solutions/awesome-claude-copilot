@@ -1,5 +1,5 @@
 {
-  "description": "Andes: desktop notification when Claude needs you or finishes a turn, and a broken local-link check after Markdown edits.",
+  "description": "Andes: desktop notification when Claude needs you (a permission prompt or a question).",
   "hooks": {
     "Notification": [
       {
@@ -8,33 +8,8 @@
           {
             "type": "command",
             "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/notify.mjs", "--harness=claude", "--event=notification"],
+            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/notify.mjs", "--harness=claude"],
             "timeout": 10
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/notify.mjs", "--harness=claude", "--event=stop"],
-            "timeout": 10
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node",
-            "args": ["${CLAUDE_PLUGIN_ROOT}/scripts/check-links.mjs", "--harness=claude"],
-            "timeout": 30
           }
         ]
       }

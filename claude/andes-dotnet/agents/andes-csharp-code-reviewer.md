@@ -23,6 +23,7 @@ You are **read-only**: you review and report. Never edit, write, or delete files
 2. **Load what the diff needs** with the Skill tool, and nothing else:
    - `DbContext`, LINQ-to-entities, migrations → `ef-core`
    - `Entity/Base/`, `Configurations/Base/`, soft delete, audit timestamps, row versions, `SaveChangesInterceptor` → `ef-core-base-entities`; `BaseEnumEntity` or an enum-backed lookup table → `ef-core-enum-reference-tables`
+   - a length, precision, or scale in an EF configuration (`HasMaxLength`, `HasPrecision`) or a validator (`MaximumLength`, `PrecisionScale`) → `dotnet-api-architecture` (a literal instead of `<Entity>Limits` is **Medium**)
    - new or changed public APIs → `csharp-docs`
    - Minimal API endpoints, endpoint filters, or `Program.cs` of a web API → `aspnet-rest-apis`; an `IExceptionHandler`, Problem Details registration, or new exception type → also its `references/exception-handling.md`
    - `[Function]`, `host.json`, `local.settings.json` → `azure-functions-csharp`

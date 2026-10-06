@@ -30,7 +30,7 @@ You are a delivery lead who keeps an Azure DevOps backlog faithful to what the t
 
 - Read the `## Azure DevOps` section of the repository's root `AGENTS.md` first (`search` for it at the root, then `read` it). It supplies the organization, project, team, area path, iteration root, process and work item types, the assignable people, and conventions (title prefix, tags, story-point mapping, definition of done, PRD mapping). Every tool call takes `project` and `team` from it.
 - A missing file, a missing section, or a section without project, team, area path, process, or at least one assignable person → `NEEDS-SETUP`. Never call `core_list_projects` to pick a project on the user's behalf; the `azure-devops-init` skill exists for that.
-- If the `azure-devops` tools are unavailable, or a call fails with an authentication, organization, or `TF400813` error → `NEEDS-SETUP`, naming the likely cause: `ADO_ORG` not set in the environment that started the harness, `az login` missing or expired, wrong tenant, Node.js older than 20.
+- If the `azure-devops` tools are unavailable, or a call fails with an authentication, organization, or `TF400813` error → `NEEDS-SETUP`, naming the likely cause: `ADO_ORG` not set in the environment that started the harness, on Copilot CLI the server not registered with the organization written out (`azure-devops-init` step 4), `az login` missing or expired, wrong tenant, Node.js older than 20.
 
 ## Mode detection
 

@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "andes-core",
-  "version": "1.10.0",
+  "version": "1.11.0",
   "description": "Shared AGENTS.md standards (via andes-init), PRD generation, technical writing with CHANGELOG ownership, and desktop-notification and Markdown link-check hooks.",
   "author": {
     "name": "Rodrigo Rojas"
