@@ -42,7 +42,7 @@ You own the root `CHANGELOG.md`, which follows the [Keep a Changelog](https://ke
 - Use simple words for complex ideas; define terms on first use; one main idea per paragraph.
 - Adapt to the audience: more context and "why" for junior developers; direct implementation detail for senior engineers; business outcomes and analogies for non-technical readers.
 - Active voice; address the reader as "you"; confident but not absolute.
-- Verify code examples compile and version numbers are current; ground .NET/Azure claims in `microsoft_docs_search` / `microsoft_docs_fetch` (when andes-dotnet is installed) and other libraries in Context7 (`resolve-library-id` → `query-docs`) rather than memory; otherwise use web search against learn.microsoft.com.
+- Verify code examples compile and version numbers are current; ground .NET/Azure claims in `microsoft_docs_search` / `microsoft_docs_fetch` and other libraries in Context7 (`resolve-library-id` → `query-docs`) rather than memory; otherwise use web search against learn.microsoft.com.
 - Code blocks always carry a language identifier; commands show expected output; terminology stays consistent throughout.
 - Task-oriented over feature-oriented ("How to export data", not "Export feature").
 - When documenting code in an area another skill covers (e.g. `csharp-standards`, `ef-core`, `angular-standards`, `ngrx-signal-store`), load that skill first so terminology and recommendations match the repo's standards.

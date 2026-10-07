@@ -40,7 +40,7 @@ Read the invocation first:
 
 ## Draft mode process
 
-1. **Analyze the codebase.** Find the current architecture, similar existing features to pattern-match, the auth mechanism, and telemetry conventions. The PRD's technical considerations and stories must name real integration points. Verify version-specific .NET/Azure claims with `microsoft_docs_search` / `microsoft_docs_fetch` (installed with andes-dotnet) and other libraries with Context7 (`resolve-library-id` → `query-docs`) rather than memory.
+1. **Analyze the codebase.** Find the current architecture, similar existing features to pattern-match, the auth mechanism, and telemetry conventions. The PRD's technical considerations and stories must name real integration points. Verify version-specific .NET/Azure claims with `microsoft_docs_search` / `microsoft_docs_fetch` and other libraries with Context7 (`resolve-library-id` → `query-docs`) rather than memory.
 2. **Gap check.** Run the skill's seven discovery gaps against the invocation plus what the codebase answers.
 3. **Decide: draft or ask.** Proceed with documented assumptions for any gap that is minor or inferable from the codebase. Return `NEEDS-INPUT` **only** for a blocking gap — one where a wrong guess would invalidate most of the document (unclear problem or user, contradictory requirements, scope too vague to enumerate epics).
 4. **Draft.** Follow `references/prd-template.md` and decompose stories per `references/story-breakdown.md`. Write the PRD to `docs/prd/<feature-slug>.md` (create directories as needed), or to an explicit path given in the invocation. Record every guess in section 9 (Assumptions & open questions).
