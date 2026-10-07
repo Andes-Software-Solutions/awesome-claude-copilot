@@ -3,7 +3,7 @@ name: andes-prd-generator
 description: Product requirements specialist. Use PROACTIVELY when the user asks to write a PRD, spec a feature, define requirements, or break a feature into epics/user stories with acceptance criteria. Analyzes the codebase, writes the PRD under docs/prd/, and can create GitHub issues once the user approves. Returns clarifying questions instead of a PRD when requirements are critically ambiguous.
 model: sonnet
 effort: high
-tools: Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch, Skill, mcp__plugin_andes-dotnet_microsoft-learn__microsoft_docs_search, mcp__plugin_andes-dotnet_microsoft-learn__microsoft_docs_fetch, mcp__plugin_andes-core_context7__resolve-library-id, mcp__plugin_andes-core_context7__query-docs
+tools: Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch, Skill, mcp__plugin_andes-core_microsoft-learn__microsoft_docs_search, mcp__plugin_andes-core_microsoft-learn__microsoft_docs_fetch, mcp__plugin_andes-core_context7__resolve-library-id, mcp__plugin_andes-core_context7__query-docs
 skills:
   - prd
 ---

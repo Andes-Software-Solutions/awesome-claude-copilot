@@ -26,8 +26,8 @@ How it fits together:
 
 | Plugin | Ships | Depends on |
 | --- | --- | --- |
-| `andes-core` | **Skills:** `andes-init`, `andes-scaffold`, `prd`, `technical-writing`<br>**Agents:** `andes-prd-generator`, `andes-se-technical-writer`<br>**Copilot-only agents:** `andes-planner-expert`, `andes-full-stack-expert`<br>**MCP:** `context7`<br>**Hooks:** desktop notification when the agent needs you (see [Hooks](#hooks)) | — |
-| `andes-dotnet` | **Skills:** `csharp-standards`, `dotnet-api-architecture`, `aspnet-rest-apis`, `azure-functions-csharp`, `csharp-mcp-server`, `csharp-async`, `csharp-docs`, `csharp-xunit`, `ef-core`, `ef-core-base-entities`, `ef-core-enum-reference-tables`, `microsoft-agent-framework`, `microsoft-docs`<br>**Agents:** `andes-csharp-code-reviewer`<br>**Copilot-only agents:** `andes-csharp-expert`, `andes-csharp-dotnet-janitor`<br>**MCP:** `microsoft-learn` | `andes-core` |
+| `andes-core` | **Skills:** `andes-init`, `andes-scaffold`, `prd`, `technical-writing`, `microsoft-docs`<br>**Agents:** `andes-prd-generator`, `andes-se-technical-writer`<br>**Copilot-only agents:** `andes-planner-expert`, `andes-full-stack-expert`<br>**MCP:** `context7`, `microsoft-learn`<br>**Hooks:** desktop notification when the agent needs you (see [Hooks](#hooks)) | — |
+| `andes-dotnet` | **Skills:** `csharp-standards`, `dotnet-api-architecture`, `aspnet-rest-apis`, `azure-functions-csharp`, `csharp-mcp-server`, `csharp-async`, `csharp-docs`, `csharp-xunit`, `ef-core`, `ef-core-base-entities`, `ef-core-enum-reference-tables`, `microsoft-agent-framework`<br>**Agents:** `andes-csharp-code-reviewer`<br>**Copilot-only agents:** `andes-csharp-expert`, `andes-csharp-dotnet-janitor` | `andes-core` |
 | `andes-dotnet-wasm` | **Skills:** `blazor-wasm` (standalone Blazor WebAssembly, .NET 10) | `andes-core`, `andes-dotnet` |
 | `andes-angular` | **Skills:** `angular-standards`, `angular-ui-architecture`, `ngrx-signal-store`, `angular-developer` (official Angular team skill, vendored)<br>**Agents:** `andes-angular-code-reviewer`<br>**Copilot-only agents:** `andes-angular-expert`<br>**MCP:** `angular-cli` | `andes-core` |
 | `andes-github` | **Skills:** `github-actions-hardening`, `github-actions-efficiency`, `github-actions-runtime-upgrade-conventions`<br>**Agents:** `andes-github-actions-reviewer` | `andes-core` |
@@ -105,7 +105,7 @@ In Claude Code, the main session writes the code and delegates review, docs, and
 
 The typical Copilot flow is `andes-planner-expert` (which invokes `andes-prd-generator` when a feature has no PRD and its requirements are unclear) → implementer → reviewer → `andes-se-technical-writer`. You can also run `andes-prd-generator` directly. The PRD generator never invokes the planner. Plans live under `docs/plans/`, are never committed (`andes-init` offers the `.gitignore` line), and, like PRDs, get no changelog entry.
 
-Every research and implementer agent is granted exact MCP tools for its stack — `microsoft-learn` for .NET, `angular-cli` for Angular, `context7` (from `andes-core`) for any other library — and the repo audit fails if a required grant is missing.
+Every research and implementer agent is granted exact MCP tools for its stack — `microsoft-learn` for .NET, Azure, and other Microsoft docs, `angular-cli` for Angular, `context7` for any other library; `microsoft-learn` and `context7` ship with `andes-core` — and the repo audit fails if a required grant is missing.
 
 Models and reasoning effort:
 
@@ -172,7 +172,7 @@ These apply to every new or changed C# file. Existing code is migrated only when
 
 | Server | Plugin | Launch | Why it is configured this way |
 | --- | --- | --- | --- |
-| `microsoft-learn` | `andes-dotnet` | HTTP `https://learn.microsoft.com/api/mcp` | Grounds .NET and Azure answers in official docs |
+| `microsoft-learn` | `andes-core` | HTTP `https://learn.microsoft.com/api/mcp` | Grounds .NET, Azure, and other Microsoft answers in official docs. Ships with `andes-core` so every stack (Terraform `azurerm`, GitHub, Azure DevOps) can use it |
 | `context7` | `andes-core` | HTTP `https://mcp.context7.com/mcp` | Remote and anonymous (no API key; anonymous rate limit). Ships with `andes-core` so every research agent can ground any other library's docs |
 | `angular-cli` | `andes-angular` | `npx -y @angular/cli@latest mcp --read-only` | Floats on `@latest` on purpose, so the MCP tool set tracks the current CLI. `--read-only` drops `run_target`, `devserver.start`, and `devserver.stop` |
 | `terraform` | `andes-terraform` | `docker run -i --rm hashicorp/terraform-mcp-server:1.3.0 --toolsets=registry` | Pinned image, public-registry toolset only. Requires Docker |
@@ -190,7 +190,7 @@ Tool scoping:
 - **Exact grants.** Every agent lists exact MCP tools, never a whole server.
   - Claude tool names look like `mcp__plugin_andes-angular_angular-cli__get_best_practices`.
   - Copilot tool names look like `angular-cli/get_best_practices`.
-- **Unknown names are ignored.** So the `microsoft-learn` tools granted to the `andes-core` agents are harmless when `andes-dotnet` is not installed.
+- **Unknown names are ignored.** So the `angular-cli` tools granted to `andes-planner-expert` are harmless when `andes-angular` is not installed.
 - **`ai_tutor`.** The Angular CLI server has no flag to remove its `ai_tutor` tool. No agent is granted it, and `andes-init` offers a `permissions.deny` for Claude's main session.
 - **Node version.** Angular CLI 22.2 requires Node ≥ 22.22.3.
 - **No delete.** The Azure DevOps server has no delete tool. `andes-ado-backlog-manager` sets `System.State` to `Removed`, which hides the item from every backlog and board; the Basic process has no such state.

@@ -4,6 +4,10 @@
     "context7": {
       "type": "streamable-http",
       "url": "https://mcp.context7.com/mcp"
+    },
+    "microsoft-learn": {
+      "type": "streamable-http",
+      "url": "https://learn.microsoft.com/api/mcp"
     }
   }
 }

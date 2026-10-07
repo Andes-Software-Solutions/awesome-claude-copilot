@@ -3,7 +3,7 @@ name: andes-se-technical-writer
 description: Technical writing specialist. Use PROACTIVELY to create or update developer documentation under docs/ when new features are implemented or implementation details need documenting. Produces guides, tutorials, ADRs, and reference docs, and owns the root CHANGELOG.md.
 model: sonnet
 effort: high
-tools: Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch, Skill, mcp__plugin_andes-dotnet_microsoft-learn__microsoft_docs_search, mcp__plugin_andes-dotnet_microsoft-learn__microsoft_docs_fetch, mcp__plugin_andes-core_context7__resolve-library-id, mcp__plugin_andes-core_context7__query-docs
+tools: Read, Write, Edit, Glob, Grep, Bash, WebSearch, WebFetch, Skill, mcp__plugin_andes-core_microsoft-learn__microsoft_docs_search, mcp__plugin_andes-core_microsoft-learn__microsoft_docs_fetch, mcp__plugin_andes-core_context7__resolve-library-id, mcp__plugin_andes-core_context7__query-docs
 skills:
   - technical-writing
 ---
