@@ -11,6 +11,29 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ## [Unreleased]
 
+### Changed
+
+- **Microsoft Learn moves to `andes-core`** (all plugins 1.12.0). The `microsoft-learn` MCP server and the `microsoft-docs` skill now ship with `andes-core` instead of `andes-dotnet`, so every stack gets Microsoft Learn grounding, for example Terraform `azurerm` or Azure DevOps work without the .NET plugin. The core agents' `microsoft-learn` grants no longer depend on `andes-dotnet` being installed. Claude tool names change from `mcp__plugin_andes-dotnet_microsoft-learn__*` to `mcp__plugin_andes-core_microsoft-learn__*`; update any `permissions` entries that name the old prefix. Rerun `andes-init` to refresh the `AGENTS.md` block. See `docs/2026-10-microsoft-learn-in-core.md`.
+
+### Fixed
+
+- **CHANGELOG history.** v1.10.0 and v1.11.1 were tagged without rolling `[Unreleased]`, so their entries now sit under their own `[1.10.0]` and `[1.11.1]` sections instead of waiting for the next release.
+
+## [1.11.1] - 2026-10-06
+
+### Changed
+
+- **`.github/copilot-instructions.md` imports `AGENTS.md`** (all plugins 1.11.1). `andes-init` now creates the file as exactly `@AGENTS.md`, or adds that line to an existing one, the same as `CLAUDE.md`. Copilot CLI resolves the import, so project-specific text belongs in `AGENTS.md` after the markers. `andes-init` offers to move other text there and no longer deletes the file. Rerun `andes-init` to pick it up. Audit: the new `memory/copilot-stub` replaces `memory/shadowing-file` for this file. See D7 in `docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md`.
+- **Entity limits in one place, `int` keys, a floating Azure DevOps server, and notification-only hooks** (all plugins 1.11.0).
+  - **Entity limits.** An entity's max lengths, precision, and scale now live in `Common/Constants/<Feature>/<Entity>Limits.cs` (`OrderLimits.NumberMaxLength`). The EF configuration and the request validator both read it, so the column and the 400 cannot drift apart. A literal in either is now banned, replacing the old ban on a constants class. Both `andes-csharp-code-reviewer` twins flag a literal as Medium.
+  - **Breaking: base entities name their key.** `BaseEntity<TKey>`, `BaseCreatedEntity<TKey>`, and `BaseModifiedEntity<TKey>` accept `Guid` (the default) or `int`, and every entity names its key (`Order : BaseModifiedEntity<Guid>`). The configurations take the key too (`BaseModifiedEntityConfiguration<Order, Guid>`), and the interceptors find entries through `IBaseEntity`, `IBaseCreatedEntity`, and `IBaseModifiedEntity`. Existing entities need `<Guid>` added. `ef-core-base-entities` says when an `int` key fits and what it costs: no id before save, guessable ids, and duplicate rows when a succeeded commit is retried.
+  - **Azure DevOps server on `@latest`.** `andes-azure-devops` now runs `@azure-devops/mcp@latest` instead of the `2.10.0` pin. Copilot CLI does not expand `${ADO_ORG}` in plugin server arguments, so `azure-devops-init` gives Copilot CLI users the `copilot mcp add azure-devops …` command to register the server once with the organization written out.
+  - **Breaking: only the notification hook remains.** `andes-core` no longer notifies when a turn finishes and no longer checks links after Markdown edits. `ANDES_NOTIFY=attention` is gone; `off` still silences notifications. `andes-init` no longer installs the cloud-agent link check and offers to delete earlier copies. The link checker moved to `scripts/check-links.mjs` for this repository's audit, which still fails CI on broken links.
+  - **Angular agents.** The `find_examples` grant is gone, because the current Angular CLI MCP server no longer has that tool.
+  - See `docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md`.
+
+## [1.10.0] - 2026-10-01
+
 ### Added
 
 - **Notification and link-check hooks** (`andes-core` 1.6.0). `andes-core` now ships hooks for Claude Code and Copilot CLI. They need Node.js 18 or later on `PATH`.
@@ -52,15 +75,6 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ### Changed
 
-- **Microsoft Learn moves to `andes-core`** (all plugins 1.12.0). The `microsoft-learn` MCP server and the `microsoft-docs` skill now ship with `andes-core` instead of `andes-dotnet`, so every stack gets Microsoft Learn grounding, for example Terraform `azurerm` or Azure DevOps work without the .NET plugin. The core agents' `microsoft-learn` grants no longer depend on `andes-dotnet` being installed. Claude tool names change from `mcp__plugin_andes-dotnet_microsoft-learn__*` to `mcp__plugin_andes-core_microsoft-learn__*`; update any `permissions` entries that name the old prefix. Rerun `andes-init` to refresh the `AGENTS.md` block. See `docs/2026-10-microsoft-learn-in-core.md`.
-- **`.github/copilot-instructions.md` imports `AGENTS.md`** (all plugins 1.11.1). `andes-init` now creates the file as exactly `@AGENTS.md`, or adds that line to an existing one, the same as `CLAUDE.md`. Copilot CLI resolves the import, so project-specific text belongs in `AGENTS.md` after the markers. `andes-init` offers to move other text there and no longer deletes the file. Rerun `andes-init` to pick it up. Audit: the new `memory/copilot-stub` replaces `memory/shadowing-file` for this file. See D7 in `docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md`.
-- **Entity limits in one place, `int` keys, a floating Azure DevOps server, and notification-only hooks** (all plugins 1.11.0).
-  - **Entity limits.** An entity's max lengths, precision, and scale now live in `Common/Constants/<Feature>/<Entity>Limits.cs` (`OrderLimits.NumberMaxLength`). The EF configuration and the request validator both read it, so the column and the 400 cannot drift apart. A literal in either is now banned, replacing the old ban on a constants class. Both `andes-csharp-code-reviewer` twins flag a literal as Medium.
-  - **Breaking: base entities name their key.** `BaseEntity<TKey>`, `BaseCreatedEntity<TKey>`, and `BaseModifiedEntity<TKey>` accept `Guid` (the default) or `int`, and every entity names its key (`Order : BaseModifiedEntity<Guid>`). The configurations take the key too (`BaseModifiedEntityConfiguration<Order, Guid>`), and the interceptors find entries through `IBaseEntity`, `IBaseCreatedEntity`, and `IBaseModifiedEntity`. Existing entities need `<Guid>` added. `ef-core-base-entities` says when an `int` key fits and what it costs: no id before save, guessable ids, and duplicate rows when a succeeded commit is retried.
-  - **Azure DevOps server on `@latest`.** `andes-azure-devops` now runs `@azure-devops/mcp@latest` instead of the `2.10.0` pin. Copilot CLI does not expand `${ADO_ORG}` in plugin server arguments, so `azure-devops-init` gives Copilot CLI users the `copilot mcp add azure-devops …` command to register the server once with the organization written out.
-  - **Breaking: only the notification hook remains.** `andes-core` no longer notifies when a turn finishes and no longer checks links after Markdown edits. `ANDES_NOTIFY=attention` is gone; `off` still silences notifications. `andes-init` no longer installs the cloud-agent link check and offers to delete earlier copies. The link checker moved to `scripts/check-links.mjs` for this repository's audit, which still fails CI on broken links.
-  - **Angular agents.** The `find_examples` grant is gone, because the current Angular CLI MCP server no longer has that tool.
-  - See `docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md`.
 - **EF Core retries transient failures by default** (all plugins 1.10.0). Every relational `DbContext` now registers with `EnableRetryOnFailure()`, using the provider defaults of 6 retries and a 30-second maximum delay. `UseAzureSql` / `UseAzureSynapse` already retry.
   - **Explicit transactions.** One `SaveChangesAsync` needs no transaction. A unit that spans several saves, or a save plus `ExecuteUpdateAsync` / `ExecuteDeleteAsync`, runs inside `_ctx.Database.CreateExecutionStrategy().ExecuteAsync(...)`, with every read and write inside the delegate. A `BeginTransactionAsync` outside it now throws.
   - **Tests.** The Testcontainers fixture builds its own options without retry, so per-test rollback keeps working. `WebApplicationFactory` tests, and tests of a service that opens its own transaction, delete their rows or use a fresh database per test class.
@@ -166,5 +180,7 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 - One-word body drift between `.claude/rules/blazor-wasm.md` and its Copilot twin ("Durable cross-device" vs "Durable, cross-device"), found by the new repo audit on its first run — along with the GitHub Actions Reviewer model-parity gap, now recorded as a deliberate override.
 - The Copilot `ngrx-signals-sync` prompt now mirrors refreshed skill files back into `.claude/skills/`, so a Copilot-run sync no longer silently desyncs the two harnesses. Also corrected the C# Expert's test-naming guidance to the repo's `MethodName_Scenario_ExpectedBehavior` standard and removed 11 duplicate tool entries from the C#/.NET Janitor agent frontmatter.
 
-[Unreleased]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.11.1...HEAD
+[1.11.1]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.10.0...v1.11.1
+[1.10.0]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.0.0...v1.10.0
 [1.0.0]: https://github.com/RorroRojas3/awesome-claude-copilot/releases/tag/v1.0.0
