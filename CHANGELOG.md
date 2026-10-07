@@ -11,6 +11,8 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-10-07
+
 ### Changed
 
 - **Microsoft Learn moves to `andes-core`** (all plugins 1.12.0). The `microsoft-learn` MCP server and the `microsoft-docs` skill now ship with `andes-core` instead of `andes-dotnet`, so every stack gets Microsoft Learn grounding, for example Terraform `azurerm` or Azure DevOps work without the .NET plugin. The core agents' `microsoft-learn` grants no longer depend on `andes-dotnet` being installed. Claude tool names change from `mcp__plugin_andes-dotnet_microsoft-learn__*` to `mcp__plugin_andes-core_microsoft-learn__*`; update any `permissions` entries that name the old prefix. Rerun `andes-init` to refresh the `AGENTS.md` block. See `docs/2026-10-microsoft-learn-in-core.md`.
@@ -180,7 +182,8 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 - One-word body drift between `.claude/rules/blazor-wasm.md` and its Copilot twin ("Durable cross-device" vs "Durable, cross-device"), found by the new repo audit on its first run — along with the GitHub Actions Reviewer model-parity gap, now recorded as a deliberate override.
 - The Copilot `ngrx-signals-sync` prompt now mirrors refreshed skill files back into `.claude/skills/`, so a Copilot-run sync no longer silently desyncs the two harnesses. Also corrected the C# Expert's test-naming guidance to the repo's `MethodName_Scenario_ExpectedBehavior` standard and removed 11 duplicate tool entries from the C#/.NET Janitor agent frontmatter.
 
-[Unreleased]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.11.1...HEAD
+[Unreleased]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.12.0...HEAD
+[1.12.0]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.11.1...v1.12.0
 [1.11.1]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.10.0...v1.11.1
 [1.10.0]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.0.0...v1.10.0
 [1.0.0]: https://github.com/RorroRojas3/awesome-claude-copilot/releases/tag/v1.0.0
