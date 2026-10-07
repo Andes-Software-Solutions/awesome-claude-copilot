@@ -1,6 +1,6 @@
 # Maintainer MCP servers and no self-install
 
-**Date:** 2026-09-29. **Status:** accepted. This record supersedes the "No root configs" bullet in [2026-09-plugin-architecture.md](2026-09-plugin-architecture.md). That bullet removed the root `.mcp.json` because the plugins started their own servers. The rest of that record is unchanged.
+**Date:** 2026-09-29. **Status:** accepted. This record supersedes the "No root configs" bullet in [2026-09-plugin-architecture.md](2026-09-plugin-architecture.md). That bullet removed the root `.mcp.json` because the plugins started their own servers. The rest of that record is unchanged. Amended by [2026-10-microsoft-learn-in-core.md](2026-10-microsoft-learn-in-core.md): `microsoft-learn` is now copied from `andes-core`.
 
 ## Why
 
