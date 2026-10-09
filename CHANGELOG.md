@@ -14,6 +14,7 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 ### Changed
 
 - **The `AGENTS.md` block marker carries the plugin version.** It reads `<!-- andes:begin v1.12.1 -->`, the release that ships the block, instead of a separate block version (last `v1.5.0`). The new audit rule `memory/block-version` fails when the two differ, so every version bump also updates the marker.
+- **The repository moved to `Andes-Software-Solutions/awesome-claude-copilot`.** The manifests' `homepage` and `repository`, the README install commands, the changelog compare links, and the `extraKnownMarketplaces` entry `andes-init` writes all use the new address. GitHub redirects the old one, so existing installs keep working. To register the new address, run `/plugin marketplace add Andes-Software-Solutions/awesome-claude-copilot` or `copilot plugin marketplace add Andes-Software-Solutions/awesome-claude-copilot`, and rerun `andes-init`.
 
 ### Fixed
 
@@ -72,7 +73,7 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 - **Breaking restructure:** the repository is now the `andes` plugin marketplace for Claude Code and GitHub Copilot. You install plugins instead of copying files, and updates arrive through the marketplace.
   - **Plugins.** Seven plugins: `andes-core`, `andes-dotnet`, `andes-dotnet-wasm`, `andes-angular`, `andes-github`, `andes-terraform`, and `andes-azure-devops`. Stack plugins depend on `andes-core`.
   - **One directory, both harnesses.** Each plugin serves both harnesses from one directory with shared skills. Claude Code reads its own manifest. Copilot reads an Agent Plugins 1.0 manifest.
-  - **Install on Claude Code.** Run `/plugin marketplace add RorroRojas3/awesome-claude-copilot`, then `/plugin install <plugin>@andes`. Dependencies install automatically.
+  - **Install on Claude Code.** Run `/plugin marketplace add Andes-Software-Solutions/awesome-claude-copilot`, then `/plugin install <plugin>@andes`. Dependencies install automatically.
   - **Install on Copilot.** Copilot CLI uses the same marketplace, but you install `andes-core` (and `andes-dotnet` before `andes-dotnet-wasm`) yourself. The Copilot path is not yet verified end to end.
   - **`andes-init`.** A new user-invoked skill writes and refreshes the shared `AGENTS.md` block in your repository and wires `CLAUDE.md` to it. It also offers opt-in settings and cleanup of old drop-in copies.
   - **`angular-standards`.** A new skill gives Claude Code and Copilot the same Angular rules.
@@ -197,8 +198,8 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 - One-word body drift between `.claude/rules/blazor-wasm.md` and its Copilot twin ("Durable cross-device" vs "Durable, cross-device"), found by the new repo audit on its first run — along with the GitHub Actions Reviewer model-parity gap, now recorded as a deliberate override.
 - The Copilot `ngrx-signals-sync` prompt now mirrors refreshed skill files back into `.claude/skills/`, so a Copilot-run sync no longer silently desyncs the two harnesses. Also corrected the C# Expert's test-naming guidance to the repo's `MethodName_Scenario_ExpectedBehavior` standard and removed 11 duplicate tool entries from the C#/.NET Janitor agent frontmatter.
 
-[Unreleased]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.12.0...HEAD
-[1.12.0]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.11.1...v1.12.0
-[1.11.1]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.10.0...v1.11.1
-[1.10.0]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.0.0...v1.10.0
-[1.0.0]: https://github.com/RorroRojas3/awesome-claude-copilot/releases/tag/v1.0.0
+[Unreleased]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.12.0...HEAD
+[1.12.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.11.1...v1.12.0
+[1.11.1]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.10.0...v1.11.1
+[1.10.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.0.0...v1.10.0
+[1.0.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/releases/tag/v1.0.0

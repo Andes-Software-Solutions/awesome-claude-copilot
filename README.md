@@ -5,7 +5,7 @@
 [![.NET](https://img.shields.io/badge/.NET-C%23_14-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com)
 [![Angular](https://img.shields.io/badge/Angular-NgRx_Signals-DD0031?logo=angular&logoColor=white)](https://angular.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/RorroRojas3/awesome-claude-copilot/pulls)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Andes-Software-Solutions/awesome-claude-copilot/pulls)
 
 This repository is the **`andes` plugin marketplace**. It packages engineering standards for C#/.NET, Angular, GitHub Actions, and Terraform, plus Azure DevOps backlog management, as plugins for [Claude Code](https://code.claude.com) and [GitHub Copilot](https://github.com/features/copilot) (Copilot CLI, Copilot coding agent, github.com, and VS Code). Each plugin ships once per harness, under `claude/` and `copilot/`, so each harness loads only its own files. You install only the stacks you use, and updates arrive through the marketplace instead of by re-copying files.
 
@@ -45,7 +45,7 @@ When you run `andes-init`, it reports which plugins match your repository (for e
 ### Claude Code
 
 ```text
-/plugin marketplace add RorroRojas3/awesome-claude-copilot
+/plugin marketplace add Andes-Software-Solutions/awesome-claude-copilot
 /plugin install andes-dotnet@andes
 /andes-core:andes-init
 ```
@@ -70,7 +70,7 @@ Re-run `andes-init` after you update the plugins. A run with nothing new changes
 These commands follow GitHub's Copilot CLI plugin docs. They have **not yet been verified end to end** with these plugins; see the [client checks](docs/2026-09-harness-trees.md#client-checks). Copilot reads its own marketplace file, `.github/plugin/marketplace.json`, and its own plugin tree, `copilot/`. The agents need Copilot CLI 1.0.85 or later.
 
 ```shell
-copilot plugin marketplace add RorroRojas3/awesome-claude-copilot
+copilot plugin marketplace add Andes-Software-Solutions/awesome-claude-copilot
 copilot plugin install andes-core@andes
 copilot plugin install andes-dotnet@andes
 ```
@@ -246,7 +246,7 @@ Claude Code limits the skill listing to about 1% of context, and when that overf
 
 ## Migrating from the drop-in trees
 
-The pre-plugin layout is commit [`97943de`](https://github.com/RorroRojas3/awesome-claude-copilot/tree/97943de) on `main`.
+The pre-plugin layout is commit [`97943de`](https://github.com/Andes-Software-Solutions/awesome-claude-copilot/tree/97943de) on `main`.
 
 1. **Install the plugins.** Follow the [Install](#install) steps for your harness.
 2. **Run `andes-init`.** It lists leftovers from the old layout and offers to delete them as one batch:
