@@ -11,6 +11,21 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ## [Unreleased]
 
+### Changed
+
+- **The `AGENTS.md` block marker carries the plugin version.** It reads `<!-- andes:begin v1.12.1 -->`, the release that ships the block, instead of a separate block version (last `v1.5.0`). The new audit rule `memory/block-version` fails when the two differ, so every version bump also updates the marker.
+
+### Fixed
+
+- **Copilot subagent calls pass `name`, and a change is done only after review and docs** (all plugins 1.12.1).
+  - **Subagent `name`.** On Copilot CLI 1.0.90, the subagent (`task`) call fails with `"name": Required` when it omits `name`. Sonnet did this on its first call to a reviewer. The `AGENTS.md` block's `## Review loop` and `andes-planner-expert`'s call to `andes-prd-generator` now say to pass a short kebab-case `name`.
+  - **Definition of done.** Review loop step 4 now ends: a change is done only after a passing verdict within two rounds and the `andes-se-technical-writer` return. The final summary gives the verdict and the round count.
+    - `andes-csharp-expert` and `andes-angular-expert` end their workflow on it.
+    - `andes-planner-expert` ends every next-step prompt and handoff with a done clause naming the reviewer and the writer, adds a prompt for the default Copilot agent, and adds a **Done when** line to the plan template.
+  - **Janitor docs.** `andes-csharp-dotnet-janitor` no longer writes its own changelog line for routine cleanups. It calls the writer once after the last batch.
+  - Rerun `andes-init` to refresh the `AGENTS.md` block. See `docs/2026-10-copilot-subagent-name-and-done.md`.
+- **`andes-core` description.** It now lists the Microsoft Learn and Context7 MCP servers and no longer mentions the Markdown link-check hook, which 1.11.0 removed. Copilot CLI installs from before 1.12.0 lack `microsoft-learn`: run `copilot plugin update` to get it.
+
 ## [1.12.0] - 2026-10-07
 
 ### Changed

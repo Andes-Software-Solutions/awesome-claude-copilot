@@ -131,9 +131,9 @@ The loop works like this:
 1. **Report.** Reviewers report only **High** and **Medium** findings, plus a verdict. They never edit files and never hand work back.
 2. **Fix and re-review.** The implementer fixes every finding, then reruns the reviewer once, on only the files changed since round 1.
 3. **Stop after two rounds.** If High findings remain after round 2, the implementer stops and reports them to you. Open Medium findings go in the final summary.
-4. **Document.** After a passing verdict (**Approve** or **Approve with changes**), `andes-se-technical-writer` updates `docs/` and adds the `CHANGELOG.md` entry.
+4. **Document.** After a passing verdict (**Approve** or **Approve with changes**), `andes-se-technical-writer` updates `docs/` and adds the `CHANGELOG.md` entry. Only then is the change done. The final summary gives the verdict and the round count.
 
-`andes-full-stack-expert` counts rounds per side, so neither the back end nor the front end gets more than two. The loop text lives in `AGENTS.md`. It is also copied word for word into the Copilot implementers, because Copilot subagents do not receive `AGENTS.md`.
+`andes-full-stack-expert` counts rounds per side, so neither the back end nor the front end gets more than two. `andes-csharp-dotnet-janitor` reviews each batch and calls the writer once at the end. The loop text lives in `AGENTS.md`. It is also copied word for word into the Copilot implementers, because Copilot subagents do not receive `AGENTS.md`. `andes-planner-expert` repeats this definition of done in every next-step prompt and handoff. On Copilot CLI, every subagent call must pass `name` ([docs/2026-10-copilot-subagent-name-and-done.md](docs/2026-10-copilot-subagent-name-and-done.md)).
 
 ---
 
@@ -421,6 +421,7 @@ The underlying check is `node claude/andes-angular/skills/ngrx-signal-store/scri
 - [docs/2026-10-ef-core-connection-resiliency.md](docs/2026-10-ef-core-connection-resiliency.md) records why every relational `DbContext` retries on failure, the execution-strategy rule for explicit transactions, and why test fixtures build their options without retry.
 - [docs/2026-09-notification-and-link-hooks.md](docs/2026-09-notification-and-link-hooks.md) records the `andes-core` notification and link-check hooks: where the hook files sit, the event map, each harness's output channel, the cloud-agent copy `andes-init` installs, the audit's `hooks` and `links` checks, and the Copilot checklist. The Stop and link-check hooks were later removed.
 - [docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md](docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md) records `<Entity>Limits` in `Common/Constants/<Feature>/`, generic base entities with `Guid` or `int` keys, the floating Azure DevOps server and its Copilot CLI registration, the notification-only hook set, the removed `find_examples` grant, and the `@AGENTS.md` stub in `.github/copilot-instructions.md`.
+- [docs/2026-10-copilot-subagent-name-and-done.md](docs/2026-10-copilot-subagent-name-and-done.md) records the `name` argument Copilot CLI's `task` call requires, the definition of done in the review loop and the planner's done clause, and why the janitor now documents through the writer.
 - The `docs/2026-08-*.md` files record earlier decisions. Parts of them are superseded by the ADR.
 - [CHANGELOG.md](CHANGELOG.md)
 

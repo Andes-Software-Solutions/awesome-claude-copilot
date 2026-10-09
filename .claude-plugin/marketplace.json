@@ -10,7 +10,7 @@
     {
       "name": "andes-core",
       "source": "./claude/andes-core",
-      "description": "Shared AGENTS.md standards (via andes-init), PRD generation, technical writing with CHANGELOG ownership, and desktop-notification and Markdown link-check hooks."
+      "description": "Shared AGENTS.md standards (via andes-init), PRD generation, technical writing with CHANGELOG ownership, the Microsoft Learn and Context7 MCP servers, and a desktop-notification hook."
     },
     {
       "name": "andes-dotnet",
