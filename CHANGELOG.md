@@ -11,6 +11,22 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ## [Unreleased]
 
+### Changed
+
+- **The `AGENTS.md` block marker carries the plugin version.** It reads `<!-- andes:begin v1.12.1 -->`, the release that ships the block, instead of a separate block version (last `v1.5.0`). The new audit rule `memory/block-version` fails when the two differ, so every version bump also updates the marker.
+- **The repository moved to `Andes-Software-Solutions/awesome-claude-copilot`.** The manifests' `homepage` and `repository`, the README install commands, the changelog compare links, and the `extraKnownMarketplaces` entry `andes-init` writes all use the new address. GitHub redirects the old one, so existing installs keep working. To register the new address, run `/plugin marketplace add Andes-Software-Solutions/awesome-claude-copilot` or `copilot plugin marketplace add Andes-Software-Solutions/awesome-claude-copilot`, and rerun `andes-init`.
+
+### Fixed
+
+- **Copilot subagent calls pass `name`, and a change is done only after review and docs** (all plugins 1.12.1).
+  - **Subagent `name`.** On Copilot CLI 1.0.90, the subagent (`task`) call fails with `"name": Required` when it omits `name`. Sonnet did this on its first call to a reviewer. The `AGENTS.md` block's `## Review loop` and `andes-planner-expert`'s call to `andes-prd-generator` now say to pass a short kebab-case `name`.
+  - **Definition of done.** Review loop step 4 now ends: a change is done only after a passing verdict within two rounds and the `andes-se-technical-writer` return. The final summary gives the verdict and the round count.
+    - `andes-csharp-expert` and `andes-angular-expert` end their workflow on it.
+    - `andes-planner-expert` ends every next-step prompt and handoff with a done clause naming the reviewer and the writer, adds a prompt for the default Copilot agent, and adds a **Done when** line to the plan template.
+  - **Janitor docs.** `andes-csharp-dotnet-janitor` no longer writes its own changelog line for routine cleanups. It calls the writer once after the last batch.
+  - Rerun `andes-init` to refresh the `AGENTS.md` block. See `docs/2026-10-copilot-subagent-name-and-done.md`.
+- **`andes-core` description.** It now lists the Microsoft Learn and Context7 MCP servers and no longer mentions the Markdown link-check hook, which 1.11.0 removed. Copilot CLI installs from before 1.12.0 lack `microsoft-learn`: run `copilot plugin update` to get it.
+
 ## [1.12.0] - 2026-10-07
 
 ### Changed
@@ -57,7 +73,7 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 - **Breaking restructure:** the repository is now the `andes` plugin marketplace for Claude Code and GitHub Copilot. You install plugins instead of copying files, and updates arrive through the marketplace.
   - **Plugins.** Seven plugins: `andes-core`, `andes-dotnet`, `andes-dotnet-wasm`, `andes-angular`, `andes-github`, `andes-terraform`, and `andes-azure-devops`. Stack plugins depend on `andes-core`.
   - **One directory, both harnesses.** Each plugin serves both harnesses from one directory with shared skills. Claude Code reads its own manifest. Copilot reads an Agent Plugins 1.0 manifest.
-  - **Install on Claude Code.** Run `/plugin marketplace add RorroRojas3/awesome-claude-copilot`, then `/plugin install <plugin>@andes`. Dependencies install automatically.
+  - **Install on Claude Code.** Run `/plugin marketplace add Andes-Software-Solutions/awesome-claude-copilot`, then `/plugin install <plugin>@andes`. Dependencies install automatically.
   - **Install on Copilot.** Copilot CLI uses the same marketplace, but you install `andes-core` (and `andes-dotnet` before `andes-dotnet-wasm`) yourself. The Copilot path is not yet verified end to end.
   - **`andes-init`.** A new user-invoked skill writes and refreshes the shared `AGENTS.md` block in your repository and wires `CLAUDE.md` to it. It also offers opt-in settings and cleanup of old drop-in copies.
   - **`angular-standards`.** A new skill gives Claude Code and Copilot the same Angular rules.
@@ -182,8 +198,8 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 - One-word body drift between `.claude/rules/blazor-wasm.md` and its Copilot twin ("Durable cross-device" vs "Durable, cross-device"), found by the new repo audit on its first run — along with the GitHub Actions Reviewer model-parity gap, now recorded as a deliberate override.
 - The Copilot `ngrx-signals-sync` prompt now mirrors refreshed skill files back into `.claude/skills/`, so a Copilot-run sync no longer silently desyncs the two harnesses. Also corrected the C# Expert's test-naming guidance to the repo's `MethodName_Scenario_ExpectedBehavior` standard and removed 11 duplicate tool entries from the C#/.NET Janitor agent frontmatter.
 
-[Unreleased]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.12.0...HEAD
-[1.12.0]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.11.1...v1.12.0
-[1.11.1]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.10.0...v1.11.1
-[1.10.0]: https://github.com/RorroRojas3/awesome-claude-copilot/compare/v1.0.0...v1.10.0
-[1.0.0]: https://github.com/RorroRojas3/awesome-claude-copilot/releases/tag/v1.0.0
+[Unreleased]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.12.0...HEAD
+[1.12.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.11.1...v1.12.0
+[1.11.1]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.10.0...v1.11.1
+[1.10.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.0.0...v1.10.0
+[1.0.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/releases/tag/v1.0.0

@@ -23,19 +23,19 @@ agents: ["andes-prd-generator"]
 handoffs:
   - label: "Implement: C# Expert"
     agent: andes-csharp-expert
-    prompt: "Implement the approved plan above step by step; its file under docs/plans/ is the source of truth. Load the skills named in the plan before coding, and report any deviations from the plan."
+    prompt: "Implement the approved plan above step by step; its file under docs/plans/ is the source of truth. Load the skills named in the plan before coding, and report any deviations from the plan. Run the review loop with andes-csharp-code-reviewer (two rounds maximum); after a passing verdict, invoke andes-se-technical-writer for docs/ and the CHANGELOG.md entry. You are done only when the writer returns."
     send: true
   - label: "Clean up: C#/.NET Janitor"
     agent: andes-csharp-dotnet-janitor
-    prompt: "Execute the approved cleanup/modernization plan above incrementally; its file under docs/plans/ is the source of truth. Validate with build and tests after each change."
+    prompt: "Execute the approved cleanup/modernization plan above incrementally; its file under docs/plans/ is the source of truth. Validate with build and tests after each change. Run the review loop with andes-csharp-code-reviewer (two rounds maximum); after a passing verdict, invoke andes-se-technical-writer for docs/ and the CHANGELOG.md entry. You are done only when the writer returns."
     send: true
   - label: "Implement: Angular Expert"
     agent: andes-angular-expert
-    prompt: "Implement the approved plan above step by step; its file under docs/plans/ is the source of truth. Load the skills named in the plan before coding, and report any deviations from the plan."
+    prompt: "Implement the approved plan above step by step; its file under docs/plans/ is the source of truth. Load the skills named in the plan before coding, and report any deviations from the plan. Run the review loop with andes-angular-code-reviewer (two rounds maximum); after a passing verdict, invoke andes-se-technical-writer for docs/ and the CHANGELOG.md entry. You are done only when the writer returns."
     send: true
   - label: "Implement: Full-Stack Expert"
     agent: andes-full-stack-expert
-    prompt: "Orchestrate the approved full-stack plan above; its file under docs/plans/ is the source of truth. Write the API contract first, then delegate the back-end and front-end packages to your expert subagents in parallel, verify the integrated seam, and confirm both sides end with a passing review verdict within two rounds."
+    prompt: "Orchestrate the approved full-stack plan above; its file under docs/plans/ is the source of truth. Write the API contract first, then delegate the back-end and front-end packages to your expert subagents in parallel, verify the integrated seam, and confirm both sides end with a passing review verdict within two rounds, then invoke andes-se-technical-writer once for the whole feature. You are done only when the writer returns."
     send: true
   - label: "Document: SE Technical Writer"
     agent: andes-se-technical-writer
@@ -43,7 +43,7 @@ handoffs:
     send: true
   - label: "Implement: Default Agent"
     agent: agent
-    prompt: "Implement the approved plan above step by step; its file under docs/plans/ is the source of truth. Report any deviations from the plan."
+    prompt: "Implement the approved plan above step by step; its file under docs/plans/ is the source of truth. Report any deviations from the plan. Run the matching Andes reviewer on the diff (two rounds maximum; for Terraform, terraform fmt -check and terraform validate); after a passing verdict, invoke andes-se-technical-writer for docs/ and the CHANGELOG.md entry. You are done only when the writer returns."
     send: true
 ---
 
@@ -81,7 +81,7 @@ Cycle through these phases based on user input. This is iterative, not linear. I
 
 Search `docs/prd/` for a PRD covering this feature (by feature name, or by the `US-xxx` IDs the user cited). If one exists, read it and plan against its story IDs so every step traces back to the spec.
 
-If none exists and the request is a **feature** — new user-facing behavior whose users, scope, or success criteria are not answered by the request plus the codebase — invoke the `andes-prd-generator` subagent in draft mode. Give it: the user's request verbatim, the repository context you already have, the default output path `docs/prd/<feature-slug>.md`, and the instruction *do not create issues*. Branch on the first line of its report:
+If none exists and the request is a **feature** — new user-facing behavior whose users, scope, or success criteria are not answered by the request plus the codebase — invoke the `andes-prd-generator` subagent in draft mode (on Copilot CLI, the `task` call also needs `name`, such as `prd-draft`). Give it: the user's request verbatim, the repository context you already have, the default output path `docs/prd/<feature-slug>.md`, and the instruction *do not create issues*. Branch on the first line of its report:
 
 - `PRD-STATUS: NEEDS-INPUT` → reply `PLAN-STATUS: NEEDS-INPUT`, relay its `## Clarifying questions` verbatim under "Questions from andes-prd-generator", add none of your own that round, and stop. On the user's answers, re-invoke it **once** with the original request plus the answers (or "use your proposed defaults") — it must draft on that run.
 - `PRD-STATUS: DRAFTED` → read the PRD at the reported path. Plan the P0 stories of the first unblocked epic unless the user scoped otherwise, and carry its `## Assumptions made` into the plan's Decisions.
@@ -153,14 +153,15 @@ Every plan names exactly one implementer to run next. Pick it by the nature of t
 
 Only recommend an agent whose plugin is installed (`andes-dotnet` for the C# agents, `andes-angular` for the Angular agent, both for full-stack); otherwise recommend the default Copilot agent.
 
-The implementation agents run their own review loop (two rounds maximum) and finish by invoking `andes-se-technical-writer` for docs and the `CHANGELOG.md` entry — the plan does not need separate review or documentation steps.
+Every next-step prompt and handoff ends with the **done clause**, naming the matching reviewer (`andes-csharp-code-reviewer` for the C# expert and janitor, `andes-angular-code-reviewer` for the Angular expert; for Terraform, `terraform fmt -check` and `terraform validate`): "Run the review loop with `<reviewer>` (two rounds maximum); after a passing verdict, invoke `andes-se-technical-writer` for `docs/` and the `CHANGELOG.md` entry. You are done only when the writer returns." The full-stack expert documents once for both sides; the technical writer needs no clause. The plan itself needs no separate review or documentation steps.
 
 Next-step prompts, by agent:
 
 - C# expert / Angular expert: "Implement the plan at `docs/plans/<file>` step by step. Load the skills named in the plan before coding, and report any deviations from the plan."
 - Janitor: "Execute the cleanup/modernization plan at `docs/plans/<file>` incrementally, validating with build and tests after each change."
-- Full-stack expert: "Orchestrate the full-stack plan at `docs/plans/<file>`: write the API contract first, then delegate the back-end and front-end packages to your expert subagents in parallel, verify the integrated seam, and confirm both sides end with a passing review verdict within two rounds."
+- Full-stack expert: "Orchestrate the full-stack plan at `docs/plans/<file>`: write the API contract first, then delegate the back-end and front-end packages to your expert subagents in parallel, verify the integrated seam, and confirm both sides end with a passing review verdict within two rounds, then invoke `andes-se-technical-writer` once for the whole feature. You are done only when the writer returns."
 - Technical writer: "Execute the documentation plan at `docs/plans/<file>`: create or update the Markdown docs under `docs/` and add the corresponding `CHANGELOG.md` entry under `[Unreleased]`."
+- Default Copilot agent: "Implement the plan at `docs/plans/<file>` step by step, and report any deviations from the plan."
 </routing>
 
 <plan_style_guide>
@@ -194,8 +195,9 @@ Next-step prompts, by agent:
 1. {Clarifying question with recommendation. Option A / Option B / Option C}
 2. {…}
 
+**Done when**: `{reviewer}` passes within two rounds, then `andes-se-technical-writer` updates `docs/` and `CHANGELOG.md` (omit for writer-only plans)
 **Recommended agent**: `{agent}` (requires `{plugin}`)
-**Next step**: `/agent {agent}` → "{next-step prompt from <routing>, with the plan file path}"
+**Next step**: `/agent {agent}` → "{next-step prompt from <routing>, with the plan file path and the done clause}"
 ```
 
 Rules:

@@ -1,12 +1,12 @@
 {
   "name": "andes-dotnet-wasm",
-  "version": "1.12.0",
+  "version": "1.12.1",
   "description": "Blazor WebAssembly (standalone, .NET 10) standards as an on-demand skill; builds on andes-dotnet.",
   "author": {
     "name": "Rodrigo Rojas"
   },
-  "homepage": "https://github.com/RorroRojas3/awesome-claude-copilot",
-  "repository": "https://github.com/RorroRojas3/awesome-claude-copilot",
+  "homepage": "https://github.com/Andes-Software-Solutions/awesome-claude-copilot",
+  "repository": "https://github.com/Andes-Software-Solutions/awesome-claude-copilot",
   "license": "MIT",
   "keywords": [
     "blazor",

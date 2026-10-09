@@ -1,12 +1,12 @@
 {
   "name": "andes-core",
-  "version": "1.12.0",
-  "description": "Shared AGENTS.md standards (via andes-init), PRD generation, technical writing with CHANGELOG ownership, and desktop-notification and Markdown link-check hooks.",
+  "version": "1.12.1",
+  "description": "Shared AGENTS.md standards (via andes-init), PRD generation, technical writing with CHANGELOG ownership, the Microsoft Learn and Context7 MCP servers, and a desktop-notification hook.",
   "author": {
     "name": "Rodrigo Rojas"
   },
-  "homepage": "https://github.com/RorroRojas3/awesome-claude-copilot",
-  "repository": "https://github.com/RorroRojas3/awesome-claude-copilot",
+  "homepage": "https://github.com/Andes-Software-Solutions/awesome-claude-copilot",
+  "repository": "https://github.com/Andes-Software-Solutions/awesome-claude-copilot",
   "license": "MIT",
   "keywords": [
     "agents-md",

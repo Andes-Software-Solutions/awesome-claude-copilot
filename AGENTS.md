@@ -1,4 +1,4 @@
-<!-- andes:begin v1.5.0 -->
+<!-- andes:begin v1.12.1 -->
 # Andes engineering standards
 
 Shared by Claude Code and GitHub Copilot. The `andes-init` skill manages this block and replaces it on refresh — put project-specific instructions after the `andes:end` marker (`andes-init` scaffolds those sections on first install).
@@ -26,12 +26,12 @@ Ground version-specific answers in the MCP servers when they are installed — `
 
 ## Review loop
 
-After changing code, run the matching reviewer on the diff: `andes-csharp-code-reviewer` (C#, including Blazor), `andes-angular-code-reviewer` (Angular), `andes-github-actions-reviewer` (workflows, composite actions). Terraform has no reviewer — run `terraform fmt -check` and `terraform validate` instead.
+After changing code, run the matching reviewer on the diff: `andes-csharp-code-reviewer` (C#, including Blazor), `andes-angular-code-reviewer` (Angular), `andes-github-actions-reviewer` (workflows, composite actions). Terraform has no reviewer — run `terraform fmt -check` and `terraform validate` instead. On Copilot CLI, every subagent (`task`) call also needs `name`, such as `csharp-review-1`.
 
 1. Reviewers report only High and Medium findings plus a verdict. They never edit files or hand work back.
 2. The implementer fixes every reported finding, then runs the reviewer once more on only the files changed since round 1.
 3. Two rounds maximum. If High findings remain after round 2, stop and report them to the user instead of iterating; list any open Medium findings in the final summary.
-4. After a passing verdict (**Approve** or **Approve with changes**), invoke `andes-se-technical-writer` to update `docs/` and add the `CHANGELOG.md` entry — unless your caller said it handles documentation.
+4. After a passing verdict (**Approve** or **Approve with changes**), invoke `andes-se-technical-writer` to update `docs/` and add the `CHANGELOG.md` entry — unless your caller said it handles documentation. Only then is the change done; the final summary gives the verdict and the round count.
 
 ## Docs, changelog & requirements
 
@@ -63,7 +63,7 @@ This repository is the `andes` plugin marketplace: engineering standards for C#/
 - Each harness loads only its own tree. VS Code hands one plugin folder to several harnesses, so no folder holds both formats (`isolation/*`; `docs/2026-09-harness-trees.md`). Never add a root `marketplace.json` or `.plugin/marketplace.json`: Copilot would read it before its own.
 - Edit skills and hook scripts under `claude/`, then run `node scripts/sync-shared.mjs`; the copies under `copilot/` must match (`mirror/*`). Agents are never mirrored.
 - A Claude agent and its Copilot twin change together; their descriptions match apart from the word PROACTIVELY. Copilot agents declare no `target`, so they load in both VS Code and `github-copilot`; they pin `model` as a `modelParity` pair, CLI slug first and VS Code display name second (`[claude-sonnet-5.5, Claude Sonnet 5.5 (copilot)]`), pin `reasoning-effort` to the `copilotEffort` table in `scripts/repo-audit.mjs`, use only the plain tool aliases and exact `server/tool` MCP grants, and carry no `argument-hint` or `vscode/*` tools. Only `andes-planner-expert` declares `handoffs`: VS Code Local sessions show them as buttons, and every other surface ignores them.
-- All plugins share one version (`manifests/version-lockstep`). When any plugin changes, bump `version` in both manifests (`claude/<name>/.claude-plugin/plugin.json`, `copilot/<name>/plugin.json`) of every plugin, changed or not — installs are cached by version. CI enforces the bump with `--base`.
+- All plugins share one version (`manifests/version-lockstep`). When any plugin changes, bump `version` in both manifests (`claude/<name>/.claude-plugin/plugin.json`, `copilot/<name>/plugin.json`) of every plugin, changed or not — installs are cached by version — and set the block's `<!-- andes:begin vX.Y.Z -->` marker to the same version (`memory/block-version`). CI enforces the bump with `--base`.
 - Edit the block in `agents-block.md`, sync, then copy it verbatim between the markers above. Its `## Review loop` section is also copied verbatim into the Copilot implementer agents.
 - Never edit either copy of `angular-developer` (vendored upstream, hash-pinned). Refresh `ngrx-signal-store` with `/ngrx-signals-sync`.
 - No skill sets `disable-model-invocation: true` — it makes the skill unreachable on Copilot CLI (github/copilot-cli#4438); skills guard in their body instead.

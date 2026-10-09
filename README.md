@@ -5,7 +5,7 @@
 [![.NET](https://img.shields.io/badge/.NET-C%23_14-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com)
 [![Angular](https://img.shields.io/badge/Angular-NgRx_Signals-DD0031?logo=angular&logoColor=white)](https://angular.dev)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/RorroRojas3/awesome-claude-copilot/pulls)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Andes-Software-Solutions/awesome-claude-copilot/pulls)
 
 This repository is the **`andes` plugin marketplace**. It packages engineering standards for C#/.NET, Angular, GitHub Actions, and Terraform, plus Azure DevOps backlog management, as plugins for [Claude Code](https://code.claude.com) and [GitHub Copilot](https://github.com/features/copilot) (Copilot CLI, Copilot coding agent, github.com, and VS Code). Each plugin ships once per harness, under `claude/` and `copilot/`, so each harness loads only its own files. You install only the stacks you use, and updates arrive through the marketplace instead of by re-copying files.
 
@@ -45,7 +45,7 @@ When you run `andes-init`, it reports which plugins match your repository (for e
 ### Claude Code
 
 ```text
-/plugin marketplace add RorroRojas3/awesome-claude-copilot
+/plugin marketplace add Andes-Software-Solutions/awesome-claude-copilot
 /plugin install andes-dotnet@andes
 /andes-core:andes-init
 ```
@@ -70,7 +70,7 @@ Re-run `andes-init` after you update the plugins. A run with nothing new changes
 These commands follow GitHub's Copilot CLI plugin docs. They have **not yet been verified end to end** with these plugins; see the [client checks](docs/2026-09-harness-trees.md#client-checks). Copilot reads its own marketplace file, `.github/plugin/marketplace.json`, and its own plugin tree, `copilot/`. The agents need Copilot CLI 1.0.85 or later.
 
 ```shell
-copilot plugin marketplace add RorroRojas3/awesome-claude-copilot
+copilot plugin marketplace add Andes-Software-Solutions/awesome-claude-copilot
 copilot plugin install andes-core@andes
 copilot plugin install andes-dotnet@andes
 ```
@@ -131,9 +131,9 @@ The loop works like this:
 1. **Report.** Reviewers report only **High** and **Medium** findings, plus a verdict. They never edit files and never hand work back.
 2. **Fix and re-review.** The implementer fixes every finding, then reruns the reviewer once, on only the files changed since round 1.
 3. **Stop after two rounds.** If High findings remain after round 2, the implementer stops and reports them to you. Open Medium findings go in the final summary.
-4. **Document.** After a passing verdict (**Approve** or **Approve with changes**), `andes-se-technical-writer` updates `docs/` and adds the `CHANGELOG.md` entry.
+4. **Document.** After a passing verdict (**Approve** or **Approve with changes**), `andes-se-technical-writer` updates `docs/` and adds the `CHANGELOG.md` entry. Only then is the change done. The final summary gives the verdict and the round count.
 
-`andes-full-stack-expert` counts rounds per side, so neither the back end nor the front end gets more than two. The loop text lives in `AGENTS.md`. It is also copied word for word into the Copilot implementers, because Copilot subagents do not receive `AGENTS.md`.
+`andes-full-stack-expert` counts rounds per side, so neither the back end nor the front end gets more than two. `andes-csharp-dotnet-janitor` reviews each batch and calls the writer once at the end. The loop text lives in `AGENTS.md`. It is also copied word for word into the Copilot implementers, because Copilot subagents do not receive `AGENTS.md`. `andes-planner-expert` repeats this definition of done in every next-step prompt and handoff. On Copilot CLI, every subagent call must pass `name` ([docs/2026-10-copilot-subagent-name-and-done.md](docs/2026-10-copilot-subagent-name-and-done.md)).
 
 ---
 
@@ -246,7 +246,7 @@ Claude Code limits the skill listing to about 1% of context, and when that overf
 
 ## Migrating from the drop-in trees
 
-The pre-plugin layout is commit [`97943de`](https://github.com/RorroRojas3/awesome-claude-copilot/tree/97943de) on `main`.
+The pre-plugin layout is commit [`97943de`](https://github.com/Andes-Software-Solutions/awesome-claude-copilot/tree/97943de) on `main`.
 
 1. **Install the plugins.** Follow the [Install](#install) steps for your harness.
 2. **Run `andes-init`.** It lists leftovers from the old layout and offers to delete them as one batch:
@@ -421,6 +421,7 @@ The underlying check is `node claude/andes-angular/skills/ngrx-signal-store/scri
 - [docs/2026-10-ef-core-connection-resiliency.md](docs/2026-10-ef-core-connection-resiliency.md) records why every relational `DbContext` retries on failure, the execution-strategy rule for explicit transactions, and why test fixtures build their options without retry.
 - [docs/2026-09-notification-and-link-hooks.md](docs/2026-09-notification-and-link-hooks.md) records the `andes-core` notification and link-check hooks: where the hook files sit, the event map, each harness's output channel, the cloud-agent copy `andes-init` installs, the audit's `hooks` and `links` checks, and the Copilot checklist. The Stop and link-check hooks were later removed.
 - [docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md](docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md) records `<Entity>Limits` in `Common/Constants/<Feature>/`, generic base entities with `Guid` or `int` keys, the floating Azure DevOps server and its Copilot CLI registration, the notification-only hook set, the removed `find_examples` grant, and the `@AGENTS.md` stub in `.github/copilot-instructions.md`.
+- [docs/2026-10-copilot-subagent-name-and-done.md](docs/2026-10-copilot-subagent-name-and-done.md) records the `name` argument Copilot CLI's `task` call requires, the definition of done in the review loop and the planner's done clause, and why the janitor now documents through the writer.
 - The `docs/2026-08-*.md` files record earlier decisions. Parts of them are superseded by the ADR.
 - [CHANGELOG.md](CHANGELOG.md)
 

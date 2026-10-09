@@ -1,13 +1,13 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "andes-github",
-  "version": "1.12.0",
+  "version": "1.12.1",
   "description": "GitHub Actions hardening, CI-efficiency, and runtime-upgrade skills with a report-only workflow reviewer.",
   "author": {
     "name": "Rodrigo Rojas"
   },
-  "homepage": "https://github.com/RorroRojas3/awesome-claude-copilot",
-  "repository": "https://github.com/RorroRojas3/awesome-claude-copilot",
+  "homepage": "https://github.com/Andes-Software-Solutions/awesome-claude-copilot",
+  "repository": "https://github.com/Andes-Software-Solutions/awesome-claude-copilot",
   "license": "MIT",
   "keywords": [
     "github-actions",

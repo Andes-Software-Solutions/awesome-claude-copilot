@@ -910,6 +910,13 @@ if (runs('memory')) {
     add('memory', 'missing', 'error', 'AGENTS.md or the andes-init template is missing', ['AGENTS.md', CONFIG.agentsTemplate]);
   } else {
     const template = read(CONFIG.agentsTemplate).trim();
+    // The marker names the plugin release that ships the block, so consumers can tell which andes-init wrote it.
+    const marker = template.match(/^<!-- andes:begin v(\S+) -->/)?.[1];
+    const version = readJson(`${C('andes-core')}/.claude-plugin/plugin.json`).version;
+    if (marker !== version) {
+      add('memory', 'block-version', 'error', `The andes block marker says v${marker} but the plugins are at ${version}`, [CONFIG.agentsTemplate, 'AGENTS.md'],
+        undefined, `Set the marker to <!-- andes:begin v${version} --> in the template, sync, and copy it into AGENTS.md.`);
+    }
     const agentsMd = read('AGENTS.md');
     const m = agentsMd.match(/<!-- andes:begin[^>]*-->[\s\S]*?<!-- andes:end -->/g) ?? [];
     if (m.length !== 1) add('memory', 'block-count', 'error', `AGENTS.md must hold exactly one andes block (found ${m.length})`, ['AGENTS.md']);

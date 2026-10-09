@@ -40,7 +40,7 @@ From `git ls-files`: `*.csproj` / `*.sln` / `*.slnx` → `andes-dotnet`; `*.razo
 Plugins cannot ship settings, so offer these **one at a time**, show the exact diff, and apply only on a yes. Merge into existing JSON; never drop or reorder existing keys.
 
 1. `.claude/settings.json` — team rollout for Claude Code:
-   - `extraKnownMarketplaces.andes`: `{ "source": { "source": "github", "repo": "RorroRojas3/awesome-claude-copilot" } }`
+   - `extraKnownMarketplaces.andes`: `{ "source": { "source": "github", "repo": "Andes-Software-Solutions/awesome-claude-copilot" } }`
    - `enabledPlugins`: `"<plugin>@andes": true` for each detected plugin
    - when `andes-angular` is enabled: `permissions.deny` gains `"mcp__plugin_andes-angular_angular-cli__ai_tutor"` (the Angular CLI server has no flag to drop its tutor tool; a bare-name deny removes it from context)
 2. `.claude/settings.json` — `"effortLevel": "xhigh"` (the Andes default; costs more per turn — ask separately).
