@@ -11,6 +11,8 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ## [Unreleased]
 
+## [1.13.0] - 2026-10-13
+
 ### Changed
 
 - **Breaking: base-entity soft delete is now "deactivation"** (all plugins 1.13.0). Andes calls these rows deactivated, not deleted, so the column, interceptor, filter, and service methods now share one word. The `ef-core-base-entities` skill, the skills and `andes-scaffold` reference that mention it, and the C# reviewer and expert agents use the new names:
@@ -202,7 +204,8 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 - One-word body drift between `.claude/rules/blazor-wasm.md` and its Copilot twin ("Durable cross-device" vs "Durable, cross-device"), found by the new repo audit on its first run — along with the GitHub Actions Reviewer model-parity gap, now recorded as a deliberate override.
 - The Copilot `ngrx-signals-sync` prompt now mirrors refreshed skill files back into `.claude/skills/`, so a Copilot-run sync no longer silently desyncs the two harnesses. Also corrected the C# Expert's test-naming guidance to the repo's `MethodName_Scenario_ExpectedBehavior` standard and removed 11 duplicate tool entries from the C#/.NET Janitor agent frontmatter.
 
-[Unreleased]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.12.0...HEAD
+[Unreleased]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.13.0...HEAD
+[1.13.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.11.1...v1.12.0
 [1.11.1]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.10.0...v1.11.1
 [1.10.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.0.0...v1.10.0
