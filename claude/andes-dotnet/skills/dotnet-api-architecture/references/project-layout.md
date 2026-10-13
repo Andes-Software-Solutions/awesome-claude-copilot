@@ -74,7 +74,7 @@ Provider-first and plumbing-only: everything one technology needs sits in its ow
    ├─ Serialization/                converters and serializer settings this store needs
    ├─ DbContexts/                   EF providers only: <Prefix>DbContext.cs
    ├─ Configurations/               EF providers only: Base/Base<Thing>Configuration.cs (abstract, shared) + <Feature>/<Entity>Configuration.cs mirroring the Entity folders
-   ├─ Interceptors/                 EF providers only: <Name>Interceptor.cs, one per file — SoftDeleteInterceptor, AuditTimestampInterceptor, command and connection interceptors
+   ├─ Interceptors/                 EF providers only: <Name>Interceptor.cs, one per file — DeactivationInterceptor, AuditTimestampInterceptor, command and connection interceptors
    ├─ Migrations/                   EF providers only: `dotnet ef migrations add` output
    ├─ Scripts/                      EF providers only: <Verb><Subject>.sql embedded resources (views, procedures, operator seeds) + <Provider>Scripts.cs, the reader migrations call
    └─ <Provider><Subject>Store.cs   non-EF providers only: I<Subject>Store + the gateway over the client, interface first

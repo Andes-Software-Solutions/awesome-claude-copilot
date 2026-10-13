@@ -29,7 +29,7 @@
 | Entity limits | `<Entity>Limits` in `Common/Constants/<Feature>/`; members `<Property>MaxLength`, `<Property>MinLength`, `<Property>Precision`, `<Property>Scale` | `OrderLimits.NumberMaxLength`, `BaseEnumEntityLimits.NameMaxLength` |
 | Enum reference tables | the singular of the enum, sealed, `: BaseEnumEntity<<Enums>>` | `OrderStatus : BaseEnumEntity<OrderStatuses>` |
 | EF configurations | `<Entity>Configuration`, deriving from a shared `Base<Thing>Configuration<T, TKey>` in `Configurations/Base/` | `OrderConfiguration : BaseModifiedEntityConfiguration<Order, Guid>` |
-| EF interceptors | `<Name>Interceptor`, named for what it does | `AuditTimestampInterceptor`, `SoftDeleteInterceptor` |
+| EF interceptors | `<Name>Interceptor`, named for what it does | `AuditTimestampInterceptor`, `DeactivationInterceptor` |
 | SQL scripts | `<Verb><Subject>.sql`, named after the migration that runs it | `CreateOrderSummaryView.sql` ↔ migration `CreateOrderSummaryView` |
 | Store provisioning | `<Provider>ResourceProvisioner` creates resources; `<Provider>SchemaMigrator` applies migrations | `MongoResourceProvisioner`, `SqlSchemaMigrator` |
 | Startup | `<Name>Bootstrapper` | `SchemaBootstrapper` |

@@ -1,6 +1,6 @@
 {
   "name": "andes-core",
-  "version": "1.12.1",
+  "version": "1.13.0",
   "description": "Shared AGENTS.md standards (via andes-init), PRD generation, technical writing with CHANGELOG ownership, the Microsoft Learn and Context7 MCP servers, and a desktop-notification hook.",
   "author": {
     "name": "Rodrigo Rojas"

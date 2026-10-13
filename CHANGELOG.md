@@ -13,12 +13,16 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ### Changed
 
-- **The `AGENTS.md` block marker carries the plugin version.** It reads `<!-- andes:begin v1.12.1 -->`, the release that ships the block, instead of a separate block version (last `v1.5.0`). The new audit rule `memory/block-version` fails when the two differ, so every version bump also updates the marker.
+- **Breaking: base-entity soft delete is now "deactivation"** (all plugins 1.13.0). Andes calls these rows deactivated, not deleted, so the column, interceptor, filter, and service methods now share one word. The `ef-core-base-entities` skill, the skills and `andes-scaffold` reference that mention it, and the C# reviewer and expert agents use the new names:
+  - `DateDeleted` becomes `DateDeactivated` (null = active); `SoftDeleteInterceptor` becomes `DeactivationInterceptor`; the named query filter `"SoftDelete"` becomes `"Deactivation"`; `RestoreAsync` becomes `ReactivateAsync`; `GetDeletedAsync` becomes `GetDeactivatedAsync`. The banned bool is now `IsDeactivated` or `IsActive` (was `IsDeleted`).
+  - **Unchanged.** `PurgeAsync` is still a hard delete, a service still calls `_ctx.Remove`, and `Delete<Entity>ActionDto` and the HTTP DELETE endpoint keep their names; the endpoint deactivates the row.
+  - **Migrating an existing project.** Rename the property, the interceptor class, and its registration. Add an EF migration that renames the column, and check that `dotnet ef migrations add` produced `RenameColumn` (and the index rename), not a drop and add, which would lose the data. Update `IgnoreQueryFilters(["SoftDelete"])` calls to `"Deactivation"` and the service method names. See `docs/2026-10-deactivation-vocabulary.md`.
+- **The `AGENTS.md` block marker carries the plugin version.** It reads `<!-- andes:begin v1.13.0 -->`, the release that ships the block, instead of a separate block version (last `v1.5.0`). The new audit rule `memory/block-version` fails when the two differ, so every version bump also updates the marker.
 - **The repository moved to `Andes-Software-Solutions/awesome-claude-copilot`.** The manifests' `homepage` and `repository`, the README install commands, the changelog compare links, and the `extraKnownMarketplaces` entry `andes-init` writes all use the new address. GitHub redirects the old one, so existing installs keep working. To register the new address, run `/plugin marketplace add Andes-Software-Solutions/awesome-claude-copilot` or `copilot plugin marketplace add Andes-Software-Solutions/awesome-claude-copilot`, and rerun `andes-init`.
 
 ### Fixed
 
-- **Copilot subagent calls pass `name`, and a change is done only after review and docs** (all plugins 1.12.1).
+- **Copilot subagent calls pass `name`, and a change is done only after review and docs** (all plugins 1.13.0).
   - **Subagent `name`.** On Copilot CLI 1.0.90, the subagent (`task`) call fails with `"name": Required` when it omits `name`. Sonnet did this on its first call to a reviewer. The `AGENTS.md` block's `## Review loop` and `andes-planner-expert`'s call to `andes-prd-generator` now say to pass a short kebab-case `name`.
   - **Definition of done.** Review loop step 4 now ends: a change is done only after a passing verdict within two rounds and the `andes-se-technical-writer` return. The final summary gives the verdict and the round count.
     - `andes-csharp-expert` and `andes-angular-expert` end their workflow on it.
