@@ -119,5 +119,5 @@ builder.HasOne(o => o.Status).WithMany().HasForeignKey(o => o.StatusId).OnDelete
 - No lookup row inserted, edited, or deleted at runtime; the enum is the source of truth.
 - No enum declared in `Entity` or `Dto` — they live in `Common/Enums/`, plural, one per file.
 - No `HasConversion<string>()` on these keys: the column is an `int`, so renaming a member costs one data update, not a rewrite of every foreign key.
-- No `BaseEntity<TKey>` members on a reference table — no surrogate key, no soft delete, no audit stamps.
+- No `BaseEntity<TKey>` members on a reference table — no surrogate key, no deactivation, no audit stamps.
 - No literal length in `BaseEnumEntityConfiguration` — read `BaseEnumEntityLimits`.

@@ -60,7 +60,7 @@ Write each file to the skill in parentheses and to the `csharp-standards` layout
 | `Api/Health/HealthRegistration.cs`: liveness plus the store probe | `dotnet-api-architecture` |
 | `Service/Exceptions/NotFoundException.cs`, `ForbiddenException.cs`, `ConflictException.cs` | `dotnet-api-architecture` |
 | `Entity/Base/BaseEntity.cs`, `BaseCreatedEntity.cs`, `BaseModifiedEntity.cs` | `ef-core-base-entities` |
-| `Repository/<Provider>/`: `<Provider>PersistenceConfiguration.cs`, `DbContexts/<Prefix>DbContext.cs`, `Options/<Provider>DbOptions.cs`, `Configurations/Base/`, `Interceptors/SoftDeleteInterceptor.cs` and `AuditTimestampInterceptor.cs`, `HealthChecks/<Provider>HealthCheck.cs` | `dotnet-api-architecture` `references/persistence.md`, `ef-core-base-entities` |
+| `Repository/<Provider>/`: `<Provider>PersistenceConfiguration.cs`, `DbContexts/<Prefix>DbContext.cs`, `Options/<Provider>DbOptions.cs`, `Configurations/Base/`, `Interceptors/DeactivationInterceptor.cs` and `AuditTimestampInterceptor.cs`, `HealthChecks/<Provider>HealthCheck.cs` | `dotnet-api-architecture` `references/persistence.md`, `ef-core-base-entities` |
 | `Common/Validation/`: the FluentValidation-to-`IValidateOptions<T>` adapter and `ValidateWithFluentValidation()` | `dotnet-api-architecture` `references/options-and-validation.md` |
 | `Dto/Pagination/PaginatedResponseDto.cs` | `dotnet-api-architecture` |
 | `appsettings.json` with the `<Provider>DbOptions` section and an empty connection string; `appsettings.sample.json` documenting it. The development connection string goes in user secrets, never in a committed file | `dotnet-api-architecture` |
@@ -70,6 +70,6 @@ No initial migration: the first one comes with the first entity (`dotnet ef migr
 ## 4. Tests
 
 - `test/<Root>.Unit.Test/Api/ExceptionHandlers/GlobalExceptionHandlerTests.cs`: one row per mapping, per `references/exception-handling.md`.
-- `test/<Root>.Unit.Test/Repository/<Provider>/Interceptors/`: the stamp and soft-delete tests with `FakeTimeProvider` (`ef-core-base-entities`).
+- `test/<Root>.Unit.Test/Repository/<Provider>/Interceptors/`: the stamp and deactivation tests with `FakeTimeProvider` (`ef-core-base-entities`).
 - `test/<Root>.Integration.Test/TestInfrastructure/`: the `WebApplicationFactory<Program>` subclass and the Testcontainers fixture for the chosen engine, which applies migrations when there are any (`csharp-xunit`).
 - `test/<Root>.Integration.Test/Health/`: the health endpoint returns 200, which proves the host and store wiring.

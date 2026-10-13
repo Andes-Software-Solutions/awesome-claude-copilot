@@ -16,7 +16,7 @@ description: "Use when writing or reviewing Entity Framework Core code: DbContex
 
 ## Entity Design
 
-- Derive entities from the `Entity/Base/` classes (`BaseEntity<TKey>`, `BaseCreatedEntity<TKey>`, `BaseModifiedEntity<TKey>`) per `ef-core-base-entities`: a `Guid` key by default or an `int` key where it fits, soft delete, UTC audit stamps, and a row-version token, all mapped fluently and stamped by interceptors
+- Derive entities from the `Entity/Base/` classes (`BaseEntity<TKey>`, `BaseCreatedEntity<TKey>`, `BaseModifiedEntity<TKey>`) per `ef-core-base-entities`: a `Guid` key by default or an `int` key where it fits, deactivation, UTC audit stamps, and a row-version token, all mapped fluently and stamped by interceptors
 - Put every length, precision, and scale limit of an entity in `Common/Constants/<Feature>/<Entity>Limits.cs` (`dotnet-api-architecture`): the configuration's `HasMaxLength` / `HasPrecision` and the request validator's `MaximumLength` / `PrecisionScale` read the same constant, so the column and the 400 never disagree
 - Model a fixed set of values (status, type, category) as an enum-backed reference table per `ef-core-enum-reference-tables`
 - Use meaningful primary keys (consider natural vs surrogate keys)
