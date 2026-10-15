@@ -43,6 +43,8 @@ def iter_paragraphs(doc) -> Iterator[Paragraph]:
 
 
 def replace_in_runs(runs, key: str, value: str) -> int:
+    if not key:
+        raise ValueError("an empty key matches everywhere; every mapping key must be non-empty")
     count, offset = 0, 0
     while True:
         texts = [r.text for r in runs]
@@ -64,6 +66,8 @@ def replace_in_runs(runs, key: str, value: str) -> int:
 
 
 def replace_text(doc, mapping: dict[str, str]) -> dict[str, int]:
+    if not isinstance(mapping, dict) or any(not isinstance(k, str) or not k for k in mapping):
+        raise ValueError("the mapping must be a JSON object whose keys are non-empty strings")
     counts = {k: 0 for k in mapping}
     for p in iter_paragraphs(doc):
         for key, value in mapping.items():

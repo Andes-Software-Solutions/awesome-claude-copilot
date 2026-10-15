@@ -10,7 +10,6 @@ Exit codes: 0 clean, 10 findings, 1 error.
 from __future__ import annotations
 
 import json
-import re
 import sys
 from pathlib import Path
 
@@ -83,8 +82,12 @@ def check(path: Path) -> list[str]:
                 for t in tokens:
                     if t.type == "OPERAND" and t.subtype == "RANGE" and "!" in t.value:
                         target = t.value.rsplit("!", 1)[0]
-                        target = re.sub(r"^\[\d+\]", "", target.strip("'").replace("''", "'"))
-                        if target not in sheets and not t.value.startswith("["):
+                        if target.startswith("'") and target.endswith("'"):
+                            target = target[1:-1].replace("''", "'")
+                        # [Book.xlsx]Sheet or [1]Sheet points at another workbook, which this check cannot see.
+                        if target.startswith("["):
+                            continue
+                        if target not in sheets:
                             findings.append(f"{ws.title}!{c.coordinate}: refers to missing sheet '{target}' ({c.value})")
     return findings
 

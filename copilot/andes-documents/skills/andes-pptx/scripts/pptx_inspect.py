@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import math
+import re
 import sys
 from pathlib import Path
 
@@ -23,6 +24,8 @@ TITLE_TYPES = (PP_PLACEHOLDER.TITLE, PP_PLACEHOLDER.CENTER_TITLE, PP_PLACEHOLDER
 MIN_PT = 12
 DEFAULT_PT = 18
 EMU_PER_INCH = 914400
+# python-pptx fills a picture's description with its file name, which describes nothing.
+FILE_NAME_ALT = re.compile(r"^\S+\.(png|jpe?g|gif|bmp|tiff?|svg|emf|wmf|webp)$", re.I)
 
 
 def _iter_shapes(shapes):
@@ -93,6 +96,8 @@ def outline(path: Path) -> dict:
                 entry["alt"] = descr
                 if not descr.strip():
                     flags.append(f"slide {i}: {kind} '{shape.name}' has no alt text")
+                elif FILE_NAME_ALT.match(descr.strip()):
+                    flags.append(f"slide {i}: {kind} '{shape.name}' has a file name as alt text ('{descr.strip()}')")
             shapes.append(entry)
         notes = slide.notes_slide.notes_text_frame.text.strip() if slide.has_notes_slide else ""
         slides.append({"slide": i, "layout": slide.slide_layout.name, "title": title, "shapes": shapes, "notes": notes})

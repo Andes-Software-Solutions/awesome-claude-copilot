@@ -19,6 +19,15 @@ from typing import Iterator
 from pptx import Presentation
 
 
+def _iter_shapes(shapes) -> Iterator:
+    """Every shape, descending into groups, in the same order pptx_inspect reports them."""
+    for shape in shapes:
+        if shape.shape_type == 6:  # group
+            yield from _iter_shapes(shape.shapes)
+        else:
+            yield shape
+
+
 def _text_frames(shapes) -> Iterator:
     for shape in shapes:
         if shape.shape_type == 6:  # group
@@ -32,6 +41,8 @@ def _text_frames(shapes) -> Iterator:
 
 
 def replace_in_runs(runs, key: str, value: str) -> int:
+    if not key:
+        raise ValueError("an empty key matches everywhere; every mapping key must be non-empty")
     count, offset = 0, 0
     while True:
         texts = [r.text for r in runs]
@@ -53,6 +64,8 @@ def replace_in_runs(runs, key: str, value: str) -> int:
 
 
 def replace_text(prs, mapping: dict[str, str]) -> dict[str, int]:
+    if not isinstance(mapping, dict) or any(not isinstance(k, str) or not k for k in mapping):
+        raise ValueError("the mapping must be a JSON object whose keys are non-empty strings")
     counts = {k: 0 for k in mapping}
     for slide in prs.slides:
         frames = list(_text_frames(slide.shapes))
@@ -95,7 +108,7 @@ def main(argv: list[str]) -> int:
             else:
                 name = opt("--shape")
                 targets = []
-                for s in slide.shapes:
+                for s in _iter_shapes(slide.shapes):
                     if name is not None and s.name != name:
                         continue
                     if s.shape_type == 13:

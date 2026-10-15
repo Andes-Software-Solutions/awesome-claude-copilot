@@ -4,7 +4,8 @@
 
 Lists sections (page size, orientation) and every top-level paragraph and table in order, then
 flags: skipped heading levels, empty headings, bold Normal paragraphs that act as headings,
-images without alt text, and a missing document title.
+drawings without alt text (inline or floating, in the body, headers, and footers; images
+marked decorative are exempt), and a missing document title.
 Exit codes: 0 clean, 10 flags raised, 1 error.
 """
 from __future__ import annotations
@@ -15,10 +16,30 @@ import sys
 from pathlib import Path
 
 from docx import Document
+from docx.opc.part import XmlPart
+from docx.oxml.ns import qn
 from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 EMU_PER_INCH = 914400
+DRAWING_PARTS = re.compile(r"/word/(document|header\d*|footer\d*)\.xml$")
+FILE_NAME_ALT = re.compile(r"^\S+\.(png|jpe?g|gif|bmp|tiff?|svg|emf|wmf|webp)$", re.I)
+
+
+def drawings(doc):
+    """(part file, wp:docPr) for every inline or floating drawing in the body, headers, and footers.
+
+    doc.inline_shapes covers only inline drawings in the body.
+    """
+    for part in doc.part.package.iter_parts():
+        if isinstance(part, XmlPart) and DRAWING_PARTS.search(str(part.partname)):
+            for doc_pr in part.element.iter(qn("wp:docPr")):
+                yield str(part.partname).rsplit("/", 1)[-1], doc_pr
+
+
+def decorative(doc_pr) -> bool:
+    """Word's 'Mark as decorative' sets an adec:decorative extension, and such images need no alt text."""
+    return any(el.tag.endswith("}decorative") and el.get("val") in ("1", "true") for el in doc_pr.iter())
 
 
 def heading_level(p: Paragraph) -> int | None:
@@ -51,10 +72,14 @@ def outline(path: Path) -> dict:
         elif (text and len(text) < 80 and item.runs and all(r.bold for r in item.runs if r.text.strip())
               and item.style is not None and item.style.name == "Normal"):
             flags.append(f"bold Normal paragraph used as a heading; apply a Heading style: '{text[:60]}'")
-    for shape in doc.inline_shapes:
-        doc_pr = shape._inline.docPr
-        if not (doc_pr.get("descr") or "").strip():
-            flags.append(f"image '{doc_pr.get('name')}' has no alt text")
+    for part_file, doc_pr in drawings(doc):
+        descr, name = (doc_pr.get("descr") or "").strip(), doc_pr.get("name") or "unnamed"
+        if decorative(doc_pr):
+            continue
+        if not descr:
+            flags.append(f"drawing '{name}' in {part_file} has no alt text")
+        elif FILE_NAME_ALT.match(descr):
+            flags.append(f"drawing '{name}' in {part_file} has a file name as alt text ('{descr}')")
     if not (doc.core_properties.title or "").strip():
         flags.append("document has no title property")
     sections = [{
