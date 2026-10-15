@@ -1,7 +1,8 @@
 ---
 name: andes-se-technical-writer
 description: "Technical writing specialist. Use to create or update developer documentation under docs/ when new features are implemented or implementation details need documenting. Produces guides, tutorials, ADRs, and reference docs, and owns the root CHANGELOG.md."
-model: [claude-haiku-4.5, Claude Haiku 4.5 (copilot)]
+model: [claude-haiku-5.5, Claude Haiku 5.5 (copilot)]
+reasoning-effort: medium
 tools:
   [
     read,
