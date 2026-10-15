@@ -11,6 +11,8 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ## [Unreleased]
 
+## [1.14.0] - 2026-10-15
+
 ### Added
 
 - **`andes-documents` plugin** (all plugins 1.14.0). Four opt-in skills create, edit, and read Andes-branded files in both harnesses, so Copilot gets the document abilities Claude Code has built in: `andes-docx` (Word), `andes-xlsx` (Excel), `andes-pptx` (PowerPoint), and `andes-pdf`. They use the Andes palette with accessible chart colors, Arial and Calibri in Office files, and embedded Montserrat and Inter (SIL OFL) in PDFs, and their helpers flag accessibility problems such as skipped headings, missing alt text, and non-embedded PDF fonts. The skills are original work written from public library documentation, not copies of Claude's built-in skills.
@@ -218,7 +220,8 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 - One-word body drift between `.claude/rules/blazor-wasm.md` and its Copilot twin ("Durable cross-device" vs "Durable, cross-device"), found by the new repo audit on its first run — along with the GitHub Actions Reviewer model-parity gap, now recorded as a deliberate override.
 - The Copilot `ngrx-signals-sync` prompt now mirrors refreshed skill files back into `.claude/skills/`, so a Copilot-run sync no longer silently desyncs the two harnesses. Also corrected the C# Expert's test-naming guidance to the repo's `MethodName_Scenario_ExpectedBehavior` standard and removed 11 duplicate tool entries from the C#/.NET Janitor agent frontmatter.
 
-[Unreleased]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.13.0...HEAD
+[Unreleased]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.14.0...HEAD
+[1.14.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.11.1...v1.12.0
 [1.11.1]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.10.0...v1.11.1
