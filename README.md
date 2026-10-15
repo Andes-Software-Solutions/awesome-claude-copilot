@@ -7,7 +7,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](https://github.com/Andes-Software-Solutions/awesome-claude-copilot/pulls)
 
-This repository is the **`andes` plugin marketplace**. It packages engineering standards for C#/.NET, Angular, GitHub Actions, and Terraform, plus Azure DevOps backlog management, as plugins for [Claude Code](https://code.claude.com) and [GitHub Copilot](https://github.com/features/copilot) (Copilot CLI, Copilot coding agent, github.com, and VS Code). Each plugin ships once per harness, under `claude/` and `copilot/`, so each harness loads only its own files. You install only the stacks you use, and updates arrive through the marketplace instead of by re-copying files.
+This repository is the **`andes` plugin marketplace**. It packages engineering standards for C#/.NET, Angular, GitHub Actions, and Terraform, plus Azure DevOps backlog management and Andes-branded Word, Excel, PowerPoint, and PDF documents, as plugins for [Claude Code](https://code.claude.com) and [GitHub Copilot](https://github.com/features/copilot) (Copilot CLI, Copilot coding agent, github.com, and VS Code). Each plugin ships once per harness, under `claude/` and `copilot/`, so each harness loads only its own files. You install only the stacks you use, and updates arrive through the marketplace instead of by re-copying files.
 
 It contains no application code, only assistant configuration: skills, agents, MCP servers, hooks, and a shared `AGENTS.md` block.
 
@@ -33,10 +33,11 @@ How it fits together:
 | `andes-github` | **Skills:** `github-actions-hardening`, `github-actions-efficiency`, `github-actions-runtime-upgrade-conventions`<br>**Agents:** `andes-github-actions-reviewer` | `andes-core` |
 | `andes-terraform` | **Skills:** `terraform-conventions`<br>**MCP:** `terraform` | `andes-core` |
 | `andes-azure-devops` | **Skills:** `azure-devops-init`<br>**Agents:** `andes-ado-backlog-manager`<br>**MCP:** `azure-devops` | `andes-core` |
+| `andes-documents` | **Skills:** `andes-docx`, `andes-xlsx`, `andes-pptx`, `andes-pdf` (Andes-branded Word, Excel, PowerPoint, and PDF files; see [Office and PDF documents](#office-and-pdf-documents)) | `andes-core` |
 
 Claude Code installs dependencies automatically. On Copilot, install them yourself (see [Install](#install)).
 
-When you run `andes-init`, it reports which plugins match your repository (for example, `*.csproj` suggests `andes-dotnet` and `angular.json` suggests `andes-angular`) and which of those are not installed yet.
+When you run `andes-init`, it reports which plugins match your repository (for example, `*.csproj` suggests `andes-dotnet` and `angular.json` suggests `andes-angular`) and which of those are not installed yet. `andes-documents` has no file signal, so `andes-init` lists it as optional.
 
 ---
 
@@ -58,16 +59,46 @@ Install each stack plugin you need. Its dependencies install with it, so `andes-
    - the `andes` marketplace and `enabledPlugins` for a team rollout
    - a `permissions.deny` for the Angular CLI `ai_tutor` tool
    - `"effortLevel": "xhigh"`
-   - a `docs/plans/` line in `.gitignore`
+   - a `docs/plans/` line in `.gitignore`, and a `docs/generated/` line when `andes-documents` is installed
 4. **Cleanup.** Offers to delete old drop-in copies, including the cloud-agent link check (`.github/hooks/andes-links.json`, `.github/hooks/andes/check-links.mjs`) that earlier versions installed.
 
 Re-run `andes-init` after you update the plugins. A run with nothing new changes nothing. Plugin agents appear as `andes-<plugin>:andes-<role>`, for example `andes-dotnet:andes-csharp-code-reviewer`. Verified with Claude Code 2.1.283.
 
 **Azure DevOps.** After installing `andes-azure-devops`, set `ADO_ORG` to your organization name in the environment that starts Claude Code, run `az login`, restart, then run `/andes-azure-devops:azure-devops-init` once per repository. It records the project, team, area path, process, iteration root, and assignable people in `AGENTS.md`; `andes-ado-backlog-manager` refuses to write until that section exists. Copilot CLI does not expand `${ADO_ORG}` in a plugin server's arguments, so on Copilot CLI register the server once with the organization written out: `azure-devops-init` gives you the `copilot mcp add azure-devops …` command.
 
+### Office and PDF documents
+
+`andes-documents` creates, edits, and reads Word, Excel, PowerPoint, and PDF files styled with the Andes palette (sampled from the logo) and fonts. On Claude Code it sits next to Claude's built-in document skills; its skill descriptions ask the model to prefer it whenever an Andes-branded file is wanted. The skills are original work, written from the public documentation of the libraries they use. They do not copy Claude's built-in document skills, whose license forbids redistribution.
+
+| Skill | Builds with | Reads and edits with |
+| --- | --- | --- |
+| `andes-docx` | `docx` (npm) | python-docx |
+| `andes-xlsx` | openpyxl | openpyxl |
+| `andes-pptx` | PptxGenJS (npm) | python-pptx |
+| `andes-pdf` | ReportLab, with Montserrat and Inter embedded | pypdf, pdfplumber |
+
+**Python is required** on the machine that runs Claude Code or Copilot, for every document skill. Node.js is needed only to create Word and PowerPoint files. The skills check both first. If one is missing, they stop and print the install command rather than installing a runtime themselves:
+
+| Runtime | Needed by | Windows | macOS | Linux |
+| --- | --- | --- | --- | --- |
+| Python 3.9+ (with `venv` and `pip`) | all four skills | `winget install Python.Python.3.12`, or python.org with "Add python.exe to PATH" ticked | `brew install python` | `sudo apt install python3 python3-venv` |
+| Node.js 18+ | `andes-docx`, `andes-pptx` (creating files) | `winget install OpenJS.NodeJS.LTS` | `brew install node` | distribution package or nodejs.org |
+| LibreOffice, poppler | optional: page previews | `winget install TheDocumentFoundation.LibreOffice`; poppler | `brew install --cask libreoffice poppler` | `sudo apt install libreoffice poppler-utils` |
+
+Everything the skills write stays in one git-ignored folder at the repository root:
+
+```text
+docs/generated/
+├── docx/2026-10-14-q3-report.docx       # <format>/<yyyy-mm-dd>-<slug>.<ext>, numbered instead of overwritten
+├── xlsx/  pptx/  pdf/
+└── .work/                               # build scripts, .venv/, node_modules/
+```
+
+Each skill starts by running its `workspace.py`, which resolves these paths and adds `docs/generated/` to `.gitignore` if it is missing, saying so when it does. `andes-init` also offers that line. Python and npm packages are installed only after you approve, into `docs/generated/.work/` and never globally. That folder persists, so packages install once per repository. A path you name yourself always wins. Without LibreOffice, the skills check their output structurally, which covers the package structure, the colors used, the outline, and accessibility flags such as missing alt text or skipped heading levels, but they cannot show a picture of the page. Office files use Arial and Calibri, which recipients already have, and PDFs embed the brand fonts.
+
 ### GitHub Copilot CLI
 
-These commands follow GitHub's Copilot CLI plugin docs. They have **not yet been verified end to end** with these plugins; see the [client checks](docs/2026-09-harness-trees.md#client-checks). Copilot reads its own marketplace file, `.github/plugin/marketplace.json`, and its own plugin tree, `copilot/`. The agents need Copilot CLI 1.0.85 or later.
+These commands follow GitHub's Copilot CLI plugin docs. They have **not yet been verified end to end** with these plugins; see the [client checks](docs/2026-09-harness-trees.md#client-checks). Copilot reads its own marketplace file, `.github/plugin/marketplace.json`, and its own plugin tree, `copilot/`. The agents need Copilot CLI 1.0.94 or later: `andes-se-technical-writer` pins Claude Haiku 5.5, which that release added, and the CLI fails a dispatch whose model it does not know.
 
 ```shell
 copilot plugin marketplace add Andes-Software-Solutions/awesome-claude-copilot
@@ -110,8 +141,8 @@ Every research and implementer agent is granted exact MCP tools for its stack �
 Models and reasoning effort:
 
 - **Claude.** Reviewers and the PRD and writer agents run on Sonnet. `andes-github-actions-reviewer` runs on Opus. Reviewers use `effort: xhigh`; `andes-prd-generator`, `andes-se-technical-writer`, and `andes-ado-backlog-manager` use `high`.
-- **Copilot.** Agents run on Claude Sonnet 5.5. `andes-planner-expert` and `andes-full-stack-expert` run on Claude Opus 5.5. `andes-se-technical-writer` runs on Claude Haiku 4.5 to save cost.
-- **Copilot reasoning effort.** Each agent pins `reasoning-effort`, tiered by role because a higher level consumes more AI Credits. The three reviewers, `andes-prd-generator`, and `andes-planner-expert` use `high`. The implementers, `andes-full-stack-expert`, `andes-csharp-dotnet-janitor`, and `andes-ado-backlog-manager` use `medium`. `andes-se-technical-writer` has no key, because Claude Haiku 4.5 has no configurable reasoning. The key needs Copilot CLI 1.0.88 or later and must be spelled `reasoning-effort`; the `reasoningEffort` spelling in the CLI reference is not applied ([github/copilot-cli#4963](https://github.com/github/copilot-cli/issues/4963)). An explicit `--reasoning-effort` flag overrides it. Whether the Copilot coding agent reads the key is unverified.
+- **Copilot.** Agents run on Claude Sonnet 5.5. `andes-planner-expert` and `andes-full-stack-expert` run on Claude Opus 5.5. `andes-se-technical-writer` runs on Claude Haiku 5.5 to save cost.
+- **Copilot reasoning effort.** Each agent pins `reasoning-effort`, tiered by role because a higher level consumes more AI Credits. The three reviewers, `andes-prd-generator`, and `andes-planner-expert` use `high`. The implementers, `andes-full-stack-expert`, `andes-csharp-dotnet-janitor`, `andes-ado-backlog-manager`, and `andes-se-technical-writer` use `medium`. The key needs Copilot CLI 1.0.88 or later and must be spelled `reasoning-effort`; the `reasoningEffort` spelling in the CLI reference is not applied ([github/copilot-cli#4963](https://github.com/github/copilot-cli/issues/4963)). An explicit `--reasoning-effort` flag overrides it. Whether the Copilot coding agent reads the key is unverified.
 
 ---
 
@@ -230,7 +261,8 @@ Skill descriptions are the always-on price of each installed plugin. Measured on
 | `andes-github` | ~278 |
 | `andes-terraform` | ~98 |
 | `andes-azure-devops` | ~138 |
-| All seven | ~2,980 |
+| `andes-documents` | ~580 (measured 2026-10-14 on Claude Code 2.1.296) |
+| All eight | ~3,560 |
 
 The figures cover skills only. The command lists no agents for a plugin loaded from disk, so agent descriptions are not counted, and MCP tool schemas are resolved at runtime.
 
@@ -338,7 +370,8 @@ The helper copies byte for byte. It refuses to overwrite a file that carries unc
 
 **Keep copies in sync.**
 
-- **Shared files.** `skills/` and `scripts/` match between the two trees (`mirror/missing`, `mirror/drift`).
+- **Shared files.** `skills/` and `scripts/` match between the two trees (`mirror/missing`, `mirror/drift`). Binary files, such as the fonts in `andes-pdf`, compare byte for byte, and `__pycache__` and `node_modules` are never mirrored.
+- **Shared skill files.** Every `andes-documents` skill carries the same `assets/brand.json`, and the docx, xlsx, and pptx skills carry the same `scripts/office_pkg.py`, because a skill's scripts read only their own folder. Edit one copy, copy it over the others, then sync (`skills/shared-missing`, `skills/shared-drift`). `skills/brand-contrast` checks every color pair the brand file declares against the WCAG minimums.
 - **Tree contents.** A plugin root holds only its own harness's entries (`isolation/*`). Agents are never mirrored.
 - **Agent twins.** A Claude agent and its Copilot twin change together, and their descriptions match apart from the word PROACTIVELY.
 - **Copilot agents.** No `target`, so they load in VS Code and `github-copilot`; `model` as a pair from the audit's `modelParity` table, CLI slug first and VS Code display name second (`[claude-sonnet-5.5, Claude Sonnet 5.5 (copilot)]`); `reasoning-effort` equal to the audit's `copilotEffort` table; plain tool aliases (`read`, `edit`, `search`, `execute`, `agent`, `web`, `todo`) and exact `server/tool` MCP grants; no `argument-hint` or `vscode/*` tools; no `handoffs` except on `andes-planner-expert`, whose targets must be marketplace agents or the built-in `agent`; an `agents:` list only together with the `agent` tool, and never pointing at an agent that has `disable-model-invocation: true`.
@@ -403,6 +436,7 @@ The underlying check is `node claude/andes-angular/skills/ngrx-signal-store/scri
 - **Docker** for the `terraform` MCP server.
 - **The [`gh` CLI](https://cli.github.com)** for turning PRD stories into GitHub issues.
 - **Azure CLI** (`az login`), **Node.js 20+**, and an `ADO_ORG` environment variable for the `azure-devops` MCP server.
+- **Python 3.9+**, plus **Node.js 18+** for Word and PowerPoint, for the `andes-documents` skills. LibreOffice and poppler are optional (see [Office and PDF documents](#office-and-pdf-documents)).
 
 ---
 
@@ -422,9 +456,11 @@ The underlying check is `node claude/andes-angular/skills/ngrx-signal-store/scri
 - [docs/2026-09-notification-and-link-hooks.md](docs/2026-09-notification-and-link-hooks.md) records the `andes-core` notification and link-check hooks: where the hook files sit, the event map, each harness's output channel, the cloud-agent copy `andes-init` installs, the audit's `hooks` and `links` checks, and the Copilot checklist. The Stop and link-check hooks were later removed.
 - [docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md](docs/2026-10-entity-limits-int-keys-and-notification-only-hooks.md) records `<Entity>Limits` in `Common/Constants/<Feature>/`, generic base entities with `Guid` or `int` keys, the floating Azure DevOps server and its Copilot CLI registration, the notification-only hook set, the removed `find_examples` grant, and the `@AGENTS.md` stub in `.github/copilot-instructions.md`.
 - [docs/2026-10-copilot-subagent-name-and-done.md](docs/2026-10-copilot-subagent-name-and-done.md) records the `name` argument Copilot CLI's `task` call requires, the definition of done in the review loop and the planner's done clause, and why the janitor now documents through the writer.
+- [docs/2026-10-copilot-writer-haiku-5-5.md](docs/2026-10-copilot-writer-haiku-5-5.md) records why the Copilot `andes-se-technical-writer` moved to Claude Haiku 5.5 at `medium` effort, the cost comparison, and the Copilot CLI 1.0.94 floor.
+- [docs/2026-10-andes-documents-plugin.md](docs/2026-10-andes-documents-plugin.md) records the `andes-documents` plugin: why the skills are original work, the stack per format, the shared `brand.json` and its audit rules, the bundled OFL fonts, the runtime prerequisites, and what is deferred or unverified.
 - The `docs/2026-08-*.md` files record earlier decisions. Parts of them are superseded by the ADR.
 - [CHANGELOG.md](CHANGELOG.md)
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). The fonts bundled in `andes-pdf` are under the SIL Open Font License 1.1: [Inter](claude/andes-documents/skills/andes-pdf/assets/fonts/OFL-Inter.txt) and [Montserrat](claude/andes-documents/skills/andes-pdf/assets/fonts/OFL-Montserrat.txt).

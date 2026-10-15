@@ -15,7 +15,10 @@
 // Exit codes: 0 in sync, 10 differences (--check), 2 refused, 1 the script failed.
 //
 // Files are copied byte for byte: the vendored angular-developer skill is hash-pinned.
-// Comparison normalizes line endings, because a Windows checkout holds CRLF.
+// Text comparison normalizes line endings, because a Windows checkout holds CRLF. Binary files
+// (a NUL in the first 8,000 bytes, git's heuristic) compare byte for byte: decoding a font as
+// UTF-8 maps every invalid sequence to U+FFFD, so two different fonts could compare equal.
+// Python bytecode and installed packages are build output, never mirrored.
 
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, realpathSync, rmSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
@@ -26,6 +29,9 @@ export const TREES = { claude: 'claude', copilot: 'copilot' };
 export const MIRRORED = ['skills', 'scripts'];
 
 const normalize = (buf) => buf.toString('utf8').replace(/\r\n?/g, '\n');
+const isBinary = (buf) => buf.subarray(0, 8000).includes(0);
+const sameContent = (a, b) => (isBinary(a) || isBinary(b) ? a.equals(b) : normalize(a) === normalize(b));
+const SKIPPED_DIRS = new Set(['__pycache__', 'node_modules']);
 const isDir = (p) => existsSync(p) && statSync(p).isDirectory();
 const subdirs = (p) => (isDir(p) ? readdirSync(p, { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort() : []);
 
@@ -34,8 +40,9 @@ function walk(abs, rel = '') {
   const out = [];
   for (const e of readdirSync(abs, { withFileTypes: true })) {
     const r = rel ? `${rel}/${e.name}` : e.name;
-    if (e.isDirectory()) out.push(...walk(join(abs, e.name), r));
-    else out.push(r);
+    if (e.isDirectory()) {
+      if (!SKIPPED_DIRS.has(e.name)) out.push(...walk(join(abs, e.name), r));
+    } else out.push(r);
   }
   return out.sort();
 }
@@ -56,7 +63,7 @@ export function compareMirrors(root, { from = 'claude', plugin } = {}) {
       for (const f of src) {
         const entry = { plugin: p, source: `${srcRel}/${f}`, dest: `${dstRel}/${f}` };
         if (!dst.delete(f)) diffs.push({ kind: 'missing', ...entry });
-        else if (normalize(readFileSync(join(root, entry.source))) !== normalize(readFileSync(join(root, entry.dest)))) {
+        else if (!sameContent(readFileSync(join(root, entry.source)), readFileSync(join(root, entry.dest)))) {
           diffs.push({ kind: 'drift', ...entry });
         }
       }

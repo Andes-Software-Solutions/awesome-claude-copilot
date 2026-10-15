@@ -1,4 +1,4 @@
-<!-- andes:begin v1.13.0 -->
+<!-- andes:begin v1.14.0 -->
 # Andes engineering standards
 
 Shared by Claude Code and GitHub Copilot. The `andes-init` skill manages this block and replaces it on refresh — put project-specific instructions after the `andes:end` marker (`andes-init` scaffolds those sections on first install).
@@ -42,11 +42,11 @@ After changing code, run the matching reviewer on the diff: `andes-csharp-code-r
 
 ## About this repository
 
-This repository is the `andes` plugin marketplace: engineering standards for C#/.NET, Angular, GitHub Actions, and Terraform, plus Azure DevOps backlog management, packaged as plugins for Claude Code and GitHub Copilot (Copilot CLI, coding agent, github.com; the agents also load in VS Code, which is unverified). It holds no application code, only assistant configuration: skills, agents, MCP server declarations, and the always-on block above, which is also what `andes-init` installs in consumer repositories.
+This repository is the `andes` plugin marketplace: engineering standards for C#/.NET, Angular, GitHub Actions, and Terraform, plus Azure DevOps backlog management and Andes-branded Word, Excel, PowerPoint, and PDF documents, packaged as plugins for Claude Code and GitHub Copilot (Copilot CLI, coding agent, github.com; the agents also load in VS Code, which is unverified). It holds no application code, only assistant configuration: skills, agents, MCP server declarations, and the always-on block above, which is also what `andes-init` installs in consumer repositories.
 
 ## Layout
 
-- `.claude-plugin/marketplace.json` — the Claude Code marketplace. `.github/plugin/marketplace.json` — the Copilot marketplace, which Copilot CLI and VS Code read first. Both are named `andes` and list the same seven plugins.
+- `.claude-plugin/marketplace.json` — the Claude Code marketplace. `.github/plugin/marketplace.json` — the Copilot marketplace, which Copilot CLI and VS Code read first. Both are named `andes` and list the same eight plugins.
 - `claude/andes-<name>/` — what Claude Code loads: `.claude-plugin/plugin.json` (metadata and dependencies, no component keys), `agents/`, `hooks/hooks.json`, `.mcp.json`, and the editing copies of `skills/` and `scripts/`.
 - `copilot/andes-<name>/` — what Copilot loads: the Agent Plugins 1.0 root `plugin.json`, `mcp.json`, `com.github.copilot/agents/`, `com.github.copilot/hooks/hooks.json`, and mirrors of `skills/` and `scripts/`.
 - `claude/andes-core/scripts/` — `notify.mjs`, the script both harnesses' notification hooks run (Node built-ins only).
@@ -66,6 +66,7 @@ This repository is the `andes` plugin marketplace: engineering standards for C#/
 - All plugins share one version (`manifests/version-lockstep`). When any plugin changes, bump `version` in both manifests (`claude/<name>/.claude-plugin/plugin.json`, `copilot/<name>/plugin.json`) of every plugin, changed or not — installs are cached by version — and set the block's `<!-- andes:begin vX.Y.Z -->` marker to the same version (`memory/block-version`). CI enforces the bump with `--base`.
 - Edit the block in `agents-block.md`, sync, then copy it verbatim between the markers above. Its `## Review loop` section is also copied verbatim into the Copilot implementer agents.
 - Never edit either copy of `angular-developer` (vendored upstream, hash-pinned). Refresh `ngrx-signal-store` with `/ngrx-signals-sync`.
+- `andes-documents` skills each carry `assets/brand.json`, and `andes-docx`, `andes-xlsx`, and `andes-pptx` each carry `scripts/office_pkg.py`, because a skill's scripts read only their own folder. Edit one copy, copy it over the others, then sync (`skills/shared-drift`); `skills/brand-contrast` checks every declared color pair against WCAG. The skills are original work: never copy from Anthropic's proprietary document skills. Never modify the bundled OFL fonts in `andes-pdf/assets/fonts/`.
 - No skill sets `disable-model-invocation: true` — it makes the skill unreachable on Copilot CLI (github/copilot-cli#4438); skills guard in their body instead.
 - MCP servers are declared once per tree (`claude/<name>/.mcp.json`, `copilot/<name>/mcp.json`) with the same entries; Claude tool names carry the plugin that ships the server (`mcp__plugin_andes-core_context7__query-docs`).
 - Hooks are declared once per tree too: `claude/andes-core/hooks/hooks.json` and `copilot/andes-core/com.github.copilot/hooks/hooks.json` run the same `scripts/*.mjs` for the one event pair, `Notification`/`notification` (`hooks/harness-drift`), and each passes its own `--harness` value. A hook script imports only `node:` built-ins, prints nothing on a Copilot `notification`, and exits 0 on its own errors.

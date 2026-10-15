@@ -112,7 +112,7 @@ const CONFIG = {
     'andes-angular-expert': 'medium',
     'andes-csharp-dotnet-janitor': 'medium',
     'andes-ado-backlog-manager': 'medium',
-    'andes-se-technical-writer': null,
+    'andes-se-technical-writer': 'medium',
   },
   // The CLI reference documents this spelling, but Copilot CLI 1.0.88 only reads the kebab-case key
   // (github/copilot-cli#4963).
@@ -121,7 +121,7 @@ const CONFIG = {
   // on the first entry only and fails the dispatch when it is unavailable; VS Code tries each in order.
   modelParity: {
     sonnet: ['claude-sonnet-5.5', 'Claude Sonnet 5.5 (copilot)'],
-    haiku: ['claude-haiku-4.5', 'Claude Haiku 4.5 (copilot)'],
+    haiku: ['claude-haiku-5.5', 'Claude Haiku 5.5 (copilot)'],
     opus: ['claude-opus-5.5', 'Claude Opus 5.5 (copilot)'],
     fable: ['claude-fable-5.1', 'Claude Fable 5.1 (copilot)'],
   },
@@ -135,8 +135,8 @@ const CONFIG = {
     },
     'andes-se-technical-writer': {
       claude: 'sonnet',
-      copilot: ['claude-haiku-4.5', 'Claude Haiku 4.5 (copilot)'],
-      reason: 'template-driven docs; ~2x cheaper on AI Credits; Haiku 4.5 has no configurable reasoning',
+      copilot: ['claude-haiku-5.5', 'Claude Haiku 5.5 (copilot)'],
+      reason: 'template-driven docs; Haiku 5.5 costs ~1/20 of Sonnet 5.5 on AI Credits under 100K input; medium bounds retained thinking',
     },
   },
   // Copilot agents declare no target, which GitHub defines as both vscode and github-copilot. One
@@ -204,6 +204,19 @@ const CONFIG = {
   maintainerMcpServers: ['microsoft-learn', 'angular-cli', 'context7', 'azure-devops', 'terraform'],
   // Skills whose bytes are pinned to an upstream source and must not be edited here.
   upstreamLock: 'scripts/upstream-skills.lock.json',
+  // A skill's scripts may only rely on files inside its own folder, so a file several skills of one
+  // plugin need exists once per skill. Edit one copy, copy it over the others, then sync.
+  sharedSkillFiles: {
+    'andes-documents': {
+      'assets/brand.json': ['andes-docx', 'andes-xlsx', 'andes-pptx', 'andes-pdf'],
+      'scripts/workspace.py': ['andes-docx', 'andes-xlsx', 'andes-pptx', 'andes-pdf'],
+      'scripts/office_pkg.py': ['andes-docx', 'andes-xlsx', 'andes-pptx'],
+    },
+  },
+  // WCAG 2.2 minimum contrast (1.4.3 text and large text, 1.4.11 graphics) for every
+  // foreground/background pair a skill's brand file declares under `contrast`.
+  brandFile: 'assets/brand.json',
+  brandContrast: { text: 4.5, large: 3, graphic: 3 },
   // Maintainer tooling only; no plugin ships it.
   linkChecker: 'scripts/check-links.mjs',
   // Consumer templates: their links resolve in the repo andes-init writes them into.
@@ -216,7 +229,7 @@ const CONFIG = {
   // C# non-negotiables: Minimal APIs and FluentValidation only, no repository layer, sync Add/AddRange, writes on the DbContext not a DbSet. Lines phrased as prohibitions pass.
   bannedCsharpPatterns: /\[ApiController\]|AddControllers\(|MapControllers\(|DataAnnotationsValidator|DataAnnotations|--use-controllers|\bAdd(Range)?Async\b|\b[A-Z]\w+Repository\b|<Entity>Repository|\b_?(ctx|context|db|dbContext)\.[A-Z]\w*\.(Add|Update|Remove|Attach)(Range)?\(/,
   policyLine: /\b(never|not|no|don't|banned|instead of|last resort|avoid|only|flag)\b/i,
-  textExt: /\.(md|json|mjs|js|ts|yml|yaml)$/,
+  textExt: /\.(md|json|mjs|js|ts|yml|yaml|py)$/,
 };
 
 const args = process.argv.slice(2);
@@ -537,6 +550,49 @@ if (runs('skills')) {
   }
   for (const [s, ps] of owners) {
     if (ps.length > 1) add('skills', 'duplicate-name', 'error', `Skill '${s}' is defined in several plugins: ${ps.join(', ')}`, ps.map((p) => `${C(p)}/skills/${s}`));
+  }
+
+  for (const [p, shared] of Object.entries(CONFIG.sharedSkillFiles)) {
+    for (const [file, skills] of Object.entries(shared)) {
+      const copies = skills.map((s) => `${C(p)}/skills/${s}/${file}`);
+      const present = copies.filter(exists);
+      for (const c of copies.filter((c) => !exists(c))) {
+        add('skills', 'shared-missing', 'error', `Shared skill file '${file}' is missing`, [c], undefined, present.length ? `Copy ${present[0]} here.` : undefined);
+      }
+      if (new Set(present.map((c) => sha(read(c)))).size > 1) {
+        add('skills', 'shared-drift', 'error', `The copies of '${file}' differ across ${p} skills`, present, undefined, 'Copy the edited copy over the others, then sync.');
+      }
+    }
+  }
+
+  // Relative luminance and contrast ratio as WCAG 2.2 defines them.
+  const luminance = (hex) => {
+    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16) / 255)
+      .map((c) => (c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4));
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  };
+  const ratio = (a, b) => { const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
+  const brandFiles = new Map();
+  for (const p of plugins) {
+    for (const s of dirs(`${C(p)}/skills`)) {
+      const f = `${C(p)}/skills/${s}/${CONFIG.brandFile}`;
+      if (exists(f) && ![...brandFiles.values()].includes(read(f))) brandFiles.set(f, read(f));
+    }
+  }
+  for (const [f, text] of brandFiles) {
+    let brand;
+    try { brand = JSON.parse(text); } catch (e) { add('skills', 'brand-contrast', 'error', `Brand file is not valid JSON (${e.message})`, [f]); continue; }
+    const hex = (key) => brand.colors?.[key]?.hex;
+    for (const [use, minimum] of Object.entries(CONFIG.brandContrast)) {
+      for (const [fg, bg] of brand.contrast?.[use] ?? []) {
+        if (![fg, bg].every((k) => /^#[0-9a-f]{6}$/i.test(hex(k) ?? ''))) {
+          add('skills', 'brand-contrast', 'error', `Contrast pair '${fg}' on '${bg}' names a color with no six-digit hex`, [f]);
+          continue;
+        }
+        const r = ratio(hex(fg), hex(bg));
+        if (r < minimum) add('skills', 'brand-contrast', 'error', `'${fg}' on '${bg}' is ${r.toFixed(2)}:1, below the ${minimum}:1 WCAG minimum for ${use}`, [f]);
+      }
+    }
   }
 
   if (exists(CONFIG.upstreamLock)) {

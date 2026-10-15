@@ -11,6 +11,20 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ## [Unreleased]
 
+### Added
+
+- **`andes-documents` plugin** (all plugins 1.14.0). Four opt-in skills create, edit, and read Andes-branded files in both harnesses, so Copilot gets the document abilities Claude Code has built in: `andes-docx` (Word), `andes-xlsx` (Excel), `andes-pptx` (PowerPoint), and `andes-pdf`. They use the Andes palette with accessible chart colors, Arial and Calibri in Office files, and embedded Montserrat and Inter (SIL OFL) in PDFs, and their helpers flag accessibility problems such as skipped headings, missing alt text, and non-embedded PDF fonts. The skills are original work written from public library documentation, not copies of Claude's built-in skills.
+  - **Requirements.** Python 3.9+ for every skill, plus Node.js 18+ to create Word and PowerPoint files. A skill never installs a runtime: it prints the install command and stops. Packages install only after you approve, never globally, into `docs/generated/.work/` (a virtual environment and `node_modules`), so you approve and install once per repository. LibreOffice and poppler are optional.
+  - **Where files go.** Every skill writes to `docs/generated/<format>/<yyyy-mm-dd>-<slug>.<ext>` at the repository root, numbering a repeated title (`-2`) instead of overwriting; a path you name always wins. The skill adds `docs/generated/` to the root `.gitignore` when git does not already ignore it and tells you; it never untracks files.
+  - **Install.** `andes-init` lists the plugin as optional and, when it is installed, offers the `docs/generated/` ignore line. It adds about 580 always-on tokens and nothing to the `AGENTS.md` block.
+  - See `docs/2026-10-andes-documents-plugin.md`.
+- **Audit rules for shared skill files.** `skills/shared-missing` and `skills/shared-drift` fail when a file every `andes-documents` skill must carry (`brand.json`, `office_pkg.py`, `workspace.py`) is missing or differs between copies. `skills/brand-contrast` fails when a color pair in `brand.json` is below its WCAG 2.2 minimum. `harness-paths` now also scans `.py` helpers.
+
+### Changed
+
+- **The Copilot technical writer runs on Claude Haiku 5.5 at `reasoning-effort: medium`** (all plugins 1.14.0). It was on Claude Haiku 4.5 with no effort key, because 4.5 had no configurable reasoning. Haiku 5.5 costs about a twentieth of Claude Sonnet 5.5 under 100K input tokens, and the pin keeps a session raised to `high` or `xhigh` from inflating the writer. The Claude twin is unchanged. Agents now need Copilot CLI 1.0.94 or later, the first release with Haiku 5.5. See `docs/2026-10-copilot-writer-haiku-5-5.md`.
+- **`sync-shared` compares binary files byte for byte** and skips `__pycache__` and `node_modules`. A file with a NUL byte in its first 8,000 bytes is binary; decoding it as UTF-8 could make two different files compare equal. `.gitattributes` marks `*.ttf` binary, and `.gitignore` adds `__pycache__/` and `*.pyc`.
+
 ## [1.13.0] - 2026-10-13
 
 ### Changed

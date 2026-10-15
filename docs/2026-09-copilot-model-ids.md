@@ -22,7 +22,7 @@ The pairs are:
 | --- | --- |
 | Sonnet | `[claude-sonnet-5.5, Claude Sonnet 5.5 (copilot)]` |
 | Opus | `[claude-opus-5.5, Claude Opus 5.5 (copilot)]` |
-| Haiku | `[claude-haiku-4.5, Claude Haiku 4.5 (copilot)]` |
+| Haiku | `[claude-haiku-5.5, Claude Haiku 5.5 (copilot)]` (Claude Haiku 4.5 until 1.14.0; see [2026-10-copilot-writer-haiku-5-5.md](2026-10-copilot-writer-haiku-5-5.md)) |
 | Fable (no agent uses it) | `[claude-fable-5.1, Claude Fable 5.1 (copilot)]` |
 
 ## Decisions
