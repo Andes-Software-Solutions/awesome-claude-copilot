@@ -11,6 +11,26 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ## [Unreleased]
 
+### Removed
+
+- **`andes-documents` is no longer available in Claude Code** (all plugins 1.15.0). Claude Code ships built-in Word, Excel, PowerPoint, and PDF skills, so the plugin duplicated them and competed for routing. The Claude plugin and its marketplace entry are gone, and the Claude marketplace description no longer mentions documents. If you installed it, run `/plugin uninstall andes-documents@andes`. The plugin stays on Copilot, and the Andes logo and brand rules now reach Claude Code through the `andes-brand` skill in `andes-core`. See `docs/2026-10-andes-documents-copilot-only.md`.
+
+### Added
+
+- **`andes-brand` skill in `andes-core` (both harnesses).** Owns the Andes logos (full color, mountain mark, white mark) and `brand.json`, with the logo rules (which variant on which background, clear space, minimum sizes, alt text), the palette by role with contrast rules, fonts, and placement for decks, Word, Excel, PDF, and web. On Claude Code it guides the built-in document skills; it adds about 140 always-on tokens. The logos are derived from the 460-px GitHub organization avatar, so very large output may look soft; replace every copy under the same names with official artwork when available, with no code change.
+- **`andes-document-designer` agent (Copilot only).** Designs Word, Excel, PowerPoint, and PDF files in the Andes brand on Claude Haiku 5.5 at `reasoning-effort: high`. It picks the format from the request (or builds each one requested), loads the matching skill, writes the structure first (headings, sheets, or slide claims), plans layouts, builds with the helpers only, runs every structural check, then renders every page or slide and reviews each image, fixing up to two rounds. It never invents data, puts placeholders in the output, or overwrites an input, builds workbook derived values as formulas, and says so when only structural checks were possible. It reports File, Structure, QA, Assumptions, and Open items.
+- **Andes logo in every `andes-documents` format.** Decks carry it on the masters: a navy panel with the logo on the title slide, the white mark on section slides, and the mark, company name, and slide number in the content footer. Word opens with the full logo and shows the mark in every page header. PDFs show the full logo on the cover and the mark in every body-page header. Excel gains `sheet_header`, `about_sheet` (a first sheet with the logo for data exports), and `add_logo`; the xlsx skill now requires `Pillow>=10` with openpyxl. Deck titles are now left-aligned.
+- **Seven slide builders and a strict writer in `pptx_brand.mjs`:** agenda, stat, columns, process, image with text, quote, and closing slides, plus `writeDeck`, which refuses to write a deck with brand issues (too many bullets, overflow, text under 12 pt, missing alt text, no opening title slide, three bullet slides in a row, mostly bullets).
+- **`office_render.py`** renders each slide (.pptx), page (.docx), or sheet page (.xlsx) to a PNG through LibreOffice for visual review, replacing `pptx_render.py`. It exits 2 when no renderer is installed and keeps LibreOffice's profile in the short system temp folder to avoid Windows path-length crashes. Word and Excel QA now include the rendered review, like PowerPoint. New reference `andes-pptx/references/deck-design.md` covers storyline, layouts, color use, and the handover checklist.
+- **Copilot-only plugin support in the repository scripts.** `COPILOT_ONLY` in `scripts/sync-shared.mjs` stops sync from mirroring or deleting such plugins. The audit and `release.mjs` read `copilot/` for them, and the new error `manifests/copilot-only` fires if one reappears under `claude/`. `.gitattributes` marks `*.png` binary.
+
+### Changed
+
+- **`pptx_inspect.py` flags more deck problems.** Pictures stretched more than 2% off their native ratio and, on decks built on the Andes masters, slides off the masters, layouts without the logo, fonts other than Arial or Calibri, and Glacier Blue text on white layouts.
+- **`office_pkg.py colors` fails when the theme step was skipped.** It prints a `THEME` line and exits 10 when a theme part is not on the Andes color scheme, in `andes-docx`, `andes-xlsx`, and `andes-pptx`. Run `office_pkg.py theme` before QA.
+- **`imageSlide` keeps the image's aspect ratio.** It reads the PNG or JPEG header instead of stretching the picture when no size is passed.
+- **The audit tracks shared files across plugins.** `sharedSkillFiles` is keyed by file with `plugin/skill` locations, original first, and `skills/shared-drift` compares binary files such as the logos byte for byte. The `andes-core` description now mentions the brand assets.
+
 ## [1.14.0] - 2026-10-15
 
 ### Added

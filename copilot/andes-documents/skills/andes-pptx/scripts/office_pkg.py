@@ -5,7 +5,7 @@ andes-docx, andes-xlsx, and andes-pptx; the repository audit fails when they dif
 
     python -B office_pkg.py check  <file>            structure: zip, XML, relationships, content types
     python -B office_pkg.py theme  <file> [-o out]   Andes color and font scheme in every theme part, plus generator cleanup
-    python -B office_pkg.py colors <file>            every explicit RGB color, off-palette ones flagged
+    python -B office_pkg.py colors <file>            every explicit RGB color, off-palette ones flagged, and theme parts not on the Andes scheme
     python -B office_pkg.py text   <file>            plain text, in reading order
 
 Exit codes: 0 clean, 10 findings, 1 error.
@@ -236,6 +236,22 @@ def colors(path: Path, brand: dict) -> dict[str, int]:
     return dict(counts)
 
 
+def theme_findings(path: Path, brand: dict) -> list[str]:
+    """Theme parts whose color scheme is not the brand's, which means `theme` was skipped."""
+    want = {slot: brand["colors"][brand["theme"][slot]]["hex"].lstrip("#").upper() for slot in THEME_SLOTS}
+    findings = []
+    with open_package(path) as z:
+        for name in _theme_parts(z.namelist()):
+            xml = z.read(name).decode("utf-8", errors="replace")
+            m = re.search(r"<(\w+:|)clrScheme\b.*?</\1clrScheme>", xml, re.S)
+            scheme, prefix = (m.group(0), m.group(1)) if m else ("", "")
+            wrong = [slot for slot, hex_ in want.items()
+                     if not re.search(rf'<{prefix}{slot}>\s*<{prefix}srgbClr\s+val="{hex_}"', scheme, re.I)]
+            if wrong:
+                findings.append(f"THEME {name}: not the {brand['name']} color scheme ({', '.join(wrong)}); run office_pkg.py theme")
+    return findings
+
+
 def _paragraph_text(p: ET.Element, ns: str) -> str:
     parts = []
     for el in p.iter():
@@ -303,7 +319,10 @@ def main(argv: list[str]) -> int:
                 role = known.get(hex_)
                 off += role is None
                 print(f"#{hex_}  {n:>5}  {role or 'OFF-PALETTE'}")
-            return 10 if off else 0
+            themes = theme_findings(path, brand)
+            for f in themes:
+                print(f)
+            return 10 if off or themes else 0
         for line in text(path):
             print(line)
         return 0

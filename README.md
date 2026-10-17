@@ -26,18 +26,18 @@ How it fits together:
 
 | Plugin | Ships | Depends on |
 | --- | --- | --- |
-| `andes-core` | **Skills:** `andes-init`, `andes-scaffold`, `prd`, `technical-writing`, `microsoft-docs`<br>**Agents:** `andes-prd-generator`, `andes-se-technical-writer`<br>**Copilot-only agents:** `andes-planner-expert`, `andes-full-stack-expert`<br>**MCP:** `context7`, `microsoft-learn`<br>**Hooks:** desktop notification when the agent needs you (see [Hooks](#hooks)) | — |
+| `andes-core` | **Skills:** `andes-init`, `andes-scaffold`, `prd`, `technical-writing`, `microsoft-docs`, `andes-brand` (the Andes logo files, palette, and placement rules)<br>**Agents:** `andes-prd-generator`, `andes-se-technical-writer`<br>**Copilot-only agents:** `andes-planner-expert`, `andes-full-stack-expert`<br>**MCP:** `context7`, `microsoft-learn`<br>**Hooks:** desktop notification when the agent needs you (see [Hooks](#hooks)) | — |
 | `andes-dotnet` | **Skills:** `csharp-standards`, `dotnet-api-architecture`, `aspnet-rest-apis`, `azure-functions-csharp`, `csharp-mcp-server`, `csharp-async`, `csharp-docs`, `csharp-xunit`, `ef-core`, `ef-core-base-entities`, `ef-core-enum-reference-tables`, `microsoft-agent-framework`<br>**Agents:** `andes-csharp-code-reviewer`<br>**Copilot-only agents:** `andes-csharp-expert`, `andes-csharp-dotnet-janitor` | `andes-core` |
 | `andes-dotnet-wasm` | **Skills:** `blazor-wasm` (standalone Blazor WebAssembly, .NET 10) | `andes-core`, `andes-dotnet` |
 | `andes-angular` | **Skills:** `angular-standards`, `angular-ui-architecture`, `ngrx-signal-store`, `angular-developer` (official Angular team skill, vendored)<br>**Agents:** `andes-angular-code-reviewer`<br>**Copilot-only agents:** `andes-angular-expert`<br>**MCP:** `angular-cli` | `andes-core` |
 | `andes-github` | **Skills:** `github-actions-hardening`, `github-actions-efficiency`, `github-actions-runtime-upgrade-conventions`<br>**Agents:** `andes-github-actions-reviewer` | `andes-core` |
 | `andes-terraform` | **Skills:** `terraform-conventions`<br>**MCP:** `terraform` | `andes-core` |
 | `andes-azure-devops` | **Skills:** `azure-devops-init`<br>**Agents:** `andes-ado-backlog-manager`<br>**MCP:** `azure-devops` | `andes-core` |
-| `andes-documents` | **Skills:** `andes-docx`, `andes-xlsx`, `andes-pptx`, `andes-pdf` (Andes-branded Word, Excel, PowerPoint, and PDF files; see [Office and PDF documents](#office-and-pdf-documents)) | `andes-core` |
+| `andes-documents` (Copilot only) | **Skills:** `andes-docx`, `andes-xlsx`, `andes-pptx`, `andes-pdf` (Andes-branded Word, Excel, PowerPoint, and PDF files; see [Office and PDF documents](#office-and-pdf-documents))<br>**Copilot-only agents:** `andes-document-designer` | `andes-core` |
 
 Claude Code installs dependencies automatically. On Copilot, install them yourself (see [Install](#install)).
 
-When you run `andes-init`, it reports which plugins match your repository (for example, `*.csproj` suggests `andes-dotnet` and `angular.json` suggests `andes-angular`) and which of those are not installed yet. `andes-documents` has no file signal, so `andes-init` lists it as optional.
+When you run `andes-init`, it reports which plugins match your repository (for example, `*.csproj` suggests `andes-dotnet` and `angular.json` suggests `andes-angular`) and which of those are not installed yet. `andes-documents` has no file signal, so on Copilot `andes-init` lists it as optional; on Claude Code it never suggests it.
 
 ---
 
@@ -59,7 +59,7 @@ Install each stack plugin you need. Its dependencies install with it, so `andes-
    - the `andes` marketplace and `enabledPlugins` for a team rollout
    - a `permissions.deny` for the Angular CLI `ai_tutor` tool
    - `"effortLevel": "xhigh"`
-   - a `docs/plans/` line in `.gitignore`, and a `docs/generated/` line when `andes-documents` is installed
+   - a `docs/plans/` line in `.gitignore`, and a `docs/generated/` line when `andes-documents` is installed in Copilot
 4. **Cleanup.** Offers to delete old drop-in copies, including the cloud-agent link check (`.github/hooks/andes-links.json`, `.github/hooks/andes/check-links.mjs`) that earlier versions installed.
 
 Re-run `andes-init` after you update the plugins. A run with nothing new changes nothing. Plugin agents appear as `andes-<plugin>:andes-<role>`, for example `andes-dotnet:andes-csharp-code-reviewer`. Verified with Claude Code 2.1.283.
@@ -68,7 +68,20 @@ Re-run `andes-init` after you update the plugins. A run with nothing new changes
 
 ### Office and PDF documents
 
-`andes-documents` creates, edits, and reads Word, Excel, PowerPoint, and PDF files styled with the Andes palette (sampled from the logo) and fonts. On Claude Code it sits next to Claude's built-in document skills; its skill descriptions ask the model to prefer it whenever an Andes-branded file is wanted. The skills are original work, written from the public documentation of the libraries they use. They do not copy Claude's built-in document skills, whose license forbids redistribution.
+`andes-documents` creates, edits, and reads Word, Excel, PowerPoint, and PDF files styled with the Andes palette (sampled from the logo) and fonts. It ships for GitHub Copilot only: Claude Code has its own built-in document skills, and the plugin is not in the Claude marketplace. The skills are original work, written from the public documentation of the libraries they use. They do not copy Claude's built-in document skills, whose license forbids redistribution.
+
+**The logo, in every format.** The logo files live in andes-core's `andes-brand` skill, so Claude Code and Copilot both have them, along with the palette and the placement rules. On Claude Code, `andes-brand` guides the built-in document skills. Each `andes-documents` skill carries a copy that the audit keeps identical, because a skill's scripts read only their own folder. The helpers place the logo for you:
+
+- Word: the full logo on the title page and the mark in every page header.
+- PDF: the full logo on the cover and the mark in the running header.
+- Excel: the mark above every report sheet's title, or an About sheet with the full logo for workbooks of data exports.
+- PowerPoint: the logo on the four Andes masters, so every slide carries it.
+
+The files are derived from the 460-pixel organization avatar. Replacing them with official artwork under the same names needs no code change.
+
+**Decks.** The helpers add agenda, stat, comparison, process, image, and quote layouts. `writeDeck` refuses to write while a slide breaks the brand rules: too many bullets, overflow, text under 12 pt, missing alt text, or three bullet slides in a row.
+
+**`andes-document-designer`** is a Copilot agent (Claude Haiku 5.5, high reasoning effort) for all four formats. It turns a brief into a structure, builds the file with the matching skill, renders every page or slide (`office_render.py` through LibreOffice for Office files, `pdf_tools.py render` for PDFs), looks at each one, and fixes what it finds before handing over.
 
 | Skill | Builds with | Reads and edits with |
 | --- | --- | --- |
@@ -83,7 +96,7 @@ Re-run `andes-init` after you update the plugins. A run with nothing new changes
 | --- | --- | --- | --- | --- |
 | Python 3.9+ (with `venv` and `pip`) | all four skills | `winget install Python.Python.3.12`, or python.org with "Add python.exe to PATH" ticked | `brew install python` | `sudo apt install python3 python3-venv` |
 | Node.js 18+ | `andes-docx`, `andes-pptx` (creating files) | `winget install OpenJS.NodeJS.LTS` | `brew install node` | distribution package or nodejs.org |
-| LibreOffice, poppler | optional: page previews | `winget install TheDocumentFoundation.LibreOffice`; poppler | `brew install --cask libreoffice poppler` | `sudo apt install libreoffice poppler-utils` |
+| LibreOffice, poppler | page and slide previews for the visual review (`office_render.py`); without them, the checks are structural only | `winget install TheDocumentFoundation.LibreOffice`; poppler | `brew install --cask libreoffice poppler` | `sudo apt install libreoffice poppler-utils` |
 
 Everything the skills write stays in one git-ignored folder at the repository root:
 
@@ -133,6 +146,7 @@ In Claude Code, the main session writes the code and delegates review, docs, and
 | `andes-csharp-expert` | `andes-dotnet` | — | yes | Implements C#/.NET code: APIs, Functions, MCP servers, Blazor, EF Core |
 | `andes-csharp-dotnet-janitor` | `andes-dotnet` | — | yes | Cleanup and modernization in small, tested batches |
 | `andes-angular-expert` | `andes-angular` | — | yes | Implements Angular code: components, signals, forms, routing, Signal Store |
+| `andes-document-designer` | `andes-documents` | — | yes | Builds Andes-branded Word, Excel, PowerPoint, and PDF files from a brief: structure, layouts, the logo in every format, and a rendered review of every page or slide |
 
 The typical Copilot flow is `andes-planner-expert` (which invokes `andes-prd-generator` when a feature has no PRD and its requirements are unclear) → implementer → reviewer → `andes-se-technical-writer`. You can also run `andes-prd-generator` directly. The PRD generator never invokes the planner. Plans live under `docs/plans/`, are never committed (`andes-init` offers the `.gitignore` line), and, like PRDs, get no changelog entry.
 
@@ -141,8 +155,8 @@ Every research and implementer agent is granted exact MCP tools for its stack �
 Models and reasoning effort:
 
 - **Claude.** Reviewers and the PRD and writer agents run on Sonnet. `andes-github-actions-reviewer` runs on Opus. Reviewers use `effort: xhigh`; `andes-prd-generator`, `andes-se-technical-writer`, and `andes-ado-backlog-manager` use `high`.
-- **Copilot.** Agents run on Claude Sonnet 5.5. `andes-planner-expert` and `andes-full-stack-expert` run on Claude Opus 5.5. `andes-se-technical-writer` runs on Claude Haiku 5.5 to save cost.
-- **Copilot reasoning effort.** Each agent pins `reasoning-effort`, tiered by role because a higher level consumes more AI Credits. The three reviewers, `andes-prd-generator`, and `andes-planner-expert` use `high`. The implementers, `andes-full-stack-expert`, `andes-csharp-dotnet-janitor`, `andes-ado-backlog-manager`, and `andes-se-technical-writer` use `medium`. The key needs Copilot CLI 1.0.88 or later and must be spelled `reasoning-effort`; the `reasoningEffort` spelling in the CLI reference is not applied ([github/copilot-cli#4963](https://github.com/github/copilot-cli/issues/4963)). An explicit `--reasoning-effort` flag overrides it. Whether the Copilot coding agent reads the key is unverified.
+- **Copilot.** Agents run on Claude Sonnet 5.5. `andes-planner-expert` and `andes-full-stack-expert` run on Claude Opus 5.5. `andes-se-technical-writer` and `andes-document-designer` run on Claude Haiku 5.5 to save cost.
+- **Copilot reasoning effort.** Each agent pins `reasoning-effort`, tiered by role because a higher level consumes more AI Credits. The three reviewers, `andes-prd-generator`, `andes-planner-expert`, and `andes-document-designer` use `high`. The implementers, `andes-full-stack-expert`, `andes-csharp-dotnet-janitor`, `andes-ado-backlog-manager`, and `andes-se-technical-writer` use `medium`. The key needs Copilot CLI 1.0.88 or later and must be spelled `reasoning-effort`; the `reasoningEffort` spelling in the CLI reference is not applied ([github/copilot-cli#4963](https://github.com/github/copilot-cli/issues/4963)). An explicit `--reasoning-effort` flag overrides it. Whether the Copilot coding agent reads the key is unverified.
 
 ---
 
@@ -254,15 +268,16 @@ Skill descriptions are the always-on price of each installed plugin. Measured on
 
 | Plugin | Tokens |
 | --- | --- |
-| `andes-core` | ~316 |
+| `andes-core` | ~456 (~316, plus ~140 for `andes-brand`, measured 2026-10-16 on Claude Code 2.1.302) |
 | `andes-dotnet` | ~1,517 |
 | `andes-dotnet-wasm` | ~126 |
 | `andes-angular` | ~507 |
 | `andes-github` | ~278 |
 | `andes-terraform` | ~98 |
 | `andes-azure-devops` | ~138 |
-| `andes-documents` | ~580 (measured 2026-10-14 on Claude Code 2.1.296) |
-| All eight | ~3,560 |
+| All seven | ~3,120 |
+
+`andes-documents` is not counted, because it ships only for Copilot.
 
 The figures cover skills only. The command lists no agents for a plugin loaded from disk, so agent descriptions are not counted, and MCP tool schemas are resolved at runtime.
 
@@ -310,7 +325,7 @@ What was renamed:
 ```text
 .
 ├── .claude-plugin/marketplace.json     # the andes marketplace for Claude Code
-├── .github/plugin/marketplace.json     # the andes marketplace for Copilot (same name, same plugins)
+├── .github/plugin/marketplace.json     # the andes marketplace for Copilot (same name; adds andes-documents)
 ├── claude/andes-<name>/                # what Claude Code loads
 │   ├── .claude-plugin/plugin.json      # manifest: metadata and dependencies only
 │   ├── agents/                         # Claude Code agents (*.md)
@@ -343,10 +358,10 @@ What was renamed:
 **Why this layout.**
 
 - **One folder, one format.** VS Code hands a plugin folder to more than one harness, and each reads the manifest it understands. A folder that held both formats loaded the wrong agents, so each harness now has its own tree ([ADR-003](docs/2026-09-harness-trees.md)).
-- **Each harness has its own marketplace file.** Claude Code reads only `.claude-plugin/marketplace.json`. Copilot CLI and VS Code read `.github/plugin/marketplace.json` first. Both are named `andes` and list the same plugins, so `andes-core@andes` resolves on either harness. A root `marketplace.json` or `.plugin/marketplace.json` would take over on Copilot, so the audit rejects both.
+- **Each harness has its own marketplace file.** Claude Code reads only `.claude-plugin/marketplace.json`. Copilot CLI and VS Code read `.github/plugin/marketplace.json` first. Both are named `andes` and list the same plugins, except the Copilot-only `andes-documents`, so `andes-core@andes` resolves on either harness. A root `marketplace.json` or `.plugin/marketplace.json` would take over on Copilot, so the audit rejects both.
 - **Claude Code uses its default folders.** It finds `agents/`, `skills/`, `hooks/hooks.json`, and `.mcp.json` by itself, so the manifest declares no component keys.
 - **Copilot uses Agent Plugins 1.0.** A root `plugin.json` declares `"$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"`. Skills (`skills/`), MCP (`mcp.json`), and the Copilot components under `com.github.copilot/` sit at fixed locations, so that manifest has no path fields either.
-- **Shared files are copied.** Neither harness loads a file outside a plugin root, and symbolic links do not survive a Windows checkout. `skills/` and `scripts/` therefore exist in both trees.
+- **Shared files are copied.** Neither harness loads a file outside a plugin root, and symbolic links do not survive a Windows checkout. `skills/` and `scripts/` therefore exist in both trees, except in a Copilot-only plugin (`COPILOT_ONLY` in `scripts/sync-shared.mjs`), which exists only under `copilot/`.
 - **Maintainer commands are skills.** `.claude/skills/` is read by Claude Code and by Copilot CLI (which also scans `.github/skills` and `.agents/skills`), so each command exists once. VS Code prompt files (`.github/prompts/`) never load in the CLI and are gone. No skill sets `disable-model-invocation: true`: Copilot CLI cannot invoke such a skill at all ([copilot-cli#4438](https://github.com/github/copilot-cli/issues/4438)), so skills guard in their body instead.
 
 **Develop against live files.** Load the plugins from the Claude tree instead of the marketplace cache:
@@ -371,11 +386,15 @@ The helper copies byte for byte. It refuses to overwrite a file that carries unc
 **Keep copies in sync.**
 
 - **Shared files.** `skills/` and `scripts/` match between the two trees (`mirror/missing`, `mirror/drift`). Binary files, such as the fonts in `andes-pdf`, compare byte for byte, and `__pycache__` and `node_modules` are never mirrored.
-- **Shared skill files.** Every `andes-documents` skill carries the same `assets/brand.json`, and the docx, xlsx, and pptx skills carry the same `scripts/office_pkg.py`, because a skill's scripts read only their own folder. Edit one copy, copy it over the others, then sync (`skills/shared-missing`, `skills/shared-drift`). `skills/brand-contrast` checks every color pair the brand file declares against the WCAG minimums.
+- **Shared skill files.** A skill's scripts read only their own folder, so some files exist once per skill:
+  - Every `andes-documents` skill carries the same `assets/brand.json` and `assets/logo/` files as andes-core's `andes-brand`, which owns them.
+  - The docx, xlsx, and pptx skills carry the same `scripts/office_pkg.py` and `scripts/office_render.py`.
+
+  `sharedSkillFiles` in the audit lists each file by `plugin/skill`, with the original first. Edit one copy, copy it over the others, then sync (`skills/shared-missing`, `skills/shared-drift`). PNG files compare byte for byte. `skills/brand-contrast` checks every color pair the brand file declares against the WCAG minimums.
 - **Tree contents.** A plugin root holds only its own harness's entries (`isolation/*`). Agents are never mirrored.
-- **Agent twins.** A Claude agent and its Copilot twin change together, and their descriptions match apart from the word PROACTIVELY.
+- **Agent twins.** A Claude agent and its Copilot twin change together, and their descriptions match apart from the word PROACTIVELY. Copilot-only agents are listed in the audit's `copilotOnlyAgents`.
 - **Copilot agents.** No `target`, so they load in VS Code and `github-copilot`; `model` as a pair from the audit's `modelParity` table, CLI slug first and VS Code display name second (`[claude-sonnet-5.5, Claude Sonnet 5.5 (copilot)]`); `reasoning-effort` equal to the audit's `copilotEffort` table; plain tool aliases (`read`, `edit`, `search`, `execute`, `agent`, `web`, `todo`) and exact `server/tool` MCP grants; no `argument-hint` or `vscode/*` tools; no `handoffs` except on `andes-planner-expert`, whose targets must be marketplace agents or the built-in `agent`; an `agents:` list only together with the `agent` tool, and never pointing at an agent that has `disable-model-invocation: true`.
-- **Manifests and marketplaces.** Both manifests of a plugin carry the same `version` and `description`, and each marketplace entry repeats that description.
+- **Manifests and marketplaces.** Both manifests of a plugin carry the same `version` and `description`, and each marketplace entry repeats that description. A Copilot-only plugin has only its Copilot manifest and Copilot marketplace entry (`manifests/copilot-only` fails if it reappears under `claude/`).
 - **MCP files.** `.mcp.json` and `mcp.json` list the same servers.
 - **Hook files.** `claude/andes-core/hooks/hooks.json` and `copilot/andes-core/com.github.copilot/hooks/hooks.json` run the same `scripts/*.mjs` for the one event pair (`Notification`/`notification`), and each passes its own `--harness` value. Hook scripts import only `node:` built-ins, because an installed plugin has no `node_modules`.
 - **The `AGENTS.md` block.** Edit `claude/andes-core/skills/andes-init/assets/agents-block.md`, sync, then copy it word for word between the markers in `AGENTS.md`.
@@ -417,7 +436,7 @@ node scripts/release.mjs minor --dry-run   # the script underneath
 **CI.** `.github/workflows/repo-audit.yml` runs on PRs that touch plugin or config paths or any Markdown file, and on pushes to `main`.
 
 - Audit errors fail the job. Warnings stay advisory.
-- `claude plugin validate --strict` runs on the Claude marketplace and on every plugin under `claude/`.
+- `claude plugin validate --strict` runs on the Claude marketplace and on every plugin under `claude/`. CI does not validate the Copilot tree; the audit covers it, including the Copilot-only `andes-documents`.
 - `node scripts/tests/run.mjs` runs the script tests once per tree (the link-checker suite has one copy and simply runs twice). To run one tree, set `ANDES_TREE` to `claude` or `copilot` and name the files (`node --test scripts/tests/check-links.test.mjs scripts/tests/notify.test.mjs`): `node --test <dir>` fails on Node 22.
 - Actions are SHA-pinned and kept current by Dependabot.
 
@@ -436,7 +455,7 @@ The underlying check is `node claude/andes-angular/skills/ngrx-signal-store/scri
 - **Docker** for the `terraform` MCP server.
 - **The [`gh` CLI](https://cli.github.com)** for turning PRD stories into GitHub issues.
 - **Azure CLI** (`az login`), **Node.js 20+**, and an `ADO_ORG` environment variable for the `azure-devops` MCP server.
-- **Python 3.9+**, plus **Node.js 18+** for Word and PowerPoint, for the `andes-documents` skills. LibreOffice and poppler are optional (see [Office and PDF documents](#office-and-pdf-documents)).
+- **Python 3.9+**, plus **Node.js 18+** for Word and PowerPoint, for the `andes-documents` skills. LibreOffice and poppler render the page and slide previews `andes-document-designer` reviews (see [Office and PDF documents](#office-and-pdf-documents)).
 
 ---
 
@@ -463,4 +482,4 @@ The underlying check is `node claude/andes-angular/skills/ngrx-signal-store/scri
 
 ## License
 
-[MIT](LICENSE). The fonts bundled in `andes-pdf` are under the SIL Open Font License 1.1: [Inter](claude/andes-documents/skills/andes-pdf/assets/fonts/OFL-Inter.txt) and [Montserrat](claude/andes-documents/skills/andes-pdf/assets/fonts/OFL-Montserrat.txt).
+[MIT](LICENSE). The fonts bundled in `andes-pdf` are under the SIL Open Font License 1.1: [Inter](copilot/andes-documents/skills/andes-pdf/assets/fonts/OFL-Inter.txt) and [Montserrat](copilot/andes-documents/skills/andes-pdf/assets/fonts/OFL-Montserrat.txt).

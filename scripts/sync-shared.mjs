@@ -27,6 +27,8 @@ import { fileURLToPath } from 'node:url';
 
 export const TREES = { claude: 'claude', copilot: 'copilot' };
 export const MIRRORED = ['skills', 'scripts'];
+// Plugins that ship only under copilot/: Claude Code has built-in document skills. Never mirrored.
+export const COPILOT_ONLY = ['andes-documents'];
 
 const normalize = (buf) => buf.toString('utf8').replace(/\r\n?/g, '\n');
 const isBinary = (buf) => buf.subarray(0, 8000).includes(0);
@@ -54,7 +56,7 @@ export function compareMirrors(root, { from = 'claude', plugin } = {}) {
   const names = new Set([...subdirs(join(root, TREES[from])), ...subdirs(join(root, TREES[to]))]);
   const diffs = [];
   for (const p of [...names].sort()) {
-    if (plugin && p !== plugin) continue;
+    if ((plugin && p !== plugin) || COPILOT_ONLY.includes(p)) continue;
     for (const folder of MIRRORED) {
       const srcRel = `${TREES[from]}/${p}/${folder}`;
       const dstRel = `${TREES[to]}/${p}/${folder}`;

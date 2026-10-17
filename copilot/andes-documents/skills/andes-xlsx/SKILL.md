@@ -17,6 +17,8 @@ Builds and edits `.xlsx` files with openpyxl, styled from `assets/brand.json`. `
    | macOS | `brew install python` |
    | Linux | `sudo apt install python3 python3-venv`, or your distribution's equivalent |
 
+2. **LibreOffice** renders printed pages for the visual review (`winget install TheDocumentFoundation.LibreOffice`, `brew install --cask libreoffice`, or `sudo apt install libreoffice-calc`); without it, the checks are structural only.
+
 ## Workspace
 
 Start every task from the user's repository with `<python> -B <skill>/scripts/workspace.py xlsx --title "<workbook title>"`. It needs only Python and prints JSON:
@@ -26,11 +28,11 @@ Start every task from the user's repository with `<python> -B <skill>/scripts/wo
 - `venvPython` and `venvExists`: the environment's interpreter, and whether it is there yet.
 - `ignoreAdded`: `docs/generated/` was just added to `.gitignore`, so tell the user. If `tracked` lists files, tell the user that git still tracks them (`git rm --cached`). Never untrack files yourself.
 
-**Packages:** `openpyxl>=3.1,<4`, plus `Pillow` when editing a workbook that holds images (openpyxl drops them without it). Check with `<venvPython> -c "import openpyxl"`. If anything is missing, show the user the commands and run them only after they approve:
+**Packages:** `openpyxl>=3.1,<4` and `Pillow>=10`. Pillow places the Andes logo, and it keeps the images of a workbook you edit (openpyxl drops them without it). Check with `<venvPython> -c "import openpyxl, PIL"`. If anything is missing, show the user the commands and run them only after they approve:
 
 ```shell
 <python> -m venv <work>/.venv
-<venvPython> -m pip install "openpyxl>=3.1,<4"
+<venvPython> -m pip install "openpyxl>=3.1,<4" "Pillow>=10"
 ```
 
 - Run build scripts and helpers with `<venvPython> -B`, so Python writes no bytecode into the skill folder.
@@ -39,10 +41,11 @@ Start every task from the user's repository with `<python> -B <skill>/scripts/wo
 
 ## Brand rules
 
+- **The logo is always there.** Report and dashboard sheets start with `sheet_header`, which puts the Andes mark in row 1 and the title in row 2. A workbook of plain data exports gets `about_sheet` as its first sheet, with the full logo, the title, and the source, so every data sheet keeps its header in row 1. Never resize or recolor the logo. The files in `assets/logo/` are copies of andes-core's `andes-brand` skill, which holds the logo rules.
 - **Styles, not ad hoc formatting.** `xlsx_brand.ensure_styles` registers six named styles: `Andes Title`, `Andes Header` (Arial bold, white on Summit Navy, Glacier Blue rule), `Andes Body` (Calibri 11), `Andes Input` (navy on light blue, boxed) for cells a reader is meant to change, `Andes Total`, and `Andes Note`. Colors come from `brand.json` by role, never typed as hex.
 - **Charts.** Series follow `brand.series`: Summit Navy, Andes Green, deep Glacier, amber, Slate. Use at most five series and group the rest as "Other". Keep the legend at the bottom and give every value axis a title. Glacier Blue and the logo green are under 3:1 on white, so they never carry data marks there.
 - **Meaning never rides on color alone.** Pair a colored cell with a label, a sign, or a format, such as a negative number in parentheses.
-- **Sheets.** Data exports keep the header in row 1, with no title row, so other tools can read them. Report and dashboard sheets get an `Andes Title` in A1 and hidden gridlines (`ws.sheet_view.showGridLines = False`).
+- **Sheets.** Data exports keep the header in row 1, with no title row, so other tools can read them. Report and dashboard sheets start with `sheet_header` (the logo, an `Andes Title`, and hidden gridlines).
 
 ## Create
 
@@ -51,16 +54,17 @@ Write a build script in `<work>` (`build-<slug>.py`), and run it with `<venvPyth
 ```python
 import sys
 sys.path.insert(0, r"<skill>/scripts")
-from xlsx_brand import new_workbook, write_table, add_chart, autosize_columns, print_setup
+from xlsx_brand import new_workbook, sheet_header, write_table, add_chart, autosize_columns, print_setup
 
 wb = new_workbook(title="Pipeline by quarter")
 ws = wb.active
 ws.title = "Pipeline"
-ref = write_table(ws, "A1", ["Region", "Q1", "Q2"], rows,
+top = sheet_header(ws, "Pipeline by quarter", subtitle="CRM export, 2026-09-30")
+ref = write_table(ws, f"A{top}", ["Region", "Q1", "Q2"], rows,
                   formats={1: "usd", 2: "usd"}, total_row=True)
-add_chart(ws, "column", "B1:C5", "A2:A5", "E2", title="Pipeline by region", y_title="USD")
+add_chart(ws, "column", f"B{top}:C{top + 4}", f"A{top + 1}:A{top + 4}", f"E{top}", title="Pipeline by region", y_title="USD")
 autosize_columns(ws)
-print_setup(ws)
+print_setup(ws, title_rows=f"{top}:{top}")
 wb.save(out_path)
 ```
 
@@ -70,6 +74,9 @@ Then run `<venvPython> -B <skill>/scripts/office_pkg.py theme "<out>"`, so that 
 | --- | --- |
 | `new_workbook(title=, creator=)` | Workbook with the named styles, document properties, and full recalculation on open |
 | `ensure_styles(wb)` | Adds the named styles to a workbook opened for editing |
+| `sheet_header(ws, title, subtitle=)` | The Andes mark, title, and optional subtitle at the top of a report sheet; returns the first free row |
+| `about_sheet(wb, title, lines)` | A first sheet with the full Andes logo, the title, and notes, for workbooks of data exports |
+| `add_logo(ws, anchor, height_px=, variant=)` | The Andes logo (`mark` or `full`) at a cell, at its own ratio |
 | `write_table(ws, top_left, header, rows, formats=, total_row=, freeze=, autofilter=, band=)` | Branded header, banded rows, number formats, frozen header, filter, optional `SUM` total row; returns the range |
 | `add_chart(ws, kind, data_ref, cats_ref, anchor, title=, y_title=, x_title=)` | `bar`, `column`, `line`, or `pie` in brand series order; `data_ref` includes the header row |
 | `autosize_columns(ws)`, `print_setup(ws)` | Column widths; landscape, fit to width, repeated header row, page-numbered footer |
@@ -99,10 +106,10 @@ openpyxl round trips keep values, formulas, styles, names, validation, condition
 Run every step and fix what it reports before you hand the file over:
 
 1. `<venvPython> -B <skill>/scripts/office_pkg.py check <out>`: the package is well formed (exit 0).
-2. `<venvPython> -B <skill>/scripts/office_pkg.py colors <out>`: no `OFF-PALETTE` colors, unless the user asked for them.
+2. `<venvPython> -B <skill>/scripts/office_pkg.py colors <out>`: no `OFF-PALETTE` colors, unless the user asked for them, and no `THEME` line (the theme step was skipped).
 3. `<venvPython> -B <skill>/scripts/xlsx_inspect.py check <out>`: no error values and no formulas pointing at missing sheets.
 4. `xlsx_inspect.py summary <out>`: read it back against the request (sheets, headers, row counts, formats, charts).
-5. Optional, only when `soffice` (LibreOffice) is on `PATH`: run `soffice --headless --convert-to pdf --outdir <work> <out>`. LibreOffice recalculates on load, so the PDF shows computed values. Rasterize it with `pdftoppm -png -r 80` when poppler is present, and look at the pages.
+5. `<python> -B <skill>/scripts/office_render.py <out> <work>/render/<slug>` writes one PNG per printed page through LibreOffice, which recalculates on load, so the pages show computed values. Look at every page: the logo, the header row, number formats, and charts. If the script exits 2 (LibreOffice or a rasterizer is missing), or you cannot view images, tell the user that the workbook was checked structurally only.
 
 ## Not in this version
 

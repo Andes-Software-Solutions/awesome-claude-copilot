@@ -47,7 +47,8 @@ Start every task from the user's repository with `<python> -B <skill>/scripts/wo
 ## Brand rules
 
 - **Fonts.** Montserrat Bold for the title and headings, and Inter for body text. Both are embedded, so the PDF looks the same everywhere. If the font files are missing, `pdf_brand` falls back to Helvetica and warns. Treat that as a defect.
-- **Page.** Letter (`brand.defaults.pageSize`) with a navy cover band and the title in white. Body pages carry the document title top right over a Glacier rule, and the company and classification bottom left with "Page n of m" bottom right.
+- **The logo is always there.** The cover carries the full Andes logo on its white part, and every body page carries the Andes mark top left; `document()` draws both. Never add, resize, or recolor the logo yourself. The files in `assets/logo/` are copies of andes-core's `andes-brand` skill, which holds the logo rules.
+- **Page.** Letter (`brand.defaults.pageSize`) with a navy cover band and the title in white. Body pages carry the Andes mark top left and the document title top right over a Glacier rule, and the company and classification bottom left with "Page n of m" bottom right.
 - **Type.** Title 26 pt, H1 18, H2 13.5 (Montserrat, navy), H3 11 (Inter Bold, Ink), body 10/14.5 in `#16283a`, captions 8.5 italic Slate.
 - **Tables.** Navy header row repeated on every page, banded rows, horizontal rules only, numbers right-aligned (`numeric_cols`).
 - **Charts.** Series follow `brand.series`, with at most five series or slices and a legend beside the plot. Add a caption below ("Figure 1. …") and state the takeaway in the text, because this PDF has no tagged alt text.

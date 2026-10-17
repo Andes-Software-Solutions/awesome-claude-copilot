@@ -4,13 +4,13 @@
     "name": "Rodrigo Rojas"
   },
   "metadata": {
-    "description": "Andes: C#/.NET, Angular, GitHub Actions, Terraform, and Azure DevOps standards, plus Andes-branded Office and PDF documents, for Claude Code."
+    "description": "Andes: C#/.NET, Angular, GitHub Actions, Terraform, and Azure DevOps standards for Claude Code."
   },
   "plugins": [
     {
       "name": "andes-core",
       "source": "./claude/andes-core",
-      "description": "Shared AGENTS.md standards (via andes-init), PRD generation, technical writing with CHANGELOG ownership, the Microsoft Learn and Context7 MCP servers, and a desktop-notification hook."
+      "description": "Shared AGENTS.md standards (via andes-init), PRD generation, technical writing with CHANGELOG ownership, the Andes brand assets (logo files, palette, and placement rules), the Microsoft Learn and Context7 MCP servers, and a desktop-notification hook."
     },
     {
       "name": "andes-dotnet",
@@ -41,11 +41,6 @@
       "name": "andes-azure-devops",
       "source": "./claude/andes-azure-devops",
       "description": "Azure DevOps backlog management: a scoped Azure DevOps MCP server (core, work, work-items domains), an approval-gated agent that creates, updates, and removes epics, features, and stories and always asks for assignee and iteration, and an init skill that records the project in AGENTS.md."
-    },
-    {
-      "name": "andes-documents",
-      "source": "./claude/andes-documents",
-      "description": "Andes-branded Word, Excel, PowerPoint, and PDF files as on-demand skills: the Andes palette with accessible chart colors, Office-safe fonts, and embedded brand fonts in PDFs, plus reading, editing, and PDF operations. Requires Python 3.9+, and Node.js 18+ for Word and PowerPoint; packages install only when you approve."
     }
   ]
 }

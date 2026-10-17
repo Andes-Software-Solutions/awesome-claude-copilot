@@ -120,13 +120,14 @@ const updated = [
 ].join('\n');
 
 // --- release notes ----------------------------------------------------------------
-// The audit holds both trees to one version per plugin (manifests/version-drift), so either manifest serves.
-const pluginRows = readdirSync(join(ROOT, 'claude'), { withFileTypes: true })
+// The audit holds every manifest to one version (manifests/version-lockstep). Only copilot/ holds
+// every plugin, Copilot-only ones included, so its manifests serve.
+const pluginRows = readdirSync(join(ROOT, 'copilot'), { withFileTypes: true })
   .filter((e) => e.isDirectory())
   .map((e) => e.name)
   .sort()
   .map((p) => {
-    const manifest = JSON.parse(readFileSync(join(ROOT, 'claude', p, '.claude-plugin', 'plugin.json'), 'utf8'));
+    const manifest = JSON.parse(readFileSync(join(ROOT, 'copilot', p, 'plugin.json'), 'utf8'));
     return `| \`${p}\` | ${manifest.version} |`;
   });
 const notes = [
