@@ -1,0 +1,63 @@
+{
+  "name": "Andes",
+  "company": "Andes Software Solutions",
+  "about": "Palette sampled from the Andes logo (light theme of the Andes UI design tokens). Code reads colors by role, never by hex. Every pair under contrast is checked against WCAG 2.2 by the repository audit.",
+  "colors": {
+    "primary": { "hex": "#14324f", "label": "Summit Navy", "use": "Headings, title bars, table headers, links (always underlined)." },
+    "emphasis": { "hex": "#0b1f33", "label": "Ink", "use": "Dark slides and panels; labels on light fills." },
+    "body": { "hex": "#16283a", "use": "Body text on light backgrounds." },
+    "secondary": { "hex": "#5a6e82", "label": "Slate", "use": "Captions, footers, axis labels, the 'Other' series." },
+    "accent": { "hex": "#21a8d8", "label": "Glacier Blue", "use": "Rules, bars, and decorative fills. As text only on primary or emphasis." },
+    "accentStrong": { "hex": "#0e7fa8", "use": "Chart series and icons; as text only on page." },
+    "success": { "hex": "#2e9c58", "label": "Andes Green", "use": "Positive values and chart series; never body-size text." },
+    "successFill": { "hex": "#3fb56a", "use": "Logo green: fills with emphasis labels, accents on dark slides." },
+    "warning": { "hex": "#9c6210", "use": "Warnings and chart series." },
+    "danger": { "hex": "#c0392b", "use": "Errors and negative values only." },
+    "page": { "hex": "#ffffff", "use": "Page and slide background; text on primary, emphasis, and secondary fills." },
+    "surface": { "hex": "#f7fafc", "label": "Snow", "use": "Panels and callouts." },
+    "surfaceAlt": { "hex": "#e7eff7", "use": "Table banding and input cells." },
+    "surfaceSubtle": { "hex": "#eff4f9", "use": "Light banding and note boxes." },
+    "border": { "hex": "#dce5ee", "use": "Rules and cell borders; never behind text." }
+  },
+  "series": ["primary", "success", "accentStrong", "warning", "secondary"],
+  "theme": {
+    "dk1": "body",
+    "lt1": "page",
+    "dk2": "primary",
+    "lt2": "surfaceAlt",
+    "accent1": "primary",
+    "accent2": "success",
+    "accent3": "accentStrong",
+    "accent4": "warning",
+    "accent5": "secondary",
+    "accent6": "accent",
+    "hlink": "primary",
+    "folHlink": "secondary"
+  },
+  "fonts": {
+    "office": { "heading": "Arial", "body": "Calibri" },
+    "pdf": { "heading": "Montserrat", "body": "Inter" }
+  },
+  "defaults": { "pageSize": "letter", "lang": "en-US" },
+  "contrast": {
+    "text": [
+      ["body", "page"], ["body", "surface"], ["body", "surfaceAlt"], ["body", "surfaceSubtle"],
+      ["primary", "page"], ["primary", "surface"], ["primary", "surfaceAlt"], ["primary", "surfaceSubtle"],
+      ["emphasis", "page"], ["emphasis", "surface"], ["emphasis", "surfaceAlt"], ["emphasis", "surfaceSubtle"],
+      ["secondary", "page"], ["secondary", "surface"], ["secondary", "surfaceSubtle"],
+      ["accentStrong", "page"],
+      ["warning", "page"], ["warning", "surface"],
+      ["danger", "page"], ["danger", "surface"], ["danger", "surfaceAlt"],
+      ["page", "primary"], ["page", "emphasis"], ["page", "secondary"], ["page", "warning"], ["page", "danger"],
+      ["emphasis", "accent"], ["emphasis", "success"], ["emphasis", "successFill"],
+      ["accent", "primary"], ["accent", "emphasis"], ["successFill", "primary"], ["successFill", "emphasis"]
+    ],
+    "large": [
+      ["page", "success"], ["success", "page"]
+    ],
+    "graphic": [
+      ["primary", "page"], ["success", "page"], ["accentStrong", "page"], ["warning", "page"],
+      ["secondary", "page"], ["danger", "page"], ["accent", "primary"], ["accent", "emphasis"]
+    ]
+  }
+}

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Structural audit for the andes plugin marketplace.
 //
-// Every plugin exists once per harness. `claude/<name>/` holds what Claude Code reads:
+// Every plugin exists once per harness, except the COPILOT_ONLY ones. `claude/<name>/` holds what Claude Code reads:
 // `.claude-plugin/plugin.json`, `.mcp.json`, `agents/`, and `hooks/hooks.json`. `copilot/<name>/`
 // holds what Copilot reads: the Agent Plugins 1.0 root `plugin.json`, `mcp.json`, and
 // `com.github.copilot/{agents,hooks}/`. `skills/` and `scripts/` are mirrored into both, because
@@ -30,7 +30,7 @@ import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
-import { MIRRORED, TREES, compareMirrors } from './sync-shared.mjs';
+import { COPILOT_ONLY, MIRRORED, TREES, compareMirrors } from './sync-shared.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -38,6 +38,9 @@ process.on('uncaughtException', (err) => {
   console.error(`Audit failed: ${err.message}`);
   process.exit(1);
 });
+
+const OFFICE_SKILLS = ['andes-documents/andes-docx', 'andes-documents/andes-xlsx', 'andes-documents/andes-pptx'];
+const DOCUMENT_SKILLS = [...OFFICE_SKILLS, 'andes-documents/andes-pdf'];
 
 const CONFIG = {
   // One tree per harness, plus the folders mirrored into both; owned by the sync helper.
@@ -87,10 +90,11 @@ const CONFIG = {
     bash: /\$PLUGIN_ROOT\/scripts\/([\w.-]+\.mjs)/g,
     powershell: /\$env:PLUGIN_ROOT\/scripts\/([\w.-]+\.mjs)/g,
   },
-  // Claude Code's main session implements code, so these roles exist only for Copilot.
+  // Claude Code's main session implements code, so these roles exist only for Copilot, as do the
+  // agents of COPILOT_ONLY plugins.
   copilotOnlyAgents: [
     'andes-planner-expert', 'andes-full-stack-expert', 'andes-csharp-expert',
-    'andes-angular-expert', 'andes-csharp-dotnet-janitor',
+    'andes-angular-expert', 'andes-csharp-dotnet-janitor', 'andes-document-designer',
   ],
   // Copilot agents that implement and therefore carry the "## Review loop" section of AGENTS.md
   // verbatim (Copilot subagents do not receive AGENTS.md).
@@ -113,6 +117,7 @@ const CONFIG = {
     'andes-csharp-dotnet-janitor': 'medium',
     'andes-ado-backlog-manager': 'medium',
     'andes-se-technical-writer': 'medium',
+    'andes-document-designer': 'high',
   },
   // The CLI reference documents this spelling, but Copilot CLI 1.0.88 only reads the kebab-case key
   // (github/copilot-cli#4963).
@@ -204,14 +209,17 @@ const CONFIG = {
   maintainerMcpServers: ['microsoft-learn', 'angular-cli', 'context7', 'azure-devops', 'terraform'],
   // Skills whose bytes are pinned to an upstream source and must not be edited here.
   upstreamLock: 'scripts/upstream-skills.lock.json',
-  // A skill's scripts may only rely on files inside its own folder, so a file several skills of one
-  // plugin need exists once per skill. Edit one copy, copy it over the others, then sync.
+  // A skill's scripts may only rely on files inside its own folder, so a file several skills need
+  // exists once per skill, listed as plugin/skill. andes-core's andes-brand owns the brand file and
+  // the logos; the document skills carry copies. Edit one copy, copy it over the others, then sync.
   sharedSkillFiles: {
-    'andes-documents': {
-      'assets/brand.json': ['andes-docx', 'andes-xlsx', 'andes-pptx', 'andes-pdf'],
-      'scripts/workspace.py': ['andes-docx', 'andes-xlsx', 'andes-pptx', 'andes-pdf'],
-      'scripts/office_pkg.py': ['andes-docx', 'andes-xlsx', 'andes-pptx'],
-    },
+    'assets/brand.json': ['andes-core/andes-brand', ...DOCUMENT_SKILLS],
+    'assets/logo/andes-logo.png': ['andes-core/andes-brand', ...DOCUMENT_SKILLS],
+    'assets/logo/andes-mark.png': ['andes-core/andes-brand', ...DOCUMENT_SKILLS],
+    'assets/logo/andes-mark-white.png': ['andes-core/andes-brand', ...DOCUMENT_SKILLS],
+    'scripts/workspace.py': DOCUMENT_SKILLS,
+    'scripts/office_pkg.py': OFFICE_SKILLS,
+    'scripts/office_render.py': OFFICE_SKILLS,
   },
   // WCAG 2.2 minimum contrast (1.4.3 text and large text, 1.4.11 graphics) for every
   // foreground/background pair a skill's brand file declares under `contrast`.
@@ -331,11 +339,15 @@ function section(body, heading) {
 const C = (name) => `${CONFIG.trees.claude}/${name}`;
 const G = (name) => `${CONFIG.trees.copilot}/${name}`;
 const plugins = [...new Set([...dirs(CONFIG.trees.claude), ...dirs(CONFIG.trees.copilot)])].sort();
+const copilotOnly = (p) => COPILOT_ONLY.includes(p);
+// The tree that holds a plugin's editable skills: claude/, or copilot/ for a Copilot-only plugin.
+const src = (p) => (copilotOnly(p) ? G(p) : C(p));
+const manifestsOf = (p) => [...(copilotOnly(p) ? [] : [`${C(p)}/.claude-plugin/plugin.json`]), `${G(p)}/plugin.json`];
 const entriesOf = (rel) => (isDir(rel) ? readdirSync(join(ROOT, rel), { withFileTypes: true }) : []);
 
 // The Copilot copies of mirrored folders are identical to the Claude ones (mirror/*), so content
-// checks read each shared file once.
-const mirrorCopy = new RegExp(`^${CONFIG.trees.copilot}/[^/]+/(${CONFIG.mirrored.join('|')})/`);
+// checks read each shared file once. Copilot-only plugins have no mirror, so their files are read in place.
+const mirrorCopy = new RegExp(`^${CONFIG.trees.copilot}/(?!(${COPILOT_ONLY.join('|')})/)[^/]+/(${CONFIG.mirrored.join('|')})/`);
 const pluginFiles = () => Object.values(CONFIG.trees).flatMap((t) => (isDir(t) ? walkFiles(t) : [])).filter((f) => !mirrorCopy.test(f));
 const stats = {
   plugins: plugins.length, skills: 0, claudeAgents: 0, copilotAgents: 0, agentTwins: 0,
@@ -365,22 +377,25 @@ if (runs('manifests')) {
     if (!CONFIG.namePattern.test(p)) {
       add('manifests', 'name-pattern', 'error', `Plugin folder '${p}' does not match ${CONFIG.namePattern}`, [C(p), G(p)].filter(isDir));
     }
-    const missing = [cPath, gPath].filter((x) => !exists(x));
+    if (copilotOnly(p) && isDir(C(p))) {
+      add('manifests', 'copilot-only', 'error', `'${p}' is in COPILOT_ONLY (scripts/sync-shared.mjs) but exists under ${CONFIG.trees.claude}/`, [C(p)]);
+    }
+    const missing = manifestsOf(p).filter((x) => !exists(x));
     if (missing.length) {
       add('manifests', 'missing', 'error', 'Plugin is missing a harness manifest', missing);
       continue;
     }
-    const c = readJson(cPath);
+    const c = copilotOnly(p) ? undefined : readJson(cPath);
     const g = readJson(gPath);
-    seen.set(p, c.version);
-    for (const [label, m, path] of [['claude', c, cPath], ['copilot', g, gPath]]) {
+    seen.set(p, g.version);
+    for (const [label, m, path] of [['claude', c, cPath], ['copilot', g, gPath]].filter(([, m]) => m)) {
       if (m.name !== p) add('manifests', 'name-mismatch', 'error', `${label} manifest name '${m.name}' is not the folder name '${p}'`, [path]);
       if (!/^\d+\.\d+\.\d+$/.test(m.version ?? '')) add('manifests', 'semver', 'error', `${label} manifest version '${m.version}' is not x.y.z`, [path]);
     }
-    for (const key of ['version', 'description']) {
+    for (const key of c ? ['version', 'description'] : []) {
       if (c[key] !== g[key]) add('manifests', `${key}-drift`, 'error', `Manifests disagree on '${key}'`, [cPath, gPath], { claude: c[key], copilot: g[key] });
     }
-    for (const k of CONFIG.claudeManifestForbiddenFields) {
+    for (const k of c ? CONFIG.claudeManifestForbiddenFields : []) {
       if (k in c) add('manifests', 'claude-field', 'error', `Claude Code loads components from their default locations; remove '${k}'`, [cPath]);
     }
     if (g.$schema !== CONFIG.agentPluginsSchema) {
@@ -389,7 +404,7 @@ if (runs('manifests')) {
     for (const k of CONFIG.agentPluginsForbiddenFields) {
       if (k in g) add('manifests', 'agent-plugins-field', 'error', `Agent Plugins 1.0 manifests have fixed component locations; remove '${k}'`, [gPath]);
     }
-    for (const dep of c.dependencies ?? []) {
+    for (const dep of c?.dependencies ?? []) {
       const depName = typeof dep === 'string' ? dep.split('@')[0] : dep.name;
       if (!plugins.includes(depName)) add('manifests', 'dependency-ghost', 'error', `Dependency '${depName}' is not a plugin in this marketplace`, [cPath]);
     }
@@ -398,7 +413,7 @@ if (runs('manifests')) {
   const versions = [...new Set(seen.values())];
   if (versions.length > 1) {
     add('manifests', 'version-lockstep', 'error', `Plugins carry ${versions.length} versions (${versions.join(', ')}); every plugin must share one`,
-      [...seen.keys()].flatMap((p) => [`${C(p)}/.claude-plugin/plugin.json`, `${G(p)}/plugin.json`]), Object.fromEntries(seen),
+      [...seen.keys()].flatMap(manifestsOf), Object.fromEntries(seen),
       'Set every manifest to the highest version.');
   }
 
@@ -416,7 +431,7 @@ if (runs('manifests')) {
     if (m.name !== CONFIG.marketplaceName) {
       add('manifests', 'marketplace-name', 'error', `Marketplace name is '${m.name}'; both marketplaces must be '${CONFIG.marketplaceName}' so '<plugin>@${CONFIG.marketplaceName}' resolves on either harness`, [file]);
     }
-    for (const p of plugins) {
+    for (const p of plugins.filter((x) => tree === 'copilot' || !copilotOnly(x))) {
       const hits = entries.filter((e) => e.name === p);
       if (hits.length !== 1) { add('manifests', 'marketplace-entry', 'error', `Marketplace lists '${p}' ${hits.length} times (expected once)`, [file]); continue; }
       if (hits[0].source !== `./${root(p)}`) add('manifests', 'marketplace-source', 'error', `Marketplace source for '${p}' should be './${root(p)}'`, [file], { source: hits[0].source });
@@ -427,8 +442,9 @@ if (runs('manifests')) {
     }
     for (const e of entries) if (!isDir(root(e.name))) add('manifests', 'marketplace-ghost', 'error', `Marketplace lists '${e.name}' but '${root(e.name)}' does not exist`, [file]);
   }
+  const sharedNames = listed.copilot?.names.filter((n) => !copilotOnly(n));
   if (listed.claude && listed.copilot
-    && (JSON.stringify(listed.claude.names) !== JSON.stringify(listed.copilot.names) || listed.claude.owner !== listed.copilot.owner)) {
+    && (JSON.stringify(listed.claude.names) !== JSON.stringify(sharedNames) || listed.claude.owner !== listed.copilot.owner)) {
     add('manifests', 'marketplace-parity', 'error', 'The two marketplaces list different plugins or owners', [listed.claude.file, listed.copilot.file],
       { claude: listed.claude, copilot: listed.copilot });
   }
@@ -443,10 +459,10 @@ if (runs('manifests')) {
     for (const p of plugins) {
       if (!changed.some((f) => [C(p), G(p), legacy(p)].some((r) => f.startsWith(`${r}/`)))) continue;
       // A base that predates the split holds the manifest under the legacy folder.
-      const before = versionAt(`${C(p)}/.claude-plugin/plugin.json`) ?? versionAt(`${legacy(p)}/.claude-plugin/plugin.json`);
+      const before = versionAt(manifestsOf(p)[0]) ?? versionAt(`${legacy(p)}/.claude-plugin/plugin.json`);
       if (before !== undefined && before === seen.get(p)) {
         add('manifests', 'version-bump', 'error', `'${p}' changed since ${BASE} but its version is still ${before} — installed copies are cached by version and will not update`,
-          [`${C(p)}/.claude-plugin/plugin.json`, `${G(p)}/plugin.json`], undefined, 'Bump the shared version in every manifest of every plugin.');
+          manifestsOf(p), undefined, 'Bump the shared version in every manifest of every plugin.');
       }
     }
   }
@@ -468,7 +484,7 @@ if (runs('isolation')) {
       if (!e.isDirectory()) add('isolation', 'tree-entry', 'error', `${root}/ holds plugin folders only`, [`${root}/${e.name}`]);
     }
     for (const p of dirs(root)) {
-      if (!isDir(`${other}/${p}`)) add('isolation', 'tree-missing', 'error', `Plugin '${p}' exists under ${root}/ but not under ${other}/`, [`${root}/${p}`]);
+      if (!isDir(`${other}/${p}`) && !copilotOnly(p)) add('isolation', 'tree-missing', 'error', `Plugin '${p}' exists under ${root}/ but not under ${other}/`, [`${root}/${p}`]);
       for (const e of entriesOf(`${root}/${p}`)) {
         if (!CONFIG.treeEntries[tree].includes(e.name)) {
           add('isolation', 'unexpected-entry', 'error', `'${e.name}' does not belong in a ${tree} plugin`, [`${root}/${p}/${e.name}`],
@@ -523,10 +539,10 @@ if (runs('mirror')) {
 if (runs('skills')) {
   const owners = new Map();
   for (const p of plugins) {
-    for (const s of dirs(`${C(p)}/skills`)) {
+    for (const s of dirs(`${src(p)}/skills`)) {
       stats.skills++;
-      const path = `${C(p)}/skills/${s}/SKILL.md`;
-      if (!exists(path)) { add('skills', 'missing-skill-md', 'error', `Skill folder '${s}' has no SKILL.md`, [`${C(p)}/skills/${s}`]); continue; }
+      const path = `${src(p)}/skills/${s}/SKILL.md`;
+      if (!exists(path)) { add('skills', 'missing-skill-md', 'error', `Skill folder '${s}' has no SKILL.md`, [`${src(p)}/skills/${s}`]); continue; }
       const { fm, body } = splitFrontmatter(read(path));
       const name = fmScalar(fm, 'name');
       const desc = fmScalar(fm, 'description');
@@ -549,19 +565,23 @@ if (runs('skills')) {
     }
   }
   for (const [s, ps] of owners) {
-    if (ps.length > 1) add('skills', 'duplicate-name', 'error', `Skill '${s}' is defined in several plugins: ${ps.join(', ')}`, ps.map((p) => `${C(p)}/skills/${s}`));
+    if (ps.length > 1) add('skills', 'duplicate-name', 'error', `Skill '${s}' is defined in several plugins: ${ps.join(', ')}`, ps.map((p) => `${src(p)}/skills/${s}`));
   }
 
-  for (const [p, shared] of Object.entries(CONFIG.sharedSkillFiles)) {
-    for (const [file, skills] of Object.entries(shared)) {
-      const copies = skills.map((s) => `${C(p)}/skills/${s}/${file}`);
-      const present = copies.filter(exists);
-      for (const c of copies.filter((c) => !exists(c))) {
-        add('skills', 'shared-missing', 'error', `Shared skill file '${file}' is missing`, [c], undefined, present.length ? `Copy ${present[0]} here.` : undefined);
-      }
-      if (new Set(present.map((c) => sha(read(c)))).size > 1) {
-        add('skills', 'shared-drift', 'error', `The copies of '${file}' differ across ${p} skills`, present, undefined, 'Copy the edited copy over the others, then sync.');
-      }
+  // Binary files (a NUL in the first 8,000 bytes) compare byte for byte; decoding a PNG as UTF-8
+  // would map different bytes to the same replacement characters.
+  const contentSha = (rel) => {
+    const buf = readFileSync(join(ROOT, rel));
+    return sha(buf.subarray(0, 8000).includes(0) ? buf : norm(buf.toString('utf8')));
+  };
+  for (const [file, skills] of Object.entries(CONFIG.sharedSkillFiles)) {
+    const copies = skills.map((ref) => { const [p, s] = ref.split('/'); return `${src(p)}/skills/${s}/${file}`; });
+    const present = copies.filter(exists);
+    for (const c of copies.filter((c) => !exists(c))) {
+      add('skills', 'shared-missing', 'error', `Shared skill file '${file}' is missing`, [c], undefined, present.length ? `Copy ${present[0]} here.` : undefined);
+    }
+    if (new Set(present.map(contentSha)).size > 1) {
+      add('skills', 'shared-drift', 'error', `The copies of '${file}' differ`, present, undefined, `Copy the edited copy over the others (the original is ${copies[0]}), then sync.`);
     }
   }
 
@@ -574,8 +594,8 @@ if (runs('skills')) {
   const ratio = (a, b) => { const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x); return (hi + 0.05) / (lo + 0.05); };
   const brandFiles = new Map();
   for (const p of plugins) {
-    for (const s of dirs(`${C(p)}/skills`)) {
-      const f = `${C(p)}/skills/${s}/${CONFIG.brandFile}`;
+    for (const s of dirs(`${src(p)}/skills`)) {
+      const f = `${src(p)}/skills/${s}/${CONFIG.brandFile}`;
       if (exists(f) && ![...brandFiles.values()].includes(read(f))) brandFiles.set(f, read(f));
     }
   }
@@ -1032,7 +1052,7 @@ if (runs('registry')) {
   for (const legacy of ['.claude/commands', '.github/prompts']) {
     if (isDir(legacy)) add('registry', 'legacy-commands', 'error', `${legacy}/ is a single-harness command surface; maintainer commands live in .claude/skills/`, [legacy]);
   }
-  const pluginSkills = new Set(plugins.flatMap((p) => dirs(`${C(p)}/skills`)));
+  const pluginSkills = new Set(plugins.flatMap((p) => dirs(`${src(p)}/skills`)));
   const maintainerSkills = dirs('.claude/skills');
   for (const s of maintainerSkills) {
     const path = `.claude/skills/${s}/SKILL.md`;

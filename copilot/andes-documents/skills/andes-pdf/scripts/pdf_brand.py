@@ -1,4 +1,4 @@
-"""Andes branding for ReportLab: embedded brand fonts, paragraph styles, page templates, tables, and charts.
+"""Andes branding for ReportLab: embedded brand fonts, the Andes logo, paragraph styles, page templates, tables, and charts.
 
 Import it from a build script in the work folder:
 
@@ -26,6 +26,7 @@ from reportlab.lib.enums import TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4, LETTER
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
+from reportlab.lib.utils import ImageReader
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas as rl_canvas
@@ -36,10 +37,21 @@ from reportlab.platypus.tableofcontents import TableOfContents
 ROOT = Path(__file__).resolve().parent.parent
 BRAND = json.loads((ROOT / "assets" / "brand.json").read_text(encoding="utf-8"))
 FONT_DIR = ROOT / "assets" / "fonts"
+# Copies of andes-core's andes-brand logos; the audit keeps them identical.
+LOGO_DIR = ROOT / "assets" / "logo"
 MAX_SERIES = 5
 
 SIDE, TOP, BOTTOM = 0.85 * inch, 0.95 * inch, 0.9 * inch
 COVER_BAND = 4.4 * inch
+
+
+def _draw_logo(c, name: str, x: float, y: float, *, width: float | None = None, height: float | None = None) -> None:
+    """Draw a logo file with its bottom-left corner at (x, y), sized by width or height at its own ratio."""
+    path = str(LOGO_DIR / name)
+    iw, ih = ImageReader(path).getSize()
+    width = width if width is not None else height * iw / ih
+    height = height if height is not None else width * ih / iw
+    c.drawImage(path, x, y, width=width, height=height, mask="auto")
 
 
 def color(role: str) -> colors.Color:
@@ -345,7 +357,8 @@ class AndesDoc(BaseDocTemplate):
 def document(path, *, title: str, author: str | None = None, subject: str | None = None,
              lang: str | None = None, pagesize: str | None = None, landscape: bool = False,
              header_text: str | None = None, footer_text: str | None = None, cover_page: bool = True) -> AndesDoc:
-    """A Letter (or A4) document with a navy cover template and a body template.
+    """A Letter (or A4) document with a navy cover template and a body template. The cover carries the
+    full Andes logo on its white part, and every body page the Andes mark at the left of the header.
 
     header_text defaults to the title; footer_text is appended to the company name (e.g. 'Internal').
     """
@@ -366,6 +379,7 @@ def document(path, *, title: str, author: str | None = None, subject: str | None
         c.rect(0, h - COVER_BAND, w, COVER_BAND, stroke=0, fill=1)
         c.setFillColor(color("accent"))
         c.rect(SIDE, h - COVER_BAND - 0.12 * inch, 1.6 * inch, 0.06 * inch, stroke=0, fill=1)
+        _draw_logo(c, "andes-logo.png", SIDE, BOTTOM + 0.15 * inch, width=2.2 * inch)
         c.setFont(f["body"], 9)
         c.setFillColor(color("secondary"))
         c.drawString(SIDE, BOTTOM - 0.35 * inch, BRAND["company"])
@@ -376,6 +390,7 @@ def document(path, *, title: str, author: str | None = None, subject: str | None
         c.setFont(f["body"], 8.5)
         c.setFillColor(color("secondary"))
         c.drawRightString(w - SIDE, h - TOP + 0.35 * inch, header)
+        _draw_logo(c, "andes-mark.png", SIDE, h - TOP + 0.31 * inch, height=0.25 * inch)
         c.setStrokeColor(color("accent"))
         c.setLineWidth(0.75)
         c.line(SIDE, h - TOP + 0.25 * inch, w - SIDE, h - TOP + 0.25 * inch)

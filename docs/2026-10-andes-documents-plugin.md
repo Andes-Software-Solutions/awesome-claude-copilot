@@ -2,6 +2,8 @@
 
 **Date:** 2026-10-14. **Status:** accepted. Extends [2026-09-harness-trees.md](2026-09-harness-trees.md) (both trees, mirrored shared files) and [2026-09-plugin-architecture.md](2026-09-plugin-architecture.md) (plugins are opt-in; `andes-core` stays small).
 
+Amended by [2026-10-andes-documents-copilot-only.md](2026-10-andes-documents-copilot-only.md).
+
 ## Why
 
 Claude Code ships built-in `docx`, `xlsx`, `pptx`, and `pdf` skills. Copilot has no equivalent, and neither harness styles output in the Andes palette. The request: give Copilot the same document-creation abilities, in Andes colors.

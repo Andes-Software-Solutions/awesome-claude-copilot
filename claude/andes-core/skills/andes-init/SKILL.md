@@ -33,7 +33,7 @@ Claude Code reads `AGENTS.md` natively only when no `CLAUDE.md`, `.claude/CLAUDE
 
 ## 3. Detect the stacks
 
-From `git ls-files`: `*.csproj` / `*.sln` / `*.slnx` → `andes-dotnet`; `*.razor` → `andes-dotnet-wasm`; `angular.json` → `andes-angular`; `*.tf` → `andes-terraform`; `.github/workflows/*` → `andes-github`; `azure-pipelines.yml` or an existing `## Azure DevOps` section in `AGENTS.md` → `andes-azure-devops` (a hint only — Azure Pipelines does not imply Azure Boards). `andes-core` is always included. Report which plugins match and which of them are not installed. `andes-documents` has no file signal: list it as optional (Andes-branded Word, Excel, PowerPoint, and PDF files; needs Python 3.9+, and Node.js 18+ for Word and PowerPoint), never as matched.
+From `git ls-files`: `*.csproj` / `*.sln` / `*.slnx` → `andes-dotnet`; `*.razor` → `andes-dotnet-wasm`; `angular.json` → `andes-angular`; `*.tf` → `andes-terraform`; `.github/workflows/*` → `andes-github`; `azure-pipelines.yml` or an existing `## Azure DevOps` section in `AGENTS.md` → `andes-azure-devops` (a hint only — Azure Pipelines does not imply Azure Boards). `andes-core` is always included. Report which plugins match and which of them are not installed. `andes-documents` ships for Copilot only, because Claude Code has built-in document skills, and it has no file signal. In Copilot, list it as optional (Andes-branded Word, Excel, PowerPoint, and PDF files and the `andes-document-designer` agent; needs Python 3.9+, and Node.js 18+ for Word and PowerPoint), never as matched. In Claude Code, never list it.
 
 ## 4. Opt-in settings
 
@@ -44,7 +44,7 @@ Plugins cannot ship settings, so offer these **one at a time**, show the exact d
    - `enabledPlugins`: `"<plugin>@andes": true` for each detected plugin
    - when `andes-angular` is enabled: `permissions.deny` gains `"mcp__plugin_andes-angular_angular-cli__ai_tutor"` (the Angular CLI server has no flag to drop its tutor tool; a bare-name deny removes it from context)
 2. `.claude/settings.json` — `"effortLevel": "xhigh"` (the Andes default; costs more per turn — ask separately).
-3. `.gitignore` — a `docs/plans/` line, so the planner's working plans are never committed, and, when `andes-documents` is installed, a `docs/generated/` line for the Office and PDF files its skills write and their tooling (`docs/generated/.work/`). Skip a line when the root `.gitignore` already ignores that folder; create the file when it is missing.
+3. `.gitignore` — a `docs/plans/` line, so the planner's working plans are never committed, and, when `andes-documents` is installed in Copilot, a `docs/generated/` line for the Office and PDF files its skills write and their tooling (`docs/generated/.work/`). Skip a line when the root `.gitignore` already ignores that folder; create the file when it is missing.
 
 Do not offer VS Code settings (`chat.plugins.*`, `chat.useAgentsMdFile`): the agents load in VS Code, but installing and configuring the plugins there is untested.
 

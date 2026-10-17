@@ -1,9 +1,11 @@
-"""Andes branding for openpyxl workbooks: named cell styles, branded tables, and charts in the brand series order.
+"""Andes branding for openpyxl workbooks: named cell styles, the Andes logo, branded tables, and charts in the brand series order.
 
 Import it from a build script in the work folder:
 
     import sys; sys.path.insert(0, r"<skill>/scripts")
-    from xlsx_brand import new_workbook, write_table, add_chart, autosize_columns
+    from xlsx_brand import new_workbook, sheet_header, write_table, add_chart, autosize_columns
+
+The logo helpers need Pillow, because openpyxl reads image sizes with it.
 """
 from __future__ import annotations
 
@@ -17,12 +19,16 @@ from openpyxl.chart.axis import ChartLines
 from openpyxl.chart.label import DataLabelList
 from openpyxl.chart.series import DataPoint
 from openpyxl.chart.shapes import GraphicalProperties
+from openpyxl.drawing.image import Image as XLImage
 from openpyxl.drawing.line import LineProperties
 from openpyxl.styles import Alignment, Border, Font, NamedStyle, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.cell import coordinate_to_tuple, range_boundaries
 
 BRAND_PATH = Path(__file__).resolve().parent.parent / "assets" / "brand.json"
+# Copies of andes-core's andes-brand logos; the audit keeps them identical.
+LOGO_DIR = BRAND_PATH.parent / "logo"
+LOGOS = {"full": "andes-logo.png", "mark": "andes-mark.png"}
 
 FORMATS = {
     "int": "#,##0",
@@ -88,6 +94,50 @@ def new_workbook(brand: dict | None = None, *, title: str | None = None, creator
     # openpyxl stores formulas without results; Excel computes them when the file opens.
     wb.calculation.fullCalcOnLoad = True
     return wb
+
+
+def add_logo(ws, anchor: str = "A1", *, height_px: int = 40, variant: str = "mark") -> XLImage:
+    """Place the Andes logo ('mark' or 'full') with its top-left corner at anchor, at the file's own ratio."""
+    img = XLImage(str(LOGO_DIR / LOGOS[variant]))
+    img.width, img.height = round(height_px * img.width / img.height), height_px
+    ws.add_image(img, anchor)
+    return img
+
+
+def sheet_header(ws, title: str, *, subtitle: str | None = None, brand: dict | None = None) -> int:
+    """Start a report or dashboard sheet: the Andes mark in row 1, the title in row 2, and an optional
+    subtitle in row 3, with gridlines hidden. Returns the first free row, so a table can start there."""
+    brand = brand or load_brand()
+    ensure_styles(ws.parent, brand)
+    ws.row_dimensions[1].height = 36
+    add_logo(ws, "A1", height_px=40)
+    ws["A2"] = title
+    ws["A2"].style = "Andes Title"
+    row = 3
+    if subtitle:
+        ws["A3"] = subtitle
+        ws["A3"].style = "Andes Note"
+        row = 4
+    ws.sheet_view.showGridLines = False
+    return row + 1
+
+
+def about_sheet(wb: Workbook, title: str, lines: list[str] | None = None, *, brand: dict | None = None):
+    """Insert a first 'About' sheet with the full Andes logo, the title, and notes such as the source and
+    date. Workbooks of plain data exports carry the logo here, so every data sheet keeps its header in row 1."""
+    brand = brand or load_brand()
+    ensure_styles(wb, brand)
+    ws = wb.create_sheet("About", 0)
+    ws.sheet_view.showGridLines = False
+    ws.column_dimensions["A"].width = 90
+    ws.row_dimensions[1].height = 84
+    add_logo(ws, "A1", height_px=104, variant="full")
+    ws["A3"] = title
+    ws["A3"].style = "Andes Title"
+    for i, line in enumerate(lines or [], start=4):
+        ws.cell(row=i, column=1, value=line).style = "Andes Body"
+    wb.active = 0
+    return ws
 
 
 def write_table(ws, top_left: str, header: list[str], rows: list[list], *, formats: dict[int, str] | None = None,

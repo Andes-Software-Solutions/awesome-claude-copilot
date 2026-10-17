@@ -9,6 +9,8 @@
 import { readFileSync } from 'node:fs';
 
 const BRAND_URL = new URL('../assets/brand.json', import.meta.url);
+// Copies of andes-core's andes-brand logos; the audit keeps them identical.
+const LOGO_DIR = new URL('../assets/logo/', import.meta.url);
 
 // Page sizes in twips (1/1440 inch), portrait.
 const PAGE = { letter: { width: 12240, height: 15840 }, a4: { width: 11906, height: 16838 } };
@@ -19,6 +21,16 @@ const halfPoints = (pt) => pt * 2;
 
 export function loadBrand(path = BRAND_URL) {
   return JSON.parse(readFileSync(path, 'utf8'));
+}
+
+// A logo as an ImageRun, sized by height or width in pixels (96 per inch) at the file's own ratio.
+function logoRun(docx, brand, file, { widthPx, heightPx }) {
+  const data = readFileSync(new URL(file, LOGO_DIR));
+  const ratio = data.readUInt32BE(16) / data.readUInt32BE(20);
+  const width = Math.round(widthPx ?? heightPx * ratio);
+  const height = Math.round(heightPx ?? widthPx / ratio);
+  const alt = `${brand.company} logo`;
+  return new docx.ImageRun({ type: 'png', data, transformation: { width, height }, altText: { title: alt, description: alt, name: 'logo' } });
 }
 
 // Options for `new docx.Document({ ...documentOptions(docx, brand, {...}), sections })`.
@@ -118,10 +130,11 @@ export function numbered(docx, text, level = 0) {
   return new docx.Paragraph({ text, numbering: { reference: 'andes-numbers', level } });
 }
 
-// Title page content: title, subtitle, a metadata line (author, date), then a page break.
+// Title page content: the full Andes logo, title, subtitle, a metadata line (author, date), then a page break.
 export function titleBlock(docx, brand, { title, subtitle, meta, pageBreak = true }) {
   const out = [
-    new docx.Paragraph({ text: title, heading: docx.HeadingLevel.TITLE, spacing: { before: 2400 } }),
+    new docx.Paragraph({ spacing: { before: 720, after: 0 }, children: [logoRun(docx, brand, 'andes-logo.png', { widthPx: 200 })] }),
+    new docx.Paragraph({ text: title, heading: docx.HeadingLevel.TITLE, spacing: { before: 1200 } }),
     new docx.Paragraph({
       border: { bottom: { style: docx.BorderStyle.SINGLE, size: 18, color: hex(brand, 'accent'), space: 6 } },
       spacing: { after: 240 },
@@ -175,8 +188,9 @@ export function brandedTable(docx, brand, { header, rows, widths, align, width, 
   });
 }
 
-// Header (document title, Slate, with a Glacier rule) and footer (company and classification on
-// the left, "Page n of m" on the right). Spread into the section: `{ ...headerFooter(...) }`.
+// Header (the Andes mark on the left, the document title in Slate on the right, a Glacier rule) and
+// footer (company and classification on the left, "Page n of m" on the right). Spread into the
+// section: `{ ...headerFooter(...) }`.
 export function headerFooter(docx, brand, { title, classification } = {}) {
   const small = { size: halfPoints(9), color: hex(brand, 'secondary') };
   const right = [{ type: docx.TabStopType.RIGHT, position: docx.TabStopPosition.MAX }];
@@ -185,9 +199,9 @@ export function headerFooter(docx, brand, { title, classification } = {}) {
     headers: {
       default: new docx.Header({
         children: [new docx.Paragraph({
-          alignment: docx.AlignmentType.RIGHT,
+          tabStops: right,
           border: { bottom: { style: docx.BorderStyle.SINGLE, size: 6, color: hex(brand, 'accent'), space: 4 } },
-          children: [new docx.TextRun({ text: title ?? '', ...small })],
+          children: [logoRun(docx, brand, 'andes-mark.png', { heightPx: 24 }), new docx.TextRun({ text: `\t${title ?? ''}`, ...small })],
         })],
       }),
     },

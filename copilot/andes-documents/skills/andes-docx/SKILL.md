@@ -12,6 +12,8 @@ New documents are built with the `docx` npm package; existing documents are edit
 1. **Python 3.9 or later**, for every task (checks, edits, reading). Check `py -3 --version` (Windows) or `python3 --version` (macOS, Linux); the command that works is `<python>` below.
 2. **Node.js 18 or later**, to create documents. Check `node --version`.
 
+**LibreOffice** renders pages for the visual review (`winget install TheDocumentFoundation.LibreOffice`, `brew install --cask libreoffice`, or `sudo apt install libreoffice-writer`); without it, the checks are structural only.
+
 If either is missing or older, stop and give the user the install command. Never install a runtime yourself.
 
 | Platform | Python | Node.js |
@@ -43,6 +45,7 @@ npm install --prefix <work> docx@9
 
 ## Brand rules
 
+- **The logo is always there.** `titleBlock` puts the full Andes logo above the title, and `headerFooter` puts the mark at the left of every page header. Give every document both, and never add, resize, or recolor the logo yourself. The files in `assets/logo/` are copies of andes-core's `andes-brand` skill, which holds the logo rules.
 - **Styles carry the brand.** `documentOptions` restyles Normal (Calibri 11, `#16283a`), Title, Headings 1–6 (Arial bold, Summit Navy, then Ink and Slate), hyperlinks (navy, underlined), Caption, `AndesSubtitle`, and `AndesSmall`. Never set a font or color on a single run. Emphasis is bold or italic only.
 - **Structure.** Every heading uses a heading level, in order with none skipped: the levels drive the table of contents, navigation, and screen readers. Lists use `bullet()` and `numbered()`, never a typed "•" or "1.".
 - **Tables.** Use `brandedTable`: a navy header row that repeats on every page, banded rows, horizontal rules only, numbers right-aligned. Put a `Caption` paragraph under it ("Table 1. …").
@@ -87,8 +90,8 @@ Run `node <work>/build-<slug>.mjs "<out>"`, then `<venvPython> -B <skill>/script
 | --- | --- |
 | `documentOptions(docx, brand, { title, subject, description, creator, keywords })` | Styles, numbering, properties, and `updateFields`, to spread into `new Document` |
 | `pageProperties(docx, brand, { size, landscape })`, `contentWidth(brand, …)` | Section page setup; usable width in twips |
-| `titleBlock(docx, brand, { title, subtitle, meta, pageBreak })` | Title page paragraphs |
-| `headerFooter(docx, brand, { title, classification })` | `{ headers, footers }` with "Page n of m" |
+| `titleBlock(docx, brand, { title, subtitle, meta, pageBreak })` | Title page paragraphs, opening with the full Andes logo |
+| `headerFooter(docx, brand, { title, classification })` | `{ headers, footers }`: the Andes mark and the title in the header, "Page n of m" in the footer |
 | `brandedTable(docx, brand, { header, rows, widths, align, width, fontSize })` | A `Table` |
 | `bullet(docx, text, level)`, `numbered(docx, text, level)` | List paragraphs |
 | `callout(docx, brand, text, kind, label)` | A shaded, labeled paragraph |
@@ -120,11 +123,11 @@ A document that is not Andes-branded keeps its own styles unless the user asks y
 Run every step and fix what it reports before you hand the file over:
 
 1. `office_pkg.py check <out>`: the package is well formed (exit 0).
-2. `office_pkg.py colors <out>`: no `OFF-PALETTE` colors, unless the user asked for them.
+2. `office_pkg.py colors <out>`: no `OFF-PALETTE` colors, unless the user asked for them, and no `THEME` line (the theme step was skipped).
 3. `docx_inspect.py <out>`: no flags (heading order, empty headings, bold paragraphs posing as headings, images without alt text, missing title).
 4. Read the outline back against the request: sections, headings, tables, and the order of content.
-5. Optional, only when `soffice` (LibreOffice) is on `PATH`: run `soffice --headless --convert-to pdf --outdir <work> <out>`, rasterize with `pdftoppm -png -r 80` when poppler is present, and look at the pages. Calibri renders with a substitute font on machines without Office.
+5. `<python> -B <skill>/scripts/office_render.py <out> <work>/render/<slug>` writes one PNG per page through LibreOffice. Look at every page: the logo on the cover and in each header, nothing overflowing, tables readable. Calibri renders with a substitute font on machines without Office. If the script exits 2 (LibreOffice or a rasterizer is missing), or you cannot view images, tell the user that the document was checked structurally only.
 
 ## Not in this version
 
-Tracked changes (creating, accepting, or rejecting), editing footnotes in existing files, native Word charts (use PNG figures), legacy `.doc` files, conversion to PDF without LibreOffice, and embedded fonts.
+Tracked changes (creating, accepting, or rejecting), editing footnotes in existing files, native Word charts (use PNG figures), legacy `.doc` files, conversion to PDF without LibreOffice, embedded fonts, and vector (SVG) logos.

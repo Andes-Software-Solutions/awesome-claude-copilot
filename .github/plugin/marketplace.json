@@ -10,7 +10,7 @@
     {
       "name": "andes-core",
       "source": "./copilot/andes-core",
-      "description": "Shared AGENTS.md standards (via andes-init), PRD generation, technical writing with CHANGELOG ownership, the Microsoft Learn and Context7 MCP servers, and a desktop-notification hook."
+      "description": "Shared AGENTS.md standards (via andes-init), PRD generation, technical writing with CHANGELOG ownership, the Andes brand assets (logo files, palette, and placement rules), the Microsoft Learn and Context7 MCP servers, and a desktop-notification hook."
     },
     {
       "name": "andes-dotnet",
@@ -45,7 +45,7 @@
     {
       "name": "andes-documents",
       "source": "./copilot/andes-documents",
-      "description": "Andes-branded Word, Excel, PowerPoint, and PDF files as on-demand skills: the Andes palette with accessible chart colors, Office-safe fonts, and embedded brand fonts in PDFs, plus reading, editing, and PDF operations. Requires Python 3.9+, and Node.js 18+ for Word and PowerPoint; packages install only when you approve."
+      "description": "Andes-branded Word, Excel, PowerPoint, and PDF files as on-demand skills: the Andes logo in every format, the Andes palette with accessible chart colors, Office-safe fonts, and embedded brand fonts in PDFs, plus reading, editing, and PDF operations, and andes-document-designer, an agent that builds each format and reviews every rendered page or slide. Requires Python 3.9+, Node.js 18+ for Word and PowerPoint, and LibreOffice for page renders; packages install only when you approve."
     }
   ]
 }
