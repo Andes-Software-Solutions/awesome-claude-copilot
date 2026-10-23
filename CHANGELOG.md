@@ -11,6 +11,8 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ## [Unreleased]
 
+## [1.16.0] - 2026-10-23
+
 ### Removed
 
 - **`andes-documents` is no longer available in Claude Code** (all plugins 1.15.0). Claude Code ships built-in Word, Excel, PowerPoint, and PDF skills, so the plugin duplicated them and competed for routing. The Claude plugin and its marketplace entry are gone, and the Claude marketplace description no longer mentions documents. If you installed it, run `/plugin uninstall andes-documents@andes`. The plugin stays on Copilot, and the Andes logo and brand rules now reach Claude Code through the `andes-brand` skill in `andes-core`. See `docs/2026-10-andes-documents-copilot-only.md`.
@@ -248,7 +250,8 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 - One-word body drift between `.claude/rules/blazor-wasm.md` and its Copilot twin ("Durable cross-device" vs "Durable, cross-device"), found by the new repo audit on its first run — along with the GitHub Actions Reviewer model-parity gap, now recorded as a deliberate override.
 - The Copilot `ngrx-signals-sync` prompt now mirrors refreshed skill files back into `.claude/skills/`, so a Copilot-run sync no longer silently desyncs the two harnesses. Also corrected the C# Expert's test-naming guidance to the repo's `MethodName_Scenario_ExpectedBehavior` standard and removed 11 duplicate tool entries from the C#/.NET Janitor agent frontmatter.
 
-[Unreleased]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.14.0...HEAD
+[Unreleased]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.16.0...HEAD
+[1.16.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.14.0...v1.16.0
 [1.14.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.12.0...v1.13.0
 [1.12.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.11.1...v1.12.0
