@@ -61,17 +61,17 @@ import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods } from '@ngrx/signals';
 import { setAllEntities, withEntities } from '@ngrx/signals/entities';
 import { setFulfilled, setPending, withRequestStatus } from './with-request-status';
-import { BooksService } from './books-service';
-import { Book } from './book';
+import { BooksData } from './books-data';
+import { Book } from './book.model';
 
 export const BooksStore = signalStore(
   withEntities<Book>(),
   withRequestStatus(),
-  withMethods((store, booksService = inject(BooksService)) => ({
+  withMethods((store, booksData = inject(BooksData)) => ({
     async loadAll() {
       patchState(store, setPending());
 
-      const books = await booksService.getAll();
+      const books = await booksData.getAll();
       // 👇 two updaters, one patch — impossible if `setFulfilled` were a feature method
       patchState(store, setAllEntities(books), setFulfilled());
     },
@@ -225,7 +225,7 @@ import {
   withState,
 } from '@ngrx/signals';
 import { withEntities } from '@ngrx/signals/entities';
-import { Book } from './book';
+import { Book } from './book.model';
 
 export function withBooksFilter(books: Signal<Book[]>) {
   return signalStoreFeature(

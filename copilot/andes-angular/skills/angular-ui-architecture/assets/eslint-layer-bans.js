@@ -1,6 +1,7 @@
 // @ts-check
 // ESLint flat-config blocks that enforce the dependency direction of the angular-ui-architecture skill:
-//   pages → components/<feature> → shared/components|directives|pipes → state → services → core → shared/utils → shared/models
+//   features/<feature> → core | shared; core → shared; shared → *.model.ts only; features never import each other;
+//   *.model.ts → other *.model.ts only.
 // Usage (eslint.config.js, CommonJS):
 //   const { layerBans } = require('./eslint-layer-bans');
 //   module.exports = defineConfig([/* angular-eslint and NgRx blocks */, ...layerBans(__dirname)]);
@@ -14,20 +15,9 @@ const folder = (name) => [`@${name}/*`, `**/app/${name}/*`];
 // Negate the directory itself: a gitignore matcher cannot re-include a child of an excluded directory.
 const except = (name) => [`!@${name}`, `!**/app/${name}`];
 
-const presentational = [
-  ...folder('shared/components'),
-  ...folder('shared/directives'),
-  ...folder('shared/pipes'),
-];
-
-const allOfApp = [
-  ...folder('pages'),
-  ...folder('components'),
-  ...folder('state'),
-  ...folder('services'),
-  ...folder('core'),
-  ...folder('shared'),
-];
+// Nor can it re-include files by name inside an excluded folder, so "except models" needs a regex.
+const coreExceptModels = String.raw`^(@core/|(.*/)?app/core/)(?!.*\.model$)`;
+const anyAppExceptModels = String.raw`^(@(core|shared|features)/|(.*/)?app/(core|shared|features)/|\.{1,2}/)(?!.*\.model$)`;
 
 /**
  * @param {string} rootDir the workspace root (usually `__dirname` of eslint.config.js)
@@ -35,25 +25,36 @@ const allOfApp = [
  */
 function layerBans(rootDir, { srcDir = 'src', banForms = false, skill = 'angular-ui-architecture' } = {}) {
   const see = `see the ${skill} skill`;
+  const message = `Crosses a layer boundary; ${see}.`;
   const src = srcDir.replace(/\/$/, '');
   const paths = banForms
     ? [{ name: '@angular/forms', importNames: ['FormsModule', 'ReactiveFormsModule'], message: `Use Signal Forms; ${see}.` }]
     : [];
 
-  // Flat config replaces a rule's options when blocks overlap, so each layer block repeats the forms ban.
-  const layer = (files, group) => ({
+  // Flat config replaces a rule's options when blocks overlap, so each block repeats the forms ban.
+  const block = (files, ignores, group, regexes) => ({
     files,
-    ignores: ['**/*.spec.ts'],
+    ignores,
     rules: {
       'no-restricted-imports': [
         'error',
-        { paths, patterns: [{ group, message: `Crosses a layer boundary; ${see}.` }] },
+        {
+          paths,
+          patterns: [...(group.length ? [{ group, message }] : []), ...regexes.map((regex) => ({ regex, message }))],
+        },
       ],
     },
   });
 
-  const featuresOf = (kind) => {
-    const dir = path.join(rootDir, src, 'app', kind);
+  // A folder's models get a block of their own that keeps the folder's bans and adds the model bans,
+  // because the later of two blocks matching one file would otherwise drop the earlier one's.
+  const layer = (dir, { group = [], regexes = [] }) => [
+    block([`${dir}/**/*.ts`], ['**/*.spec.ts', '**/*.model.ts'], group, regexes),
+    block([`${dir}/**/*.model.ts`], ['**/*.spec.ts'], ['@angular/*', '@ngrx/*', ...group], [anyAppExceptModels]),
+  ];
+
+  const features = () => {
+    const dir = path.join(rootDir, src, 'app', 'features');
     return fs.existsSync(dir)
       ? fs
           .readdirSync(dir, { withFileTypes: true })
@@ -62,34 +63,14 @@ function layerBans(rootDir, { srcDir = 'src', banForms = false, skill = 'angular
       : [];
   };
 
+  const app = `${src}/app`;
   return [
     ...(banForms ? [{ files: [`${src}/**/*.ts`], rules: { 'no-restricted-imports': ['error', { paths }] } }] : []),
-    layer([`${src}/app/shared/models/**/*.ts`], ['@angular/*', '@ngrx/*', ...allOfApp, ...except('shared/models')]),
-    layer(
-      [`${src}/app/shared/utils/**/*.ts`],
-      ['@angular/*', '@ngrx/*', ...allOfApp, ...except('shared/models'), ...except('shared/utils')],
-    ),
-    layer(
-      [`${src}/app/core/**/*.ts`],
-      [...presentational, ...folder('services'), ...folder('state'), ...folder('components'), ...folder('pages')],
-    ),
-    layer(
-      [`${src}/app/services/**/*.ts`],
-      [...presentational, ...folder('state'), ...folder('components'), ...folder('pages')],
-    ),
-    layer([`${src}/app/state/**/*.ts`], [...presentational, ...folder('components'), ...folder('pages')]),
-    layer(
-      [`${src}/app/shared/{components,directives,pipes}/**/*.ts`],
-      ['@state/*/*', '**/app/state/*/*', ...folder('components'), ...folder('pages')],
-    ),
-    ...featuresOf('components').map((feature) =>
-      layer(
-        [`${src}/app/components/${feature}/**/*.ts`],
-        [...folder('pages'), ...folder('components'), ...except(`components/${feature}`)],
-      ),
-    ),
-    ...featuresOf('pages').map((feature) =>
-      layer([`${src}/app/pages/${feature}/**/*.ts`], [...folder('pages'), ...except(`pages/${feature}`)]),
+    block([`${app}/*.model.ts`], ['**/*.spec.ts'], ['@angular/*', '@ngrx/*'], [anyAppExceptModels]),
+    ...layer(`${app}/shared`, { group: folder('features'), regexes: [coreExceptModels] }),
+    ...layer(`${app}/core`, { group: folder('features') }),
+    ...features().flatMap((feature) =>
+      layer(`${app}/features/${feature}`, { group: [...folder('features'), ...except(`features/${feature}`)] }),
     ),
   ];
 }

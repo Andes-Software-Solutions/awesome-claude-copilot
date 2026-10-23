@@ -19,7 +19,7 @@ State is a **deeply-signalized tree**: every object-literal member becomes a `De
 
 - **Leave `protectedState` on.** It is the default, and it is what stops components from reaching in and mutating state. `signalStore({ protectedState: false }, …)` exists, but it trades away the one guarantee that keeps data flow one-directional. Tests do not need it — use `unprotected()` from `@ngrx/signals/testing` instead.
 - **Choose the lifetime deliberately.** `signalStore({ providedIn: 'root' }, …)` gives one app-wide instance. Listing the store in a component's or route's `providers: []` ties its lifetime to that component, which is what you want for local, disposable state.
-- **Inject via default parameters** — `withMethods((store, books = inject(BooksService)) => ({ … }))`. It keeps the feature a plain function and stays testable.
+- **Inject via default parameters** — `withMethods((store, books = inject(BooksData)) => ({ … }))`. It keeps the feature a plain function and stays testable.
 - **Write state updaters as standalone functions** returning `PartialStateUpdater<T>`, not as store methods. They tree-shake, they test in isolation, and they compose in a single call: `patchState(store, setAllEntities(books), setFulfilled())`.
 - **Prefix private members with `_`.** `_totals`, `_load()` — inaccessible from outside the store, so the public surface stays intentional.
 - **One store per entity type.** Multiple collections in one store are supported, but the docs recommend dedicated stores, and it keeps each store's methods coherent.
@@ -29,8 +29,9 @@ State is a **deeply-signalized tree**: every object-literal member becomes a `De
 
 **`signalState` or `signalStore`?** `signalState` is a signalized state container and nothing more — reach for it for local component state with no behavior attached. The moment you need methods, dependency injection, lifecycle hooks, or a lifetime you control, use `signalStore`.
 
-**`rxMethod`, `signalMethod`, or a plain method?** This is the choice that most often gets made wrong.
-- **`rxMethod`** when the work can overlap or arrive out of order. Only RxJS gives you `switchMap` (cancel the in-flight request — the fix for a search-as-you-type race), `exhaustMap` (ignore clicks while a submit is in flight), and `debounceTime`. Any HTTP load driven by user input belongs here.
+**`httpResource`, `rxMethod`, `signalMethod`, or a plain method?** This is the choice that most often gets made wrong.
+- **`httpResource`** for read-only server state — Angular's default for reads, stable from v22. Declare it in `withProps` (an injection context), reading the store's signals; it refetches when they change and cancels the stale request. Wrap it in `extendResource` when it must keep the previous value while loading or must not throw on error (`references/async-and-rxjs.md`). A collection the store also changes locally (`withEntities`, optimistic updates) cannot be fed from a resource without an `effect()`, so it loads with `rxMethod` and `setAllEntities`.
+- **`rxMethod`** when the work needs operators: `debounceTime` before a search, `switchMap` to cancel a superseded request, `exhaustMap` to ignore clicks while a submit is in flight. Writes driven by user input belong here.
 - **`signalMethod`** when you need to react to a signal but need no operators. It is `rxMethod` without RxJS and is markedly smaller — `rxjs` is only an *optional* peer of `@ngrx/signals`. It cannot cancel or sequence, so it is the wrong tool for racing requests.
 - **A plain method** in `withMethods` for a one-shot imperative call. Not everything needs to be reactive.
 
@@ -54,7 +55,7 @@ export const BooksStore = signalStore(
       return entities().toSorted((a, b) => dir * a.title.localeCompare(b.title));
     },
   })),
-  withMethods((store, books = inject(BooksService)) => ({
+  withMethods((store, books = inject(BooksData)) => ({
     loadByQuery: rxMethod<string>(
       pipe(
         debounceTime(300),

@@ -24,7 +24,7 @@ agents: ["andes-angular-code-reviewer", "andes-github-actions-reviewer", "andes-
 
 # Angular Expert
 
-You implement Angular features with clean, fast, secure, accessible, and maintainable code: standalone components, `OnPush`, signals-first, zoneless assumed. You never trust memory for version-specific behavior — the workspace's pinned version decides.
+You implement Angular features with clean, fast, secure, accessible, and maintainable code: standalone, OnPush, signals-first, zoneless, in Angular's feature-first layout with the CLI's default names. Angular's own rules come first (`angular-standards` gives the order). You never trust memory for version-specific behavior — the workspace's pinned version decides.
 
 ## Workflow
 
