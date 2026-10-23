@@ -1,6 +1,6 @@
 # Async & RxJS in a SignalStore
 
-How a SignalStore talks to HTTP and other async sources: `rxMethod` (the RxJS-powered reactive
+How a SignalStore talks to HTTP and other async sources: `httpResource` for reads, `rxMethod` (the RxJS-powered reactive
 method), `signalMethod` (the RxJS-free reactive method), and the cleanup rules that decide whether
 your subscriptions leak. RxJS is an *optional* peer dependency of `@ngrx/signals` — the RxJS APIs
 live behind the `@ngrx/signals/rxjs-interop` entry point.
@@ -9,11 +9,47 @@ Store shape (`withState` / `withComputed` / `withMethods`) is covered in
 `references/store-composition.md`; `withEntities` in `references/entity-management.md`; reusable
 features such as `withRequestStatus` in `references/custom-features.md`.
 
-**Contents:** [rxMethod](#rxmethod) · [the signal-in idiom](#the-signal-in-idiom-declarative-auto-refetch) ·
+**Contents:** [reads with httpResource](#reads-with-httpresource) · [rxMethod](#rxmethod) · [the signal-in idiom](#the-signal-in-idiom-declarative-auto-refetch) ·
 [the canonical load pipeline](#the-canonical-load-pipeline) · [choosing the flattening operator](#choosing-the-flattening-operator) ·
 [tapResponse](#tapresponse-keeps-the-stream-alive) · [signalMethod](#signalmethod) ·
 [rxMethod vs signalMethod](#rxmethod-vs-signalmethod) · [cleanup, injectors, and the deprecation](#cleanup-injectors-and-the-deprecation) ·
 [resource extensions (experimental)](#resource-extensions-experimental)
+
+## Reads with httpResource
+
+Angular's default for a server read is `httpResource`: it fetches when created, refetches when a
+signal it reads changes, and cancels the pending request when it does. In a store, declare it in
+`withProps` — the factory runs in an injection context — and read the store's signals inside it:
+
+```ts
+import { httpResource } from '@angular/common/http';
+import { patchState, signalStore, withComputed, withMethods, withProps, withState } from '@ngrx/signals';
+import { Book } from './book.model';
+
+export const BooksStore = signalStore(
+  withState({ query: '' }),
+  withProps(({ query }) => ({
+    _books: httpResource<Book[]>(() => `/api/books?q=${encodeURIComponent(query())}`),
+  })),
+  withComputed(({ _books }) => ({
+    books: () => (_books.hasValue() ? _books.value() : []), // value() throws in the error state
+    isLoading: () => _books.isLoading(),
+    error: () => _books.error(),
+  })),
+  withMethods((store) => ({
+    setQuery: (query: string) => patchState(store, { query }), // the resource refetches
+  })),
+);
+```
+
+Keep the resource private (`_`) and expose computed signals, so components never reach into it. The
+generic type is an assertion, not a check — validate untrusted data. `httpResource` is stable from
+Angular 22 (experimental before). It suits read-only server state; a collection the store also
+changes locally (`withEntities`) loads with `rxMethod` and `setAllEntities` instead, as in
+`references/recipes.md`. Reach for `rxMethod` too when the read needs operators (`debounceTime`
+before a search-as-you-type) and for writes; wrap the resource
+in `extendResource` when it must keep the previous value or must not throw on error
+([resource extensions](#resource-extensions-experimental)).
 
 ## rxMethod
 
@@ -50,10 +86,10 @@ For a method that takes no argument, use `void` as the generic:
 ```ts
 loadAllBooks: rxMethod<void>(
   exhaustMap(() =>
-    booksService.getAll().pipe(
+    booksData.getAll().pipe(
       tapResponse({
-        next: (books) => patchState(store, { books }),
-        error: console.error,
+        next: (books) => patchState(store, { books, error: null }),
+        error: (err: Error) => patchState(store, { error: err.message }), // never console-only
       })
     )
   )
@@ -68,7 +104,7 @@ signal changes — no `effect`, no manual subscribe, no re-invocation from the c
 ```ts
 export const BookSearchStore = signalStore(
   withState(initialState),
-  withMethods((store, booksService = inject(BooksService)) => ({
+  withMethods((store, booksData = inject(BooksData)) => ({
     updateQuery(query: string): void {
       patchState(store, (state) => ({ filter: { ...state.filter, query } }));
     },
@@ -102,7 +138,7 @@ loadByQuery: rxMethod<string>(
     distinctUntilChanged(),                             // 2
     tap(() => patchState(store, setPending())),         // 3
     switchMap((query) =>                                // 4
-      booksService.getByQuery(query).pipe(
+      booksData.getByQuery(query).pipe(
         tapResponse({                                   // 5
           next: (books) => patchState(store, { books }, setFulfilled()),
           error: (err: Error) => patchState(store, setError(err.message)),
@@ -151,8 +187,8 @@ callback that runs on both the success and error paths — a tidy place to clear
 
 ```ts
 tapResponse({
-  next: (books) => patchState(store, { books }),
-  error: console.error,
+  next: (books) => patchState(store, { books, error: null }),
+  error: (err: Error) => patchState(store, { error: err.message }),
   finalize: () => patchState(store, { isLoading: false }),
 });
 ```
@@ -203,7 +239,7 @@ an in-flight request or sequence overlapping ones. Decision rule:
 
 Both `rxMethod` and `signalMethod` must be *created* in an injection context, and both bind their
 subscription/effect to an injector's lifetime. When the method is created in an **ancestor** injector
-(a `providedIn: 'root'` store or service) and *called* from a component **outside** an injection
+(a root-provided store or service) and *called* from a component **outside** an injection
 context, the subscription binds to the root injector, outlives the component, and leaks.
 
 Calling a reactive method with a signal, a computation function, or an observable outside an
@@ -212,30 +248,30 @@ Either call it in an injection context (constructor, field initializer, `withHoo
 pass the injector via the config parameter.
 
 ```ts
-@Injectable({ providedIn: 'root' })
-export class NumbersService {
+@Service()
+export class NumberLogger {
   readonly log = rxMethod<number>(tap(console.log));
 }
 
 @Component({ /* ... */ })
 export class Numbers implements OnInit {
   readonly #injector = inject(Injector);
-  readonly #numbersService = inject(NumbersService);
+  readonly #numberLogger = inject(NumberLogger);
 
   constructor() {
     // ✅ injection context: cleaned up when the component is destroyed.
-    this.#numbersService.log(interval(1_000));
+    this.#numberLogger.log(interval(1_000));
   }
 
   ngOnInit(): void {
     // ⚠️ not an injection context — pass the component injector explicitly,
     // otherwise cleanup waits for the root injector (i.e. never).
-    this.#numbersService.log(interval(2_000), { injector: this.#injector });
+    this.#numberLogger.log(interval(2_000), { injector: this.#injector });
   }
 }
 ```
 
-Static values need no injector: `this.#numbersService.log(2)` in `ngOnInit` is fine.
+Static values need no injector: `this.#numberLogger.log(2)` in `ngOnInit` is fine.
 
 ### Manual teardown and creation outside an injection context
 
@@ -263,9 +299,10 @@ without standard breaking-change announcements. It customizes an Angular `Resour
 `extendResource` wraps an existing resource and patches only the behavior that should change, fully
 preserving the original resource type (including `WritableResource`).
 
-It exists because two common needs are not configurable at the resource level: while a resource
-reloads, `value()` resets to `undefined` until the new data arrives; and in the error state, reading
-`value()` throws.
+It exists because two common needs are not configurable at the resource level: when a resource's
+params change and it loads again (status `'loading'`), `value()` resets to `undefined` until the new
+data arrives — a `.reload()` (status `'reloading'`) keeps the previous value; and in the error state,
+reading `value()` throws.
 
 ```ts
 import { httpResource } from '@angular/common/http';

@@ -26,11 +26,13 @@ You are **read-only**: you review and report. Never edit, write, or delete files
 
 Every non-negotiable in `angular-standards`, highest-signal traps first:
 
-- **Signals** — writes inside `computed()`; `effect()` propagating state; un-called signals; reads after `await`; manual `subscribe()` without `takeUntilDestroyed()`.
-- **Components & templates** — missing `OnPush`; decorator inputs/outputs; legacy structural directives; unstable `track`; logic in templates.
-- **State** — hand-rolled `BehaviorSubject` services; `protectedState` off; mutating updaters; `signalMethod` for racing HTTP.
-- **SSR, security, accessibility** — browser globals at construction; `bypassSecurityTrust*` or `[innerHTML]` with untrusted data (High by default); unlabeled controls or keyboard traps.
-- **Zoneless & tests** — zone.js reliance; `fakeAsync` / `detectChanges()` instead of `await fixture.whenStable()`; critical paths without specs.
+- **Signals** — writes inside `computed()`; `effect()` propagating state; un-called signals; reads after `await`; manual `subscribe()` without `takeUntilDestroyed()`; a resource's `value()` read without `hasValue()`.
+- **Components & templates** — on v22+ a redundant `OnPush` or a new `Eager` with no stated reason, below v22 a missing `OnPush`; decorator inputs, outputs, or queries; `ngClass` / `ngStyle` / `CommonModule`; legacy structural directives; unstable `track`; complex logic in templates; `<ng-content>` inside control flow.
+- **DI & routing** — `@Injectable({ providedIn: 'root' })` where `@Service()` applies (v22+); constructor injection; a lazy primary landing page or an unlisted eager route.
+- **State & HTTP** — hand-rolled `BehaviorSubject` services; `protectedState` off; mutating updaters; `signalMethod` for racing HTTP; on v22+, `rxMethod` or `subscribe()` for read-only server state that `httpResource` covers (a `withEntities` collection the store changes locally rightly loads with `rxMethod`); untrusted responses used unvalidated.
+- **SSR, security, accessibility** — browser globals at construction or the global `document`; `bypassSecurityTrust*` or `[innerHTML]` with untrusted data (High by default); unlabeled controls or keyboard traps.
+- **Placement & naming** — a type folder (`components/`, `services/`, `models/`, `state/`); a cross-feature import; a name that is not the CLI default in a feature that uses them.
+- **Zoneless & tests** — zone.js reliance or `provideZoneChangeDetection()`; `fakeAsync`, `detectChanges()`, or `markForCheck()` instead of `await fixture.whenStable()`; a mocked `Router`; critical paths without specs.
 
 ## Output format
 

@@ -28,7 +28,7 @@ The architecture, once you opt in, is four pieces: **Event** (something happened
 ```ts
 import { type } from '@ngrx/signals';
 import { event } from '@ngrx/signals/events';
-import { Book } from './book';
+import { Book } from './book.model';
 
 export const opened = event('[Book Search Page] Opened');
 export const queryChanged = event('[Book Search Page] Query Changed', type<string>());
@@ -44,7 +44,7 @@ The docs recommend the `"[Source] EventName"` pattern for event types — it kee
 ```ts
 import { type } from '@ngrx/signals';
 import { eventGroup } from '@ngrx/signals/events';
-import { Book } from './book';
+import { Book } from './book.model';
 
 export const bookSearchEvents = eventGroup({
   source: 'Book Search Page',
@@ -74,7 +74,7 @@ import { signalStore, withState } from '@ngrx/signals';
 import { on, withReducer } from '@ngrx/signals/events';
 import { bookSearchEvents } from './book-search-events';
 import { booksApiEvents } from './books-api-events';
-import { Book } from './book';
+import { Book } from './book.model';
 
 type State = { query: string; books: Book[]; isLoading: boolean };
 
@@ -100,16 +100,16 @@ import { inject } from '@angular/core';
 import { switchMap, tap } from 'rxjs';
 import { Events, withEventHandlers } from '@ngrx/signals/events';
 import { mapResponse } from '@ngrx/operators';
-import { BooksService } from './books-service';
+import { BooksData } from './books-data';
 
 export const BookSearchStore = signalStore(
   // ...withState / withReducer
-  withEventHandlers((store, events = inject(Events), booksService = inject(BooksService)) => ({
+  withEventHandlers((store, events = inject(Events), booksData = inject(BooksData)) => ({
     loadBooksByQuery$: events
       .on(bookSearchEvents.opened, bookSearchEvents.queryChanged)
       .pipe(
         switchMap(() =>
-          booksService.getByQuery(store.query()).pipe(
+          booksData.getByQuery(store.query()).pipe(
             mapResponse({
               next: (books) => booksApiEvents.loadedSuccess(books),
               error: (error: { message: string }) => booksApiEvents.loadedFailure(error.message),
@@ -166,8 +166,8 @@ import { bookSearchEvents } from './book-search-events';
   providers: [BookSearchStore],
 })
 export class BookSearch {
-  readonly store = inject(BookSearchStore);
-  readonly dispatch = injectDispatch(bookSearchEvents);
+  protected readonly store = inject(BookSearchStore);
+  protected readonly dispatch = injectDispatch(bookSearchEvents);
 
   constructor() {
     this.dispatch.opened();

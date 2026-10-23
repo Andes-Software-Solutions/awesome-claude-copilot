@@ -1,6 +1,6 @@
 ---
 name: andes-scaffold
-description: "Scaffold a new Andes project at the repository root: `<name>-api/` (a .NET 10 Minimal API solution with Api, Service, Repository, Entity, Dto, and Common projects plus unit and integration tests, the global exception handler and SQL persistence wired) and/or `<name>-ui/` (an Angular workspace with the kind-first src/app layout, path aliases, and layer lint). Run on request only."
+description: "Scaffold a new Andes project at the repository root: `<name>-api/` (a .NET 10 Minimal API solution with Api, Service, Repository, Entity, Dto, and Common projects plus unit and integration tests, the global exception handler and SQL persistence wired) and/or `<name>-ui/` (an Angular workspace with the feature-first src/app layout, path aliases, and layer lint). Run on request only."
 ---
 
 # andes-scaffold

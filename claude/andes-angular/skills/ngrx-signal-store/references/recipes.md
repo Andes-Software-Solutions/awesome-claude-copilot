@@ -17,7 +17,7 @@ Nearly every store that talks to a network needs "is it loading, did it fail". W
 The updaters are standalone functions rather than feature methods on purpose: they tree-shake, they are trivial to unit test, and they compose with *other* updaters in one `patchState` call.
 
 ```ts
-// request-status.feature.ts
+// with-request-status.ts
 import { computed } from '@angular/core';
 import { signalStoreFeature, withComputed, withState, type PartialStateUpdater } from '@ngrx/signals';
 
@@ -58,16 +58,16 @@ Because a status can only be one of these at a time, "loading and errored simult
 The default shape for a collection backed by an API.
 
 ```ts
-// books.store.ts
+// books-store.ts
 import { computed, inject } from '@angular/core';
 import { patchState, signalStore, withComputed, withHooks, withMethods, withState } from '@ngrx/signals';
 import { addEntity, removeEntity, setAllEntities, updateEntity, withEntities } from '@ngrx/signals/entities';
 import { rxMethod } from '@ngrx/signals/rxjs-interop';
 import { tapResponse } from '@ngrx/operators';
 import { pipe, switchMap, tap } from 'rxjs';
-import { Book } from './book';
-import { BooksService } from './books.service';
-import { setError, setFulfilled, setPending, withRequestStatus } from './request-status.feature';
+import { Book } from './book.model';
+import { BooksData } from './books-data';
+import { setError, setFulfilled, setPending, withRequestStatus } from './with-request-status';
 
 type BooksState = { order: 'asc' | 'desc' };
 
@@ -84,12 +84,12 @@ export const BooksStore = signalStore(
     },
     booksCount: computed(() => entities().length),
   })),
-  withMethods((store, booksService = inject(BooksService)) => ({
+  withMethods((store, booksData = inject(BooksData)) => ({
     load: rxMethod<void>(
       pipe(
         tap(() => patchState(store, setPending())),
         switchMap(() =>
-          booksService.getAll().pipe(
+          booksData.getAll().pipe(
             tapResponse({
               next: (books) => patchState(store, setAllEntities(books), setFulfilled()),
               error: (err: Error) => patchState(store, setError(err.message)),
@@ -132,12 +132,11 @@ export const BooksStore = signalStore(
 The store is injected like any service. Its signals are read directly in the template — no `async` pipe, no subscription, no teardown.
 
 ```ts
-import { ChangeDetectionStrategy, Component, inject } from '@angular/core';
-import { BooksStore } from './books.store';
+import { Component, inject } from '@angular/core';
+import { BooksStore } from './books-store';
 
 @Component({
   selector: 'app-books',
-  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
     @if (store.isPending()) {
       <app-spinner />
@@ -152,8 +151,8 @@ import { BooksStore } from './books.store';
     }
   `,
 })
-export class BooksComponent {
-  readonly store = inject(BooksStore);
+export class Books {
+  protected readonly store = inject(BooksStore);
 }
 ```
 
@@ -181,8 +180,8 @@ export const BookFilterStore = signalStore(
   providers: [BookFilterStore], // lifetime tied to this component
   // ...
 })
-export class BookFilterComponent {
-  readonly store = inject(BookFilterStore);
+export class BookFilter {
+  protected readonly store = inject(BookFilterStore);
 }
 ```
 
@@ -198,7 +197,7 @@ export const BookSearchStore = signalStore(
   withState({ query: '' }),
   withEntities<Book>(),
   withRequestStatus(),
-  withMethods((store, booksService = inject(BooksService)) => ({
+  withMethods((store, booksData = inject(BooksData)) => ({
     updateQuery(query: string): void {
       patchState(store, { query });
     },
@@ -209,7 +208,7 @@ export const BookSearchStore = signalStore(
         distinctUntilChanged(),   // ignore a re-emit of the same query
         tap(() => patchState(store, setPending())),
         switchMap((query) =>      // a newer query cancels the request already in flight
-          booksService.search(query).pipe(
+          booksData.search(query).pipe(
             tapResponse({
               next: (books) => patchState(store, setAllEntities(books), setFulfilled()),
               error: (err: Error) => patchState(store, setError(err.message)),
@@ -271,7 +270,7 @@ Also a `watchState` job, for the same reason: skipping intermediate states would
 Two things make this correct. First, the watcher and the `undo`/`redo` methods share a `_restoring` flag — a plain mutable object in `withProps`, visible to both — so the writes that undo/redo themselves perform are not recorded as new history. Second, `_history` always holds the **current** state on top: `watchState` fires synchronously with the initial state, seeding the stack, so `undo()` pops the current state onto the redo stack and restores what is underneath.
 
 ```ts
-// undo-redo.feature.ts
+// with-undo-redo.ts
 import {
   patchState,
   signalStoreFeature,

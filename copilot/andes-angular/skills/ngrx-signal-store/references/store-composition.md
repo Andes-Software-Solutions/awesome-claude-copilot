@@ -15,7 +15,7 @@ All APIs here come from `@ngrx/signals` core. Entities, RxJS/async, testing, cus
 // Local: instance tied to the component/route lifetime — the right default for component state.
 @Component({ providers: [BookSearchStore] })
 export class BookSearch {
-  readonly store = inject(BookSearchStore);
+  protected readonly store = inject(BookSearchStore);
 }
 
 // Global: a single shared instance for the whole app.
@@ -30,7 +30,7 @@ Adds state slices. The type must be a record/object literal; an array at the roo
 
 ```ts
 import { signalStore, withState } from '@ngrx/signals';
-import { Book } from './book';
+import { Book } from './book.model';
 
 type BookSearchState = {
   books: Book[];
@@ -127,16 +127,16 @@ A factory (injection context) returning the store's methods — state updates an
 ```ts
 import { inject } from '@angular/core';
 import { patchState, signalStore, withMethods, withState } from '@ngrx/signals';
-import { BooksService } from './books-service';
+import { BooksData } from './books-data';
 
 export const BookSearchStore = signalStore(
   withState(initialState),
-  withMethods((store, booksService = inject(BooksService)) => ({
+  withMethods((store, booksData = inject(BooksData)) => ({
     updateQuery: (query: string) =>
       patchState(store, (state) => ({ filter: { ...state.filter, query } })),
     async loadAll(): Promise<void> {
       patchState(store, { isLoading: true });
-      const books = await booksService.getAll();
+      const books = await booksData.getAll();
       patchState(store, { books, isLoading: false });
     },
   }))
@@ -157,15 +157,15 @@ export const BooksStore = signalStore(
   withState<BooksState>({ books: [], isLoading: false }),
   withProps(({ isLoading }) => ({
     isLoading$: toObservable(isLoading),
-    booksService: inject(BooksService),
+    booksData: inject(BooksData),
     logger: inject(Logger),
   })),
   // 👇 pull deps out; `...store` stays a valid patchState target
-  withMethods(({ booksService, logger, ...store }) => ({
+  withMethods(({ booksData, logger, ...store }) => ({
     async loadBooks(): Promise<void> {
       logger.debug('Loading books...');
       patchState(store, { isLoading: true });
-      const books = await booksService.getAll();
+      const books = await booksData.getAll();
       patchState(store, { books, isLoading: false });
     },
   })),

@@ -6,8 +6,9 @@ rules rather than from a missing API.
 
 Examples follow upstream in using Vitest browser mode (`vitest/browser`'s `page`, `expect.element`,
 `expect.poll`, `vi.fn()`, `TestBed.tick()`). The *patterns* — TestBed, `unprotected`, mock the
-service not the store — are runner-agnostic and carry over to Jest or Karma; only the polling/flush
-helpers differ (`fakeAsync` + `tick()`, `await fixture.whenStable()`, `jest.fn()`).
+service not the store — are runner-agnostic and carry over to Jest; only the polling/flush helpers
+differ (`await fixture.whenStable()`, the runner's fake timers, `jest.fn()`). Never `fakeAsync` +
+`tick()`: they need zone.js, and `TestBed` is zoneless (`angular-standards`).
 
 ## Doctrine
 
@@ -99,15 +100,15 @@ Register the dependency with `useValue` and supply an object implementing only t
 actually calls.
 
 ```ts
-// store: withMethods((store, stepService = inject(StepService)) => ({
-//   increment() { patchState(store, ({ count }) => ({ count: count + stepService.getStep() })); },
+// store: withMethods((store, stepData = inject(StepData)) => ({
+//   increment() { patchState(store, ({ count }) => ({ count: count + stepData.getStep() })); },
 // }))
 
 it('increments by the step returned by the injected service', () => {
-  const mockStepService = { getStep: () => 3 };
+  const mockStepData = { getStep: () => 3 };
 
   TestBed.configureTestingModule({
-    providers: [{ provide: StepService, useValue: mockStepService }],
+    providers: [{ provide: StepData, useValue: mockStepData }],
   });
   const store = TestBed.inject(CounterStore);
 
@@ -191,7 +192,7 @@ it('updates displayed count when the mock implements increment', async () => {
 
   TestBed.configureTestingModule({
     providers: [{ provide: CounterStore, useValue: mockStore }],
-  }).createComponent(CounterComponent);
+  }).createComponent(Counter);
 
   await expect.element(page.getByLabelText('count')).toHaveTextContent('0');
   await page.getByRole('button', { name: 'Increment' }).click();
