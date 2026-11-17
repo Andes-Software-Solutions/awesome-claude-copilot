@@ -1,102 +1,55 @@
 ---
 name: azure-functions-csharp
-description: "Use when building or reviewing Azure Functions in C# (isolated worker): triggers and bindings, host.json and local.settings.json, DI, retries, observability, scaling, security, testing, and in-process migration."
+description: "Use when building or reviewing Azure Functions in C# (.NET isolated worker): triggers and bindings, host.json and local.settings.json, DI, retries, OpenTelemetry, Flex Consumption hosting, security, testing, and migrating off the retired in-process model."
 ---
 
-# Azure Functions C# Development
+# Azure Functions in C#
 
-## General Instructions
+## Model and host
 
-- Always use the **isolated worker model** (not the legacy in-process model) for all new Azure Functions projects targeting .NET 6 or later.
-- Use `FunctionsApplication.CreateBuilder(args)` or `HostBuilder` in `Program.cs` for host setup and dependency injection.
-- Decorate function methods with `[Function("FunctionName")]` and use strongly typed trigger and binding attributes.
-- Keep function methods focused — each function should do one thing and delegate business logic to injected services.
-- Never put business logic directly inside the function method body; extract it into testable service classes registered via DI.
-- Inject `ILogger<T>` through the class's primary constructor (captured into `_logger`), not as a function parameter; log through `[LoggerMessage]` methods in the class's Logging region, per `csharp-standards`.
-- Always use `async/await` for all I/O-bound operations; never block with `.Result` or `.Wait()`.
-- Prefer `CancellationToken` parameters where supported to enable graceful shutdown.
+- **Isolated worker model only**, on .NET 10 (the current LTS). The in-process model's support ended on 10 November 2026: flag any `FunctionsStartup` / `IWebJobsStartup` / `Microsoft.NET.Sdk.Functions` project and migrate it per [Migrate .NET apps to the isolated worker model](https://learn.microsoft.com/azure/azure-functions/migrate-dotnet-to-isolated-model).
+- Host setup in `Program.cs` with `FunctionsApplication.CreateBuilder(args)`; call `builder.ConfigureFunctionsWebApplication()` for ASP.NET Core HTTP integration.
+- Project SDK `<Project Sdk="Azure.Functions.Sdk/1.0.x">` (it replaces the `Microsoft.Azure.Functions.Worker.Sdk` package and sets `OutputType` / `AzureFunctionsVersion`; never reference both, AZFW0105), plus an explicit `Microsoft.Azure.Functions.Worker` and the `Microsoft.Azure.Functions.Worker.Extensions.*` packages.
+- `[Function("Name")]` methods stay thin: bind the input, call an injected service, return. Business logic lives in DI-registered services (`csharp-standards` layout, `[LoggerMessage]` logging, `csharp-async` rules); group functions into classes by domain concern, not by trigger type.
+- Inject `ILogger<T>` through the class's primary constructor, not as a function parameter.
 
-## Project Structure and Setup
+## Configuration and identity
 
-- Use the `Microsoft.Azure.Functions.Worker` and `Microsoft.Azure.Functions.Worker.Extensions.*` NuGet packages.
-- Register services in `Program.cs` using `builder.Services.Add*` extension methods for clean dependency injection.
-- Group related functions into separate classes by domain concern, not by trigger type.
-- Store configuration in `local.settings.json` for local development; use Azure App Configuration or Application Settings for deployed environments.
-- Never hardcode connection strings or secrets in code; always read from `IConfiguration` or environment variables.
-- Use Key Vault references (`@Microsoft.KeyVault(SecretUri=...)`) in App Settings for secrets in deployed environments.
-- Use `Managed Identity` (`DefaultAzureCredential`) for authenticating to Azure services — avoid connection strings with keys wherever possible.
-- Keep `host.json` tuned per trigger type: configure `maxConcurrentCalls`, `batchSize`, and retry policies at the host level.
+- `local.settings.json` for local development only (never committed with secrets); App Settings or Azure App Configuration when deployed, read through `IOptions<T>`.
+- Secrets through Key Vault references (`@Microsoft.KeyVault(SecretUri=...)`); identity-based connections (`<Connection>__serviceUri` / `__fullyQualifiedNamespace`) instead of keys or connection strings. Credential choice per `csharp-standards`.
+- Register Azure SDK clients once with `builder.Services.AddAzureClients(...)` (`Microsoft.Extensions.Azure`) and `HttpClient` through `IHttpClientFactory`; no `static` state in function classes.
 
-## Triggers
+## Triggers and bindings
 
-- **HttpTrigger**: Use `AuthorizationLevel.Function` or higher for production endpoints; reserve `AuthorizationLevel.Anonymous` only for public-facing APIs with explicit justification. Use ASP.NET Core integration (`UseMiddleware`, `IActionResult` returns) when using the ASP.NET Core integration model — `IActionResult` here is the Functions HTTP result type, not an MVC controller, and is allowed.
-- **TimerTrigger**: Use NCRONTAB expressions (`"0 */5 * * * *"`) for schedules; avoid `RunOnStartup = true` in production as it executes immediately on every cold start.
-- **QueueTrigger / ServiceBusTrigger**: Configure `MaxConcurrentCalls`, dead-letter policies, and `MaxDeliveryCount` in `host.json` and Azure portal; handle `ServiceBusReceivedMessage` directly for advanced message control (complete, abandon, dead-letter).
-- **BlobTrigger**: Prefer Event Grid-based blob triggers (`Microsoft.Azure.Functions.Worker.Extensions.EventGrid`) over polling-based blob triggers for lower latency and reduced storage transaction costs.
-- **EventHubTrigger**: Set `cardinality` to `many` for batch processing; use `EventData[]` or `string[]` parameter types for batch mode; always checkpoint using the `EventHubTriggerAttribute`'s built-in checkpointing.
-- **CosmosDBTrigger**: Use the change feed trigger for event-driven processing of Cosmos DB changes; set `LeaseContainerName` and manage lease containers separately from data containers.
+Trigger-specific rules (HTTP authorization levels, Timer, Queue and Service Bus settlement, Event Grid blob triggers, Event Hubs batching, Cosmos DB change feed) and binding choices: [references/triggers-and-bindings.md](references/triggers-and-bindings.md).
 
-## Input and Output Bindings
+## Errors and retries
 
-- Use input bindings to read data declaratively rather than using SDKs directly inside function bodies where the binding covers the use case.
-- For multiple output bindings, define a custom return type with properties annotated with the appropriate output binding attributes (e.g., `[QueueOutput]`, `[BlobOutput]`, `[HttpResult]`).
-- Use `[BlobInput]` and `[BlobOutput]` for blob read/write; prefer `Stream` over `byte[]` for large blobs to avoid memory pressure.
-- Use `[CosmosDBInput]` for point reads and simple queries; for complex queries, inject `CosmosClient` via DI with `Managed Identity`.
-- Use `[ServiceBusOutput]` for single-message sends; inject `ServiceBusSender` via DI for batching or advanced send scenarios.
-- Avoid mixing SDK clients obtained via DI with binding-based I/O for the same resource — choose one pattern per resource to maintain consistency.
+- Retry policies are per function: `[FixedDelayRetry]` or `[ExponentialBackoffRetry]`, supported only on Timer, Event Hubs, and Kafka triggers in the isolated worker (verify per extension version). Queue and Service Bus retry through redelivery — the queue's `maxDequeueCount` or the entity's `MaxDeliveryCount` — then dead-letter.
+- Transient faults on outbound calls: `Microsoft.Extensions.Http.Resilience` or Polly v8 `ResiliencePipeline`. Never hand-rolled retries with `Thread.Sleep` / `Task.Delay`.
+- Catch only to add context (correlation ID, message ID) and rethrow, so the runtime retries or dead-letters; never swallow.
+- HTTP functions return errors as Problem Details like the APIs do (`aspnet-rest-apis`): `TypedResults.ValidationProblem` / `TypedResults.Problem` with ASP.NET Core integration, never `BadRequestObjectResult` bodies.
 
-## Dependency Injection and Configuration
+## Observability
 
-- Register all external clients (e.g., `BlobServiceClient`, `ServiceBusClient`, `CosmosClient`) as singletons using `services.AddAzureClients()` from the `Azure.Extensions.AspNetCore.Configuration.Secrets` package with `DefaultAzureCredential`.
-- Use `IOptions<T>` or `IOptionsMonitor<T>` for strongly typed configuration sections.
-- Avoid using `static` state in functions; all shared state should flow through DI-registered services.
-- Register `HttpClient` instances via `IHttpClientFactory` to manage connection pooling and avoid socket exhaustion.
+- OpenTelemetry with the Azure Monitor exporter: `Microsoft.Azure.Functions.Worker.OpenTelemetry` + `Azure.Monitor.OpenTelemetry.Exporter`, `builder.Services.AddOpenTelemetry().UseFunctionsWorkerDefaults().UseAzureMonitorExporter()`, and `"telemetryMode": "OpenTelemetry"` in `host.json`. The classic Application Insights SDK (`AddApplicationInsightsTelemetryWorkerService`, `TelemetryClient`) is legacy — migrate it.
+- Host and worker log levels are configured separately: `host.json` `logging` affects only the host; set worker levels in `appsettings.json` or code.
+- Trace across functions with `ActivitySource`.
 
-## Error Handling and Retry
+## Hosting and performance
 
-- Configure built-in retry policies in `host.json` using `"retry"` with `fixedDelay` or `exponentialBackoff` strategy for trigger-level retries.
-- For transient fault handling at the code level, use `Microsoft.Extensions.Http.Resilience` or Polly v8 (`ResiliencePipeline`) with retry, circuit breaker, and timeout strategies.
-- Always catch specific exceptions and log them with structured context (e.g., correlation ID, input identifier) before re-throwing or dead-lettering.
-- Use dead-letter queues for messages that fail after all retries; never silently swallow exceptions in function handlers.
-- For HTTP triggers, return appropriate `IActionResult` types (`BadRequestObjectResult`, `NotFoundObjectResult`) rather than throwing exceptions for expected error conditions.
-
-## Observability and Logging
-
-- Log with `[LoggerMessage]`-generated methods carrying structured properties (`LogProcessingMessage(_logger, messageId)` declared as `private static partial void LogProcessingMessage(ILogger logger, string messageId)`), never direct `_logger.LogInformation(...)` calls.
-- Configure Application Insights via `builder.Services.AddApplicationInsightsTelemetryWorkerService()` and `builder.Logging.AddApplicationInsights()` in `Program.cs`.
-- Use `TelemetryClient` for custom events, metrics, and dependency tracking beyond what is automatically collected.
-- Set appropriate log levels in `host.json` under `"logging"` to avoid excessive telemetry costs in production.
-- Use `Activity` and `ActivitySource` from `System.Diagnostics` for distributed tracing context propagation between functions and downstream services.
-- Avoid logging sensitive data (PII, secrets, connection strings) in any log statement.
-
-## Performance and Scalability
-
-- Keep function startup time minimal: defer expensive initialization to lazy-loaded singletons, not the function constructor.
-- Use the Consumption plan for event-driven, unpredictable workloads; use Premium or Dedicated plans for low-latency, high-throughput, or VNet-integrated scenarios.
-- For CPU-intensive work, offload to a background `Task` or use Durable Functions rather than blocking the function host thread.
-- Batch operations where possible: process `IEnumerable<EventData>` or `ServiceBusReceivedMessage[]` arrays in a single function invocation rather than one message at a time.
-- Set `FUNCTIONS_WORKER_PROCESS_COUNT` and `maxConcurrentCalls` appropriately for the hosting plan and expected throughput.
-- Enable `WEBSITE_RUN_FROM_PACKAGE=1` in App Settings for faster cold starts by running directly from a deployment package.
+- **Flex Consumption** for event-driven and HTTP workloads (Linux Consumption does not run .NET 10); Premium or Dedicated only for needs Flex cannot meet. Flex deploys from its own storage container — never set `WEBSITE_RUN_FROM_PACKAGE` there; on other plans, run from a package.
+- Keep startup cheap: no expensive work in constructors or `Program.cs` beyond registration.
+- Long or CPU-heavy work goes to Durable Functions or a queue-triggered function, never a background `Task` that outlives the invocation.
+- Process batches (`EventData[]`, `ServiceBusReceivedMessage[]`) in one invocation where the trigger supports it.
 
 ## Security
 
-- Always validate and sanitize HTTP trigger inputs before processing with FluentValidation (`IValidator<T>` resolved from DI); never DataAnnotations.
-- Use `AuthorizationLevel.Function` with function keys stored in Key Vault for internal API-to-API calls.
-- Integrate Azure API Management (APIM) in front of HTTP-triggered functions for public-facing APIs to handle auth, rate limiting, and routing.
-- Restrict inbound access using App Service networking features (IP restrictions, Private Endpoints) for sensitive functions.
-- Never log request bodies containing PII or secrets.
+- Validate HTTP inputs with FluentValidation (`IValidator<T>` from DI); never DataAnnotations.
+- `AuthorizationLevel.Function` or Entra ID authentication in production; `Anonymous` only for public endpoints with a stated reason. Put Azure API Management in front of public APIs for auth, rate limiting, and routing.
+- Restrict inbound access (access restrictions, private endpoints) for internal functions.
 
 ## Testing
 
-- Unit-test service classes independently of the function host with xUnit + NSubstitute (see the `csharp-xunit` skill).
-- Integration-test functions using `Azurite` (local Azure Storage emulator) and `TestServer` or the Azure Functions Core Tools.
-- Use the `Microsoft.Azure.Functions.Worker.Testing` helpers where available to construct `FunctionContext` instances.
-- Avoid testing the trigger plumbing itself; focus tests on the business logic extracted into services.
-
-## Existing Code Review Guidance
-
-- If a project uses the legacy **in-process model** (`FunctionsStartup`, `IWebJobsStartup`), suggest migrating to the isolated worker model and provide the migration path via `dotnet-isolated-process-guide`.
-- If hardcoded connection strings or storage account keys are found in code or config files, flag them and suggest replacing with `DefaultAzureCredential` and Key Vault references.
-- If `RunOnStartup = true` is set on a `TimerTrigger` in a production app, flag it as a risk and suggest using deployment slots or feature flags instead.
-- If `async void` is used in any function, flag it immediately — use `async Task` instead.
-- If retry logic is implemented manually with `Thread.Sleep` or `Task.Delay` inside a function, suggest replacing with host-level retry policies or Polly resilience pipelines.
+- Unit-test the services with xUnit v3 + NSubstitute (`csharp-xunit`); don't test trigger plumbing.
+- Integration-test against Azurite (Storage) or real resources, running the app with Azure Functions Core Tools (`func start`).

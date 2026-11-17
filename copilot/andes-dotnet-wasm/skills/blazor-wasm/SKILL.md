@@ -12,7 +12,7 @@ These rules target **standalone Blazor WebAssembly** apps (`blazorwasm` template
 - The "ASP.NET Core Hosted" WASM template was **removed in .NET 8** — never scaffold or suggest the old Client/Server/Shared three-project layout. A standalone WASM app calls its backend as an ordinary web API.
 - Standalone WASM has **no concept of render modes** — `@rendermode`, `InteractiveWebAssembly`, `InteractiveAuto`, prerendering, and `.Client` projects are Blazor Web App concerns. Never suggest them here.
 - Everything shipped to the browser is inspectable: **never put secrets, API keys, or private business logic in the app**. Sensitive work belongs behind a server API.
-- Apply the general C# standards from the `csharp-standards` skill to `.razor.cs` and service code: its file layout with regions, primary constructors with `private readonly` `_camelCase` field capture, collection expressions, `var`, `[LoggerMessage]` logging, `is null` / `is not null`.
+- `.razor.cs` and service code follow `csharp-standards`.
 
 ## Components and rendering performance
 
@@ -66,7 +66,7 @@ These rules target **standalone Blazor WebAssembly** apps (`blazorwasm` template
 - **AOT** (`<RunAOTCompilation>true</RunAOTCompilation>`): roughly 2× download size for a large CPU-bound speedup — reserve it for compute-heavy apps; `<WasmStripILAfterAOT>true</WasmStripILAfterAOT>` claws back size. The default interpreter + jiterpreter is fine for most CRUD UIs.
 - **Lazy-load assemblies** by route: `<BlazorWebAssemblyLazyLoad Include="Heavy.Feature.wasm" />` (Webcil means the extension is **`.wasm`, not `.dll`**) + `LazyAssemblyLoader.LoadAssembliesAsync` in `Router.OnNavigateAsync`.
 - Publish output is precompressed (Brotli + gzip) — verify the host actually serves it (`Content-Encoding: br` in dev tools); static hosts without content negotiation need the `decode.min.js` + `loadBootResource` pattern.
-- .NET 10 changes to respect: `blazor.boot.json` is gone (boot config is inlined into `dotnet.js`); `BlazorCacheBootResources` and Blazor's custom cache are removed (standard HTTP caching + fingerprinting instead); enable client-side fingerprinting/preloading with `<OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>`; set the environment with `<WasmApplicationEnvironmentName>` (not the `Blazor-Environment` header).
+- .NET 10 changes to respect: `blazor.boot.json` is gone (boot config is inlined into `dotnet.js`); `BlazorCacheBootResources` and Blazor's custom cache are removed (standard HTTP caching + fingerprinting instead); opt into client-side fingerprinting and preloading with `<OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>` plus, in `wwwroot/index.html`, `<script type="importmap"></script>` and `<link rel="preload" id="webassembly" />` in `<head>` and `_framework/blazor.webassembly#[.{fingerprint}].js` as the script source ([static files](https://learn.microsoft.com/aspnet/core/blazor/fundamentals/static-files?view=aspnetcore-10.0)) — leave it off when no generated `index.html` hosts the app (a custom element); set the environment with `<WasmApplicationEnvironmentName>` (not the `Blazor-Environment` header).
 - Customize the loading UI via the template's CSS custom properties (`--blazor-load-percentage`, `--blazor-load-percentage-text`).
 
 ## PWA
@@ -79,7 +79,7 @@ These rules target **standalone Blazor WebAssembly** apps (`blazorwasm` template
 ## Forms and validation
 
 - `EditForm` + `Model` (or `EditContext` for advanced control) + a **FluentValidation** validator component + `ValidationSummary`/`ValidationMessage`; prefer `OnValidSubmit`.
-- The validator component (own it, or use a maintained package) resolves `IValidator<TModel>` from DI and writes results into a `ValidationMessageStore` against the cascaded `EditContext` on field change and on submit. Validators live in `.cs` files next to the model and are shared with the API.
+- The validator component (own it, or use a maintained package) resolves `IValidator<TModel>` from DI and writes results into a `ValidationMessageStore` against the cascaded `EditContext` on field change and on submit. A validator lives in its model's own file (the shared Dto validator, per `dotnet-api-architecture`), so the client and the API run the same rules.
 - Never use `DataAnnotationsValidator`, `builder.Services.AddValidation()`, or `[ValidatableType]` — validation is FluentValidation only, per `csharp-standards`.
 - Client validation is UX, not security — the server API re-validates everything it receives.
 
@@ -88,14 +88,3 @@ These rules target **standalone Blazor WebAssembly** apps (`blazorwasm` template
 - Unit test components with **bUnit** + xUnit, run via `dotnet test`: render with `BunitContext` (`TestContext` before bUnit 2) and `Render<TComponent>()`, interact via `Find(...)`, assert with `MarkupMatches` (semantic HTML comparison — stable against whitespace churn). Use bUnit's built-in `JSInterop` emulation for `IJSRuntime` and NSubstitute for injected services — the `csharp-xunit` policy applies.
 - Use **Playwright for .NET** for end-to-end tests when behavior depends on real DOM manipulation or hard-to-mock JS libraries.
 
-## Outdated patterns — never suggest these
-
-- The "ASP.NET Core Hosted" WASM template or Client/Server/Shared solution layout (removed in .NET 8).
-- `@rendermode` / `InteractiveWebAssembly` / `InteractiveAuto` / prerendering in a standalone app — Blazor Web App concepts only.
-- `ProtectedLocalStorage`/`ProtectedSessionStorage` in WASM (server-side only).
-- `IJSUnmarshalledRuntime` (obsolete — use `[JSImport]`/`[JSExport]`).
-- The OIDC implicit grant flow (PKCE code flow only).
-- `.dll` names in `BlazorWebAssemblyLazyLoad` items (Webcil uses `.wasm`).
-- References to `blazor.boot.json` or `BlazorCacheBootResources` (removed in .NET 10).
-- Synchronous reads on HTTP response streams (streaming is the .NET 10 default).
-- Registering the PWA service worker without `{ updateViaCache: 'none' }`.

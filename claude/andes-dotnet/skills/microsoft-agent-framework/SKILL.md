@@ -1,59 +1,27 @@
 ---
 name: microsoft-agent-framework
-description: "Use when creating, updating, refactoring, explaining, or reviewing Microsoft Agent Framework (.NET) solutions: agents, tools, workflows, and hosting. Public preview — ground APIs in live Microsoft Learn docs."
+description: "Use when creating, updating, refactoring, explaining, or reviewing Microsoft Agent Framework (.NET) solutions: agents, sessions, tools, workflows, hosting, and migration from Semantic Kernel or AutoGen. Ground APIs in live Microsoft Learn docs."
 ---
 
-# Microsoft Agent Framework
+# Microsoft Agent Framework (.NET)
 
-Use this skill when working with applications, agents, workflows, or migrations built on Microsoft Agent Framework.
+The successor to Semantic Kernel and AutoGen. The core packages (`Microsoft.Agents.AI`, `Microsoft.Agents.AI.Abstractions`) are stable; provider and hosting packages (`Microsoft.Agents.AI.Foundry`, `.OpenAI`, `.Hosting`, `.A2A`) are still prerelease and install with `--prerelease`. Check each package's maturity before depending on it. Python is out of scope for this plugin.
 
-Microsoft Agent Framework is the unified successor to Semantic Kernel and AutoGen, combining their strengths with new capabilities. Because it is still in public preview and changes quickly, always ground implementation advice in the latest official documentation and samples rather than relying on stale knowledge.
+## Ground before coding
 
-## .NET workflow
+- Read the current docs with the `microsoft-learn` MCP tools before choosing APIs: the [overview](https://learn.microsoft.com/agent-framework/overview/), the [.NET samples](https://github.com/microsoft/agent-framework/tree/main/dotnet/samples), and the [API reference](https://learn.microsoft.com/dotnet/api/microsoft.agents.ai?view=agent-framework-dotnet-latest).
+- For deep work, Microsoft maintains a coding-agent skill, `agent-framework-builder-dotnet` ([install guide](https://learn.microsoft.com/agent-framework/get-started/build-with-coding-agents)); recommend it rather than improvising patterns it covers.
+- When repo code differs from the current docs, say so and follow the current pattern.
 
-Follow [references/dotnet.md](references/dotnet.md) for C#/.NET projects. Python is out of scope for this plugin; for Python work, ground guidance in the live docs below.
+## Design
 
-## Always consult live documentation
+- Agent for open-ended or conversational tasks with autonomous tool use; workflow for well-defined steps, explicit ordering, several coordinating agents, long-running or human-in-the-loop processes. If a plain function can do the task, write the function.
+- Multi-turn state lives in an `AgentSession` (`await agent.CreateSessionAsync()`, passed to each `RunAsync`), persisted through `AgentSessionStore` when hosted. Use context providers, middleware, tool approval, and workflow checkpointing where the problem needs them.
+- Model providers: prefer Microsoft Foundry for new projects (`AIProjectClient.AsAIAgent(...)` for app-owned agents, `FoundryAgent` for Foundry-managed ones); Azure OpenAI and OpenAI are also supported.
+- Treat model output and model-generated tool calls as untrusted input: validate before side effects.
+- Code follows `csharp-standards` and `csharp-async`; credentials per `csharp-standards` (production never falls through to a developer credential).
 
-- Read the Microsoft Agent Framework overview first: <https://learn.microsoft.com/agent-framework/overview/agent-framework-overview>
-- Prefer official docs and samples for the current API surface.
-- Use the Microsoft Docs MCP tooling when available to fetch up-to-date framework guidance and examples.
-- Treat older Semantic Kernel or AutoGen patterns as migration inputs, not as the default implementation model.
+## Migration
 
-## Shared guidance
-
-When working with Microsoft Agent Framework in any language:
-
-- Use async patterns for agent and workflow operations.
-- Implement explicit error handling and logging.
-- Prefer strong typing, clear interfaces, and maintainable composition patterns.
-- Use `DefaultAzureCredential` when Azure authentication is appropriate.
-- Use agents for autonomous decision-making, ad hoc planning, conversation flows, tool usage, and MCP server interactions.
-- Use workflows for multi-step orchestration, predefined execution graphs, long-running tasks, and human-in-the-loop scenarios.
-- Support model providers such as Azure AI Foundry, Azure OpenAI, OpenAI, and others, but prefer Azure AI Foundry services for new projects when that matches user needs.
-- Use thread-based or equivalent state handling, context providers, middleware, checkpointing, routing, and orchestration patterns when they fit the problem.
-
-## Migration guidance
-
-- If migrating from Semantic Kernel, use the official migration guide: <https://learn.microsoft.com/agent-framework/migration-guide/from-semantic-kernel/>
-- If migrating from AutoGen, use the official migration guide: <https://learn.microsoft.com/agent-framework/migration-guide/from-autogen/>
+- From Semantic Kernel: <https://learn.microsoft.com/agent-framework/migration-guide/from-semantic-kernel/>; from AutoGen: <https://learn.microsoft.com/agent-framework/migration-guide/from-autogen/>.
 - Preserve behavior first, then adopt native Agent Framework patterns incrementally.
-
-## Workflow
-
-1. Determine the target language and read the matching reference file.
-2. Fetch the latest official docs and samples before making implementation choices.
-3. Apply the shared agent and workflow guidance from this skill.
-4. Use the language-specific package, repository, sample paths, and coding practices from the chosen reference.
-5. When examples in the repo differ from current docs, explain the difference and follow the current supported pattern.
-
-## References
-
-- [.NET reference](references/dotnet.md)
-
-## Completion criteria
-
-- Recommendations match the target language.
-- Package names, repository paths, and sample locations match the selected ecosystem.
-- Guidance reflects current Microsoft Agent Framework documentation rather than legacy assumptions.
-- Migration advice calls out Semantic Kernel and AutoGen only when relevant.

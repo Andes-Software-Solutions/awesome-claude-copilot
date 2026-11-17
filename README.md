@@ -57,7 +57,6 @@ Install each stack plugin you need. Its dependencies install with it, so `andes-
 2. **`CLAUDE.md` and `.github/copilot-instructions.md`.** Adds an `@AGENTS.md` import to each, or creates the file with just that line, so project-specific text lives only in `AGENTS.md`. The import matters: a `CLAUDE.local.md` silently turns off Claude Code's native `AGENTS.md` loading, and the import still works when one exists. Copilot CLI resolves the same import and drops duplicate copies. If `.github/copilot-instructions.md` already holds other text, `andes-init` offers to move it into `AGENTS.md`.
 3. **Opt-in settings**, offered one at a time, each shown as a diff first:
    - the `andes` marketplace and `enabledPlugins` for a team rollout
-   - a `permissions.deny` for the Angular CLI `ai_tutor` tool
    - `"effortLevel": "xhigh"`
    - a `docs/plans/` line in `.gitignore`, and a `docs/generated/` line when `andes-documents` is installed in Copilot
 4. **Cleanup.** Offers to delete old drop-in copies, including the cloud-agent link check (`.github/hooks/andes-links.json`, `.github/hooks/andes/check-links.mjs`) that earlier versions installed.
@@ -154,9 +153,9 @@ Every research and implementer agent is granted exact MCP tools for its stack �
 
 Models and reasoning effort:
 
-- **Claude.** Reviewers and the PRD and writer agents run on Sonnet. `andes-github-actions-reviewer` runs on Opus. Reviewers use `effort: xhigh`; `andes-prd-generator`, `andes-se-technical-writer`, and `andes-ado-backlog-manager` use `high`.
+- **Claude.** The three reviewers run on Opus; `andes-prd-generator`, `andes-se-technical-writer`, and `andes-ado-backlog-manager` run on Sonnet. Every agent uses `effort: high`.
 - **Copilot.** Agents run on Claude Sonnet 5.5. `andes-planner-expert` and `andes-full-stack-expert` run on Claude Opus 5.5. `andes-se-technical-writer` and `andes-document-designer` run on Claude Haiku 5.5 to save cost.
-- **Copilot reasoning effort.** Each agent pins `reasoning-effort`, tiered by role because a higher level consumes more AI Credits. The three reviewers, `andes-prd-generator`, `andes-planner-expert`, and `andes-document-designer` use `high`. The implementers, `andes-full-stack-expert`, `andes-csharp-dotnet-janitor`, `andes-ado-backlog-manager`, and `andes-se-technical-writer` use `medium`. The key needs Copilot CLI 1.0.88 or later and must be spelled `reasoning-effort`; the `reasoningEffort` spelling in the CLI reference is not applied ([github/copilot-cli#4963](https://github.com/github/copilot-cli/issues/4963)). An explicit `--reasoning-effort` flag overrides it. Whether the Copilot coding agent reads the key is unverified.
+- **Copilot reasoning effort.** Each agent pins `reasoning-effort`, tiered by role because a higher level consumes more AI Credits. The three reviewers, the implementers, `andes-csharp-dotnet-janitor`, `andes-full-stack-expert`, `andes-prd-generator`, `andes-planner-expert`, and `andes-document-designer` use `high`. `andes-ado-backlog-manager` and `andes-se-technical-writer` use `medium`. The key needs Copilot CLI 1.0.88 or later and must be spelled `reasoning-effort`; the `reasoningEffort` spelling in the CLI reference is not applied ([github/copilot-cli#4963](https://github.com/github/copilot-cli/issues/4963)). An explicit `--reasoning-effort` flag overrides it. Whether the Copilot coding agent reads the key is unverified.
 
 ---
 
@@ -236,7 +235,7 @@ Tool scoping:
   - Claude tool names look like `mcp__plugin_andes-angular_angular-cli__get_best_practices`.
   - Copilot tool names look like `angular-cli/get_best_practices`.
 - **Unknown names are ignored.** So the `angular-cli` tools granted to `andes-planner-expert` are harmless when `andes-angular` is not installed.
-- **`ai_tutor`.** The Angular CLI server has no flag to remove its `ai_tutor` tool. No agent is granted it, and `andes-init` offers a `permissions.deny` for Claude's main session.
+- **`ai_tutor`.** The Angular CLI server has no flag to remove its `ai_tutor` tool. Agents grant exact tools, so none sees it, and the audit fails on any `ai_tutor` grant.
 - **Node version.** Angular CLI 22.2 requires Node ≥ 22.22.3.
 - **No delete.** The Azure DevOps server has no delete tool. `andes-ado-backlog-manager` sets `System.State` to `Removed`, which hides the item from every backlog and board; the Basic process has no such state.
 
@@ -405,7 +404,7 @@ The helper copies byte for byte. It refuses to overwrite a file that carries unc
 **Conventions.**
 
 - **Skills.** The folder name equals the `name` field. Descriptions are trigger-style ("Use when …") and at most 400 characters. No `paths:` or `applyTo:` frontmatter. Refer to other skills and agents by name, never by a `.claude/` or `.github/` path, because those paths don't exist once a plugin is installed.
-- **Agents.** Each is named `andes-<role>`, equal to its file stem, and pins a model. Claude `effort` is `xhigh` for reviewers and `high` for everything else.
+- **Agents.** Each is named `andes-<role>`, equal to its file stem, and pins a model. Claude `effort` is `high` for every agent.
   - **Model parity.** Copilot models follow the parity table in `scripts/repo-audit.mjs`. Per-harness overrides must be recorded there and in `docs/`.
   - **Reviewers.** They keep High/Medium only and get no edit or agent tools.
 

@@ -1,7 +1,6 @@
 ---
 name: andes-planner-expert
 description: "Implementation planner. Use when a change needs research and a step-by-step plan before coding. Explores the codebase, invokes andes-prd-generator first when a feature has no PRD and its requirements are unclear, plans against the PRD's story IDs (US-xxx), writes the plan to docs/plans/, and names the Andes implementer to run next. Never implements."
-disable-model-invocation: true
 model: [claude-opus-5.5, Claude Opus 5.5 (copilot)]
 reasoning-effort: high
 tools:

@@ -101,8 +101,8 @@ const CONFIG = {
   loopAgents: [
     'andes-csharp-expert', 'andes-angular-expert', 'andes-csharp-dotnet-janitor', 'andes-full-stack-expert',
   ],
-  // Reviewers find defects, so they keep the deepest effort; everything else runs at high.
-  effort: { reviewer: 'xhigh', other: 'high' },
+  // Reviewers get their depth from Opus rather than from effort, so every Claude agent runs at high.
+  effort: { reviewer: 'high', other: 'high' },
   // A higher level consumes more AI Credits, so Copilot effort is tiered by role instead of mirroring
   // the Claude pins. null means the key must be absent: the model has no configurable reasoning.
   copilotEffort: {
@@ -111,10 +111,10 @@ const CONFIG = {
     'andes-github-actions-reviewer': 'high',
     'andes-prd-generator': 'high',
     'andes-planner-expert': 'high',
-    'andes-full-stack-expert': 'medium',
-    'andes-csharp-expert': 'medium',
-    'andes-angular-expert': 'medium',
-    'andes-csharp-dotnet-janitor': 'medium',
+    'andes-full-stack-expert': 'high',
+    'andes-csharp-expert': 'high',
+    'andes-angular-expert': 'high',
+    'andes-csharp-dotnet-janitor': 'high',
     'andes-ado-backlog-manager': 'medium',
     'andes-se-technical-writer': 'medium',
     'andes-document-designer': 'high',
@@ -133,6 +133,16 @@ const CONFIG = {
   // Documented per-harness cost overrides. Each states the Claude model it was recorded
   // against so it goes stale loudly instead of silently excusing a future model change.
   modelParityOverrides: {
+    'andes-csharp-code-reviewer': {
+      claude: 'opus',
+      copilot: ['claude-sonnet-5.5', 'Claude Sonnet 5.5 (copilot)'],
+      reason: 'deliberate: deepest review tier on Claude; Opus pricing not justified on Copilot AI Credits',
+    },
+    'andes-angular-code-reviewer': {
+      claude: 'opus',
+      copilot: ['claude-sonnet-5.5', 'Claude Sonnet 5.5 (copilot)'],
+      reason: 'deliberate: deepest review tier on Claude; Opus pricing not justified on Copilot AI Credits',
+    },
     'andes-github-actions-reviewer': {
       claude: 'opus',
       copilot: ['claude-sonnet-5.5', 'Claude Sonnet 5.5 (copilot)'],
