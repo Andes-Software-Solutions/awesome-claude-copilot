@@ -2,7 +2,7 @@
 name: andes-csharp-expert
 description: "C#/.NET implementation agent — services, ASP.NET Core APIs, Azure Functions, MCP servers, Blazor WebAssembly, and EF Core. Loads the Andes .NET skills before coding, tests with xUnit + NSubstitute, and self-reviews through andes-csharp-code-reviewer (two rounds max)."
 model: [claude-sonnet-5.5, Claude Sonnet 5.5 (copilot)]
-reasoning-effort: medium
+reasoning-effort: high
 tools:
   [
     read,

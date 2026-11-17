@@ -2,7 +2,7 @@
 name: andes-full-stack-expert
 description: "Orchestrator for features spanning the C#/.NET back end and the Angular front end. Writes the API contract first, delegates the back-end and front-end packages to andes-csharp-expert and andes-angular-expert in parallel, verifies the integrated seam, and documents once. Coordinates only — it does not write stack code. Requires andes-dotnet and andes-angular."
 model: [claude-opus-5.5, Claude Opus 5.5 (copilot)]
-reasoning-effort: medium
+reasoning-effort: high
 tools: [read, edit, search, execute, web, agent, todo]
 agents:
   [

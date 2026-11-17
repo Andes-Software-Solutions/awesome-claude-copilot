@@ -2,7 +2,7 @@
 name: andes-github-actions-reviewer
 description: GitHub Actions workflow reviewer. Use PROACTIVELY immediately after writing or modifying workflow files (.github/workflows/*.yml) or composite actions. Checks security hardening (script injection, privileged triggers, action pinning, least-privilege tokens), CI efficiency (caching, concurrency, trigger scoping), and runtime/action-version currency. Reports High and Medium findings only; never edits files or hands work back.
 model: opus
-effort: xhigh
+effort: high
 color: cyan
 tools: Read, Glob, Grep, Bash, WebFetch, Skill
 disallowedTools: Write, Edit, NotebookEdit, Agent

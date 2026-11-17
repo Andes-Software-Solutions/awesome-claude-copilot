@@ -153,9 +153,9 @@ Every research and implementer agent is granted exact MCP tools for its stack â€
 
 Models and reasoning effort:
 
-- **Claude.** Reviewers and the PRD and writer agents run on Sonnet. `andes-github-actions-reviewer` runs on Opus. Reviewers use `effort: xhigh`; `andes-prd-generator`, `andes-se-technical-writer`, and `andes-ado-backlog-manager` use `high`.
+- **Claude.** The three reviewers run on Opus; `andes-prd-generator`, `andes-se-technical-writer`, and `andes-ado-backlog-manager` run on Sonnet. Every agent uses `effort: high`.
 - **Copilot.** Agents run on Claude Sonnet 5.5. `andes-planner-expert` and `andes-full-stack-expert` run on Claude Opus 5.5. `andes-se-technical-writer` and `andes-document-designer` run on Claude Haiku 5.5 to save cost.
-- **Copilot reasoning effort.** Each agent pins `reasoning-effort`, tiered by role because a higher level consumes more AI Credits. The three reviewers, `andes-prd-generator`, `andes-planner-expert`, and `andes-document-designer` use `high`. The implementers, `andes-full-stack-expert`, `andes-csharp-dotnet-janitor`, `andes-ado-backlog-manager`, and `andes-se-technical-writer` use `medium`. The key needs Copilot CLI 1.0.88 or later and must be spelled `reasoning-effort`; the `reasoningEffort` spelling in the CLI reference is not applied ([github/copilot-cli#4963](https://github.com/github/copilot-cli/issues/4963)). An explicit `--reasoning-effort` flag overrides it. Whether the Copilot coding agent reads the key is unverified.
+- **Copilot reasoning effort.** Each agent pins `reasoning-effort`, tiered by role because a higher level consumes more AI Credits. The three reviewers, the implementers, `andes-csharp-dotnet-janitor`, `andes-full-stack-expert`, `andes-prd-generator`, `andes-planner-expert`, and `andes-document-designer` use `high`. `andes-ado-backlog-manager` and `andes-se-technical-writer` use `medium`. The key needs Copilot CLI 1.0.88 or later and must be spelled `reasoning-effort`; the `reasoningEffort` spelling in the CLI reference is not applied ([github/copilot-cli#4963](https://github.com/github/copilot-cli/issues/4963)). An explicit `--reasoning-effort` flag overrides it. Whether the Copilot coding agent reads the key is unverified.
 
 ---
 
@@ -404,7 +404,7 @@ The helper copies byte for byte. It refuses to overwrite a file that carries unc
 **Conventions.**
 
 - **Skills.** The folder name equals the `name` field. Descriptions are trigger-style ("Use when â€¦") and at most 400 characters. No `paths:` or `applyTo:` frontmatter. Refer to other skills and agents by name, never by a `.claude/` or `.github/` path, because those paths don't exist once a plugin is installed.
-- **Agents.** Each is named `andes-<role>`, equal to its file stem, and pins a model. Claude `effort` is `xhigh` for reviewers and `high` for everything else.
+- **Agents.** Each is named `andes-<role>`, equal to its file stem, and pins a model. Claude `effort` is `high` for every agent.
   - **Model parity.** Copilot models follow the parity table in `scripts/repo-audit.mjs`. Per-harness overrides must be recorded there and in `docs/`.
   - **Reviewers.** They keep High/Medium only and get no edit or agent tools.
 

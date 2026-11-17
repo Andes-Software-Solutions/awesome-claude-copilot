@@ -2,7 +2,7 @@
 name: andes-angular-expert
 description: "Angular implementation agent — components, signals, forms, routing, SSR, and NgRx Signal Store state. Grounds every change in the workspace's Angular version via the angular-cli MCP, codes to the Andes Angular standards, and self-reviews through andes-angular-code-reviewer (two rounds max)."
 model: [claude-sonnet-5.5, Claude Sonnet 5.5 (copilot)]
-reasoning-effort: medium
+reasoning-effort: high
 tools:
   [
     read,

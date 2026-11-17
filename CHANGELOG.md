@@ -18,6 +18,7 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 ### Changed
 
 - **The Copilot `andes-planner-expert` can be invoked by the model** (all plugins 1.16.1). It no longer sets `disable-model-invocation: true`, so Copilot can select it from a request. It still invokes `andes-prd-generator` as before.
+- **Agent effort rebalanced: Opus reviewers on Claude, `high` everywhere** (all plugins 1.16.1). The Claude C# and Angular reviewers move from Sonnet to Opus, and every Claude reviewer drops from `xhigh` to `high`. The Copilot implementers (`andes-csharp-expert`, `andes-angular-expert`, `andes-csharp-dotnet-janitor`, `andes-full-stack-expert`) move from `medium` to `high` `reasoning-effort`, which consumes more AI Credits per run. The Copilot reviewers stay on Sonnet 5.5; see `docs/2026-11-agent-effort-rebalance.md`.
 
 ## [1.16.0] - 2026-10-23
 

@@ -1,8 +1,8 @@
 ---
 name: andes-angular-code-reviewer
 description: Angular code reviewer. Use PROACTIVELY immediately after writing or modifying Angular code — components, templates, services, routing, forms, HTTP, or NgRx Signal Store state. Checks signals, change detection and zoneless readiness, control flow, DI, state, SSR/hydration, security, accessibility, performance, and tests. Reports High and Medium findings only; never edits files or hands work back.
-model: sonnet
-effort: xhigh
+model: opus
+effort: high
 tools: Read, Glob, Grep, Bash, WebFetch, Skill, mcp__plugin_andes-angular_angular-cli__list_projects, mcp__plugin_andes-angular_angular-cli__get_best_practices, mcp__plugin_andes-angular_angular-cli__search_documentation
 disallowedTools: Write, Edit, NotebookEdit, Agent
 skills:

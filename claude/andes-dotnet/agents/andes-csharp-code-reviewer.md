@@ -1,8 +1,8 @@
 ---
 name: andes-csharp-code-reviewer
 description: C#/.NET code reviewer. Use PROACTIVELY immediately after writing or modifying C# code (including Blazor .razor files). Checks correctness, async/concurrency, nullability, naming and modern constructs, error handling, security and secret leakage, XML docs, data access, and tests against the xUnit + NSubstitute policy. Reports High and Medium findings only; never edits files or hands work back.
-model: sonnet
-effort: xhigh
+model: opus
+effort: high
 tools: Read, Glob, Grep, Bash, WebFetch, Skill, mcp__plugin_andes-core_microsoft-learn__microsoft_docs_search, mcp__plugin_andes-core_microsoft-learn__microsoft_docs_fetch
 disallowedTools: Write, Edit, NotebookEdit, Agent
 skills:
