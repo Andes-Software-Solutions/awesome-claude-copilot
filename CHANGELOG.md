@@ -11,6 +11,8 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ## [Unreleased]
 
+## [1.16.1] - 2026-11-17
+
 ### Removed
 
 - **`andes-init` no longer offers a `permissions.deny` for the Angular CLI `ai_tutor` tool** (all plugins 1.16.1). Every agent grants exact `angular-cli` tools, so none of them can see `ai_tutor`. The audit still fails on any `ai_tutor` grant (`agents/forbidden-tool`). If you accepted the old offer, the rule in `.claude/settings.json` still works and can stay.
@@ -268,7 +270,8 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 - One-word body drift between `.claude/rules/blazor-wasm.md` and its Copilot twin ("Durable cross-device" vs "Durable, cross-device"), found by the new repo audit on its first run — along with the GitHub Actions Reviewer model-parity gap, now recorded as a deliberate override.
 - The Copilot `ngrx-signals-sync` prompt now mirrors refreshed skill files back into `.claude/skills/`, so a Copilot-run sync no longer silently desyncs the two harnesses. Also corrected the C# Expert's test-naming guidance to the repo's `MethodName_Scenario_ExpectedBehavior` standard and removed 11 duplicate tool entries from the C#/.NET Janitor agent frontmatter.
 
-[Unreleased]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.16.0...HEAD
+[Unreleased]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.16.1...HEAD
+[1.16.1]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.16.0...v1.16.1
 [1.16.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.14.0...v1.16.0
 [1.14.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.13.0...v1.14.0
 [1.13.0]: https://github.com/Andes-Software-Solutions/awesome-claude-copilot/compare/v1.12.0...v1.13.0
