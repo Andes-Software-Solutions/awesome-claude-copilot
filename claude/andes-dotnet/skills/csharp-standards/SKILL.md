@@ -1,6 +1,6 @@
 ---
 name: csharp-standards
-description: "Use when writing, editing, or reviewing any C# (.cs) code: C# 14 idioms, naming, the mandatory file layout (interface members, then Private methods / Public static methods / Logging regions), primary constructors, collection expressions, var, LoggerMessage logging, nullability, security, Minimal APIs + FluentValidation, and the xUnit v3 + NSubstitute policy."
+description: "Use when writing, editing, or reviewing any C# (.cs) code: C# 14 idioms, naming, the mandatory file layout (interface members, then Private methods / Public static methods / Logging regions), primary constructors, collection expressions, var, sealed, TimeProvider, LoggerMessage logging, nullability, credentials and security, and Minimal APIs + FluentValidation."
 ---
 
 # C# Development
@@ -9,13 +9,22 @@ description: "Use when writing, editing, or reviewing any C# (.cs) code: C# 14 i
 
 - Read the target framework (TFM), `<LangVersion>`, `global.json` SDK, `<Nullable>`, and repo config (`Directory.Build.*`, `Directory.Packages.props`). Don't change the TFM, SDK, or language version unless asked, and don't use C# features newer than the TFM default.
 - Follow the project's conventions for anything these standards do not cover. Where they conflict with a non-negotiable below, apply the non-negotiable to new and changed code and flag the conflict; migrate existing code only when asked.
-- Web/API standards live in `aspnet-rest-apis`; async detail in `csharp-async`; XML docs in `csharp-docs`; tests in `csharp-xunit`; EF Core in `ef-core` (base entities in `ef-core-base-entities`, enum lookup tables in `ef-core-enum-reference-tables`). Where a file goes, what it is called, and which project owns it: `dotnet-api-architecture`.
+- Other skills own their topics; follow them rather than restating them here:
+
+  | Topic | Skill |
+  | --- | --- |
+  | Web APIs, Problem Details, the exception handler | `aspnet-rest-apis` |
+  | Async, `Task`/`ValueTask`, cancellation | `csharp-async` |
+  | XML doc comments | `csharp-docs` |
+  | Tests and the database ladder | `csharp-xunit` |
+  | EF Core (writes, retries, transactions, migrations) | `ef-core`, `ef-core-base-entities`, `ef-core-enum-reference-tables` |
+  | Which project and folder a type goes in, and its name | `dotnet-api-architecture` |
 
 ## Non-negotiables
 
 These apply to every new or changed file. Reviewers flag violations.
 
-- Web APIs are **Minimal APIs only** — no MVC controllers, no `[ApiController]`. Validation is **FluentValidation only** — no DataAnnotations, no `AddValidation()`. Details in `aspnet-rest-apis`.
+- Web APIs are **Minimal APIs only** — no MVC controllers, no `[ApiController]`. Validation is **FluentValidation only** — no DataAnnotations, no `AddValidation()` (`aspnet-rest-apis`).
 - **Primary constructors** on every class that takes dependencies; capture each into a `private readonly` `_camelCase` field and use the field, not the parameter, in members.
 - **Collection expressions** for every collection literal: `[]`, `[1, 2, 3]`, `[.. first, .. second]` — never `new List<T>()`, `new T[] { }`, or `Array.Empty<T>()`.
 - **`var`** for every local whose initializer has a type: `var service = new OrderService(...)`, not `OrderService service = new()`. Spell the type out only where the initializer has none — collection expressions (`List<int> ids = [1, 2];`), `default`, `null`, and lambdas.
@@ -77,16 +86,18 @@ public sealed partial class OrderService(ContosoDbContext ctx, ILogger<OrderServ
 }
 ```
 
-Exempt: `[McpServerToolType]` static tool classes (`csharp-mcp-server`), records and DTOs with no methods, and generated code. If the repository runs StyleCop, disable SA1124 (regions), SA1202 (public before private), and SA1204 (static before instance) in `.editorconfig` instead of breaking the layout.
+Exempt: `static` `[McpServerToolType]` classes (instance tool classes follow the layout; `csharp-mcp-server`), records and DTOs with no methods, and generated code. StyleCop and `.editorconfig` settings that keep analyzers from fighting the layout: [references/editorconfig.md](references/editorconfig.md).
 
 ## Principles
 
 - Target the latest C# the TFM allows (C# 14 on .NET 10: extension members, the `field` accessor, implicit `Span<T>` conversions, `?.=`, `nameof` on unbound generics).
-- Honor `.editorconfig`; recommend `csharp_style_var_for_built_in_types`, `csharp_style_var_when_type_is_apparent`, `csharp_style_var_elsewhere`, and `csharp_style_prefer_primary_constructors` set to `true`, and `dotnet_style_prefer_collection_expression` to `when_types_loosely_match`. Prefer file-scoped namespaces, pattern matching, switch expressions, raw string literals, and `nameof(...)` over member-name literals.
-- Least exposure: `private` > `internal` > `protected` > `public`. Don't add interfaces or abstractions unless they sit at an external boundary or enable testing; don't wrap existing abstractions.
+- Honor `.editorconfig` ([references/editorconfig.md](references/editorconfig.md)). Prefer file-scoped namespaces, pattern matching, switch expressions, raw string literals, and `nameof(...)` over member-name literals.
+- Classes are `sealed` unless designed for inheritance. Least exposure: `private` > `internal` > `protected` > `public`. Don't add interfaces or abstractions unless they sit at an external boundary or enable testing; don't wrap existing abstractions.
 - Prefer records for DTOs. Keep user-facing strings in resource files.
+- Read time from an injected `TimeProvider` (registered as `TimeProvider.System`), never `DateTime.UtcNow` / `DateTimeOffset.UtcNow`, so tests can control it.
+- Builds treat warnings as errors (`<TreatWarningsAsErrors>`, `<AnalysisLevel>latest-recommended</AnalysisLevel>`) and pin versions centrally in `Directory.Packages.props`; keep an existing repo's settings and don't add suppressions to get green.
 - Don't edit generated code (`*.g.cs`, `// <auto-generated>`). Don't add unused members or parameters. When fixing a method, check its siblings for the same issue.
-- Comment only what code cannot say: why-decisions, constraints, non-obvious invariants. Never restate what the code does or narrate a change. XML doc comments on every public API (`csharp-docs` skill).
+- Comment only what code cannot say: why-decisions, constraints, non-obvious invariants. Never restate what the code does or narrate a change.
 - Newline before every opening brace; the final `return` of a method on its own line.
 - When reviewing, make only high-confidence suggestions.
 
@@ -96,34 +107,21 @@ Exempt: `[McpServerToolType]` static tool classes (`csharp-mcp-server`), records
 
 ## Nullability
 
-- Declare variables non-nullable; validate `null` at entry points only (`ArgumentNullException.ThrowIfNull(x)`, `string.IsNullOrWhiteSpace(s)`).
+- Declare variables non-nullable; validate at entry points only with the throw helpers (`ArgumentNullException.ThrowIfNull(x)`, `ArgumentException.ThrowIfNullOrWhiteSpace(s)`, `ArgumentOutOfRangeException.ThrowIfNegative(n)`).
 - Always `is null` / `is not null` — never `== null` / `!= null`. Trust the annotations; avoid blanket `!`.
-
-## Async
-
-- Async end to end: never block with `.Result`, `.Wait()`, or `.GetAwaiter().GetResult()`; no `async void` outside event handlers; flow a `CancellationToken` through long-running and I/O work (`csharp-async` skill).
 
 ## Errors and security
 
-- Throw precise exception types; never throw or catch base `Exception` without rethrowing; no silent catches.
-- Centralize error handling in the one `GlobalExceptionHandler` and return every error as Problem Details (RFC 9457); never build error responses in try/catch blocks (`aspnet-rest-apis` `references/exception-handling.md`).
-- Never log PII or secrets. Prefer `DefaultAzureCredential` with Azure Key Vault / Managed Identity over secrets in code or config.
-- Resilient I/O: timeouts everywhere, retry with backoff where the operation is idempotent.
-
-## Data access
-
-- Use Entity Framework Core (`ef-core` skill) straight from the service; tests pick a provider from the database ladder in the `csharp-xunit` skill.
-- Track new entities with `_ctx.Add` / `_ctx.AddRange`, never `AddAsync` / `AddRangeAsync` — nothing touches the database until `SaveChangesAsync` (`ef-core`).
-- Write through the `DbContext`, never the DbSet: `_ctx.Add(product)` / `_ctx.Update(product)` / `_ctx.Remove(product)`, not `_ctx.Products.Add(product)` (`ef-core`).
-- Every relational `DbContext` retries on failure (`EnableRetryOnFailure()`), so an explicit transaction runs inside `_ctx.Database.CreateExecutionStrategy().ExecuteAsync` (`ef-core`).
-- Manage schema with migrations; avoid N+1 and over-fetching.
+- Throw precise exception types, never base `Exception`. Catching `Exception` is fine (CA1031 is off, so no `#pragma` or suppression); catch it only where the failure is handled (logged, translated, or rethrown), never silently. Error responses come only from the one exception handler (`aspnet-rest-apis` `references/exception-handling.md`).
+- Never log PII or secrets. Secrets live in Azure Key Vault or the environment, never in code or committed config.
+- Azure credentials: `DefaultAzureCredential` for local development only; in Azure, `ManagedIdentityCredential` (or `DefaultAzureCredential` with `AZURE_TOKEN_CREDENTIALS=ManagedIdentityCredential`), so production never falls through to a developer credential. Other skills defer to this rule.
+- Resilient I/O: timeouts everywhere, retry with backoff where the operation is idempotent (`Microsoft.Extensions.Http.Resilience` for `HttpClient`).
 
 ## Logging and performance
 
-- `[LoggerMessage]` methods carry structured properties (`{OrderId}`), never string interpolation; add scopes for correlation. OpenTelemetry / Application Insights where the app is hosted in Azure. No log spam.
+- `[LoggerMessage]` methods carry structured properties (`{OrderId}`), never string interpolation; add scopes for correlation. OpenTelemetry where the app is hosted in Azure. No log spam.
 - Simple first; optimize measured hot paths (streaming, `Span<T>`/`Memory<T>`, pooling). 12-factor configuration from the environment.
 
-## Testing
+## Build
 
-- Cover critical paths. xUnit v3 + NSubstitute only, named `MethodName_Scenario_ExpectedBehavior`, with no `// Arrange` / `// Act` / `// Assert` comments — see the `csharp-xunit` skill for the full policy and the database ladder.
-- Build and test with `dotnet build`, `dotnet test`, and `dotnet format --verify-no-changes`.
+- Build and verify with `dotnet build`, `dotnet test`, and `dotnet format --verify-no-changes`.

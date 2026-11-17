@@ -5,60 +5,47 @@ description: "Use when writing or reviewing Entity Framework Core code: DbContex
 
 # Entity Framework Core Best Practices
 
+Targets EF Core 10. Placement and names per `dotnet-api-architecture`; base entities per `ef-core-base-entities`; lookup tables per `ef-core-enum-reference-tables`.
+
 ## Data Context Design
 
-- Keep DbContext classes focused and cohesive
 - Services inject the DbContext and query it directly (`dotnet-api-architecture`): the DbContext is the unit of work and each DbSet a repository, so never wrap them in `I<Entity>Repository`, a generic `IRepository<T>`, or a unit-of-work class
-- Take options through a primary constructor: `public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(options)`
-- Override OnModelCreating for fluent API configuration
-- Separate entity configurations using IEntityTypeConfiguration (one per entity under `Repository/<Provider>/Configurations/`, per `dotnet-api-architecture`); shared base mappings are abstract configurations under `Configurations/Base/`
-- Consider using DbContextFactory pattern for console apps or tests
+- Take options through a primary constructor: `public sealed class ContosoDbContext(DbContextOptions<ContosoDbContext> options) : DbContext(options)`
+- Apply one `IEntityTypeConfiguration<T>` per entity from `OnModelCreating` (under `Repository/<Provider>/Configurations/`); shared base mappings are abstract configurations under `Configurations/Base/`
+- Scoped lifetime in web apps; `IDbContextFactory<T>` for console apps, background jobs, and tests
 
 ## Entity Design
 
-- Derive entities from the `Entity/Base/` classes (`BaseEntity<TKey>`, `BaseCreatedEntity<TKey>`, `BaseModifiedEntity<TKey>`) per `ef-core-base-entities`: a `Guid` key by default or an `int` key where it fits, deactivation, UTC audit stamps, and a row-version token, all mapped fluently and stamped by interceptors
-- Put every length, precision, and scale limit of an entity in `Common/Constants/<Feature>/<Entity>Limits.cs` (`dotnet-api-architecture`): the configuration's `HasMaxLength` / `HasPrecision` and the request validator's `MaximumLength` / `PrecisionScale` read the same constant, so the column and the 400 never disagree
+- Derive entities from the `Entity/Base/` classes per `ef-core-base-entities`. Keys are `Guid` (default) or `int`; enforce a natural key with a unique index, never by making it the primary key
+- Put every length, precision, and scale limit of an entity in `Common/Constants/<Feature>/<Entity>Limits.cs`: the configuration's `HasMaxLength` / `HasPrecision` and the request validator's `MaximumLength` / `PrecisionScale` read the same constant, so the column and the 400 never disagree
 - Model a fixed set of values (status, type, category) as an enum-backed reference table per `ef-core-enum-reference-tables`
-- Use meaningful primary keys (consider natural vs surrogate keys)
-- Implement proper relationships (one-to-one, one-to-many, many-to-many)
-- Configure keys, constraints, and mappings with the fluent API in `IEntityTypeConfiguration<T>` classes only; never put DataAnnotations mapping attributes on entities, and never validate with them (validation is FluentValidation on request types)
-- Implement appropriate navigational properties
-- Consider using owned entity types for value objects
+- Configure keys, constraints, relationships, and mappings with the fluent API in `IEntityTypeConfiguration<T>` classes only; never put DataAnnotations mapping attributes on entities, and never validate with them (validation is FluentValidation on request types)
+- Model value objects (an address, a money amount) as complex types — `ComplexProperty`, or `ComplexProperty(..., c => c.ToJson())` / `ComplexCollection(..., c => c.ToJson())` for a JSON column — never owned entity types in new code: complex types have value semantics and support `ExecuteUpdateAsync` ([complex vs owned types](https://learn.microsoft.com/ef/core/modeling/complex-types#complex-types-vs-owned-entity-types))
 
 ## Performance
 
-- Use AsNoTracking() for read-only queries
-- Implement pagination for large result sets with Skip() and Take()
-- Use Include() to eager load related entities when needed
-- Consider projection (Select) to retrieve only required fields
-- Use compiled queries for frequently executed queries
-- Avoid N+1 query problems by properly including related data
+- Use `AsNoTracking()` for read-only queries, and project (`Select`, through the feature mapper's expression) to fetch only the columns needed
+- Page every list. `Skip` / `Take` for shallow pages; keyset pagination (`Where(o => o.Id > lastId).OrderBy(o => o.Id).Take(n)`) for deep or infinite-scroll pages, since `Skip` still scans the skipped rows ([pagination](https://learn.microsoft.com/ef/core/querying/pagination))
+- Avoid N+1: `Include` what the projection cannot express, `AsSplitQuery()` when several collection includes would multiply rows
+- Use compiled queries only for measured hot paths
 
 ## Migrations
 
-- Create small, focused migrations
-- Name migrations descriptively
-- Verify migration SQL scripts before applying to production
-- Consider using migration bundles for deployment
-- Add data seeding through migrations when appropriate
+- Create small, focused migrations named `<Verb><Subject>`; review the generated SQL (`dotnet ef migrations script --idempotent`) before applying it to production
+- Deploy with migration bundles or idempotent scripts; when the app applies migrations itself, it does so only through the provider's `<Provider>SchemaMigrator` (`dotnet-api-architecture`)
+- Seed and script rules (`HasData`, `InsertData`, `Scripts/`, `UseSeeding`): `dotnet-api-architecture` `references/persistence.md`
 
 ## Querying
 
-- Use IQueryable judiciously and understand when queries execute
-- Prefer strongly-typed LINQ queries over raw SQL
-- Use appropriate query operators (Where, OrderBy, GroupBy)
-- Consider database functions for complex operations
+- Prefer strongly typed LINQ over raw SQL; know where a query executes (`IQueryable` composes on the server until enumerated)
 - Reuse a query two services share as an extension method on `IQueryable<T>` beside the first service that needs it, not as a repository
 
 ## Change Tracking & Saving
 
 - Start tracking new entities with `_ctx.Add` / `_ctx.AddRange`, never `AddAsync` / `AddRangeAsync`. Adding only marks entities `Added` and does not touch the database; the async overloads exist solely for the HiLo value generator, which these standards never configure (Guid keys are generated client-side and int keys by an identity column, `ef-core-base-entities`). The round trip is `SaveChangesAsync`, which stays async. [Add versus AddAsync](https://learn.microsoft.com/ef/core/change-tracking/miscellaneous#add-versus-addasync)
 - Write through the DbContext, never the DbSet: `_ctx.Add(product)`, `_ctx.Update(product)`, `_ctx.Remove(product)` (and `AddRange` / `UpdateRange` / `RemoveRange` / `Attach`), not `_ctx.Products.Add(product)`. EF Core resolves the entity type from the instance; DbSets are for queries (`_ctx.Products.Where(...)`). The one exception is a shared-type entity (such as a `Dictionary<string, object>` join), which writes through `_ctx.Set<T>("Name")`. Change a tracked entity in place and save; call `Update` only for a detached one, since it marks every property modified. [DbContext versus DbSet methods](https://learn.microsoft.com/ef/core/change-tracking/miscellaneous#dbcontext-versus-dbset-methods)
-- Use appropriate change tracking strategies
-- Batch your SaveChanges() calls
-- Implement concurrency control for multi-user scenarios
-- One `SaveChangesAsync` is already atomic; open an explicit transaction only for a unit that spans several saves, or a save plus `ExecuteUpdateAsync` / `ExecuteDeleteAsync` / raw SQL, and run it inside the execution strategy (Connection resiliency, below)
-- Use appropriate DbContext lifetimes (scoped for web apps)
+- One `SaveChangesAsync` per unit of work: it batches the statements and is already atomic. Open an explicit transaction only for a unit that spans several saves, or a save plus `ExecuteUpdateAsync` / `ExecuteDeleteAsync` / raw SQL, and run it inside the execution strategy (Connection resiliency, below)
+- Optimistic concurrency uses the row version and `ConflictException` (`ef-core-base-entities`)
 
 ## Connection resiliency
 
@@ -77,21 +64,17 @@ await strategy.ExecuteAsync(async ct =>
 ```
 
 - If the connection drops during commit, the strategy replays the unit as if it rolled back. Client-generated Guid keys (`ef-core-base-entities`) turn a replay of a commit that did succeed into a duplicate-key failure instead of a duplicate row. An int identity key gives no such protection: the replay inserts a second row unless the table has a unique natural key.
-- Retry buffers each result set in memory, so page large reads (`Skip` / `Take`) instead of streaming one unbounded `AsAsyncEnumerable`.
+- Retry buffers each result set in memory, so page large reads instead of streaming one unbounded `AsAsyncEnumerable`.
 
 ## Security
 
-- Avoid SQL injection by using parameterized queries
-- Implement appropriate data access permissions
-- Be careful with raw SQL queries
-- Consider data encryption for sensitive information
-- Use migrations to manage database user permissions
+- Raw SQL only through `FromSql` / `ExecuteSql` with interpolated parameters; never `FromSqlRaw` / `ExecuteSqlRaw` with concatenated input
+- The app's database login holds only the permissions it needs; schema changes run under a separate migration identity
+- Encrypt sensitive columns, and keep `EnableSensitiveDataLogging` off outside local development so parameter values never reach the logs
 
 ## Testing
 
 - Follow the database ladder in the `csharp-xunit` skill: Testcontainers → SQLite in-memory → dedicated test database → EF Core InMemory provider (last resort; not relational).
 - Never mock `DbContext` or `DbSet` — test queries against a real provider.
-- Apply migrations in the test fixture (`Database.MigrateAsync()`) so tests exercise the schema production uses.
+- Apply migrations (`Database.MigrateAsync()`) on Testcontainers and the dedicated test database so tests exercise the production schema; on SQLite use `EnsureCreatedAsync()`, because `Scripts/*.sql` and provider-specific migrations do not run there.
 - Test migrations against the production engine before release.
-
-When reviewing EF Core code, identify issues and suggest improvements that follow these practices.

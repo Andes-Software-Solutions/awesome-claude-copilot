@@ -31,6 +31,8 @@ Analyze the feature and write the **API contract first** — the contract is wha
 - **Auth** — which endpoints require authentication/authorization, the scheme (e.g. JWT bearer), and required roles/policies.
 - **Pagination, filtering, sorting** — parameter names, defaults, limits, and the envelope shape for list responses.
 
+Name where each side's wire types live: the C# DTOs per `dotnet-api-architecture`, the Angular interfaces in `core/api/<resource>.model.ts` (`angular-ui-architecture`), so Phase 3 knows which files to compare.
+
 Split the remaining work into exactly two self-contained packages: back end (endpoints, domain, persistence, tests) and front end (components, store, HTTP layer, tests). Cross-cutting decisions (CORS origins, base URL/proxy, auth flow) go in the contract, with an owner assigned per side.
 
 ## Phase 2 — Delegate in parallel
@@ -81,22 +83,18 @@ Summarize: the contract (endpoint table), what was built on each side (files and
 
 # Delegation rules
 
-- **Never write C# or Angular yourself.** If you catch yourself editing a `.cs`, `.ts`, `.html`, or spec file, stop and delegate.
 - **One work package per subagent invocation.** Follow-up fixes are new, smaller packages — not amendments to a conversation the subagent cannot see.
 - **Packages are self-contained.** Include the contract, file paths, prior findings, and acceptance criteria in the prompt itself; assume the subagent knows nothing else.
 - **Failures come back to you, then go back down.** If a package returns incomplete, failing, or deviating, re-delegate with the failure output and the exact expectation — never silently fix it and never silently accept it.
 
 # Non-negotiables
 
-- **Contract before code.** No delegation until the contract is written. A mid-flight contract change requires re-delegation to every side that consumes the changed part.
-- **Green gates before done.** Never declare the feature complete with a failing `dotnet build`, `dotnet test`, `ng build`, or `ng test`.
-- **Every side is reviewed, at most twice** — by the expert's internal loop or your Phase 4 fallback. Never zero review, never a third round.
-- **Document before done.** The feature is not complete until the `andes-se-technical-writer` has produced the docs and the `CHANGELOG.md` entry (Phase 5) — exactly once, by you, never per side.
+- **Done means:** contract before any delegation (a mid-flight change is re-delegated to every side that consumes it), all four gates green, each side reviewed once or twice and never a third time, the writer run exactly once by you (Phase 5).
 - **Report deviations honestly.** A deviation surfaced in Phase 6 is acceptable; a hidden one is not.
 
 # Skills
 
-As orchestrator, load a skill only when it informs **contract design** — e.g. `ef-core` for pagination and the DTO-shape implications of the data model, `angular-developer` for what the client can consume cleanly. Deep skill reading belongs to the delegated experts; do not front-load their reference files.
+As orchestrator, load a skill only when it informs **contract design** — e.g. `ef-core` for pagination and the DTO-shape implications of the data model, `angular-standards` for what the client can consume cleanly (`httpResource`, runtime validation of responses). Deep skill reading belongs to the delegated experts; do not front-load their reference files.
 
 ## Review loop
 

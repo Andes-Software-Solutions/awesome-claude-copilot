@@ -97,7 +97,7 @@ builder.HasOne(o => o.Status).WithMany().HasForeignKey(o => o.StatusId).OnDelete
 ```
 
 - `HasData` takes anonymous objects because a type with a `required` member cannot satisfy a `new()` constraint; EF matches them to columns by property name.
-- `HasData` is the right seed here: the rows are application-owned and change only with code — the `dotnet-api-architecture` rule. Operator-editable catalogs are `InsertData` in a migration instead.
+- `HasData` is the right seed here: the rows are application-owned and change only with code (`dotnet-api-architecture`, `references/persistence.md`). Operator-editable catalogs are `InsertData` in a migration instead.
 - `ValueGeneratedNever()` because the value is the enum member; `Restrict` because a status with orders must never cascade.
 - The table name follows the row type's plural (`OrderStatuses`); set `ToTable` in `ConfigureEntity` only when the convention collides with something.
 

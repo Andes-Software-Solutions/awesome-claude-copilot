@@ -49,45 +49,28 @@ export const BooksStore = signalStore(
   withState<BooksState>({ query: '', order: 'asc' }),
   withEntities<Book>(),                         // ids + entityMap + computed entities
   withRequestStatus(),                          // reusable feature: pending / fulfilled / error
-  withComputed(({ entities, order }) => ({
-    sortedBooks: () => {                        // plain fn — withComputed wraps it in computed()
-      const dir = order() === 'asc' ? 1 : -1;
-      return entities().toSorted((a, b) => dir * a.title.localeCompare(b.title));
-    },
-  })),
   withMethods((store, books = inject(BooksData)) => ({
-    loadByQuery: rxMethod<string>(
-      pipe(
-        debounceTime(300),
-        distinctUntilChanged(),
-        tap(() => patchState(store, setPending())),
-        switchMap((query) =>                    // switchMap: a newer query cancels the older one
-          books.search(query).pipe(
-            tapResponse({                       // keeps the rxMethod alive if the request errors
-              next: (found) => patchState(store, setAllEntities(found), setFulfilled()),
-              error: (e: Error) => patchState(store, setError(e.message)),
-            }),
-          ),
-        ),
-      ),
-    ),
+    loadByQuery: rxMethod<string>(pipe(
+      debounceTime(300),
+      tap(() => patchState(store, setPending())),
+      switchMap((query) => books.search(query).pipe(   // a newer query cancels the older one
+        tapResponse({                                  // keeps the rxMethod alive on error
+          next: (found) => patchState(store, setAllEntities(found), setFulfilled()),
+          error: (e: Error) => patchState(store, setError(e.message)),
+        }),
+      )),
+    )),
   })),
-  withHooks({
-    onInit(store) {
-      store.loadByQuery(store.query);           // pass the signal itself: reloads whenever it changes
-    },
-  }),
+  withHooks({ onInit: (store) => store.loadByQuery(store.query) }), // the signal, not query(): reloads on change
 );
 ```
 
-Passing `store.query` (the signal, not `store.query()`) into an `rxMethod` is the idiom that makes the load declarative — it re-runs on every change, with no manual subscription.
-
-Full runnable versions of this and other shapes are in `references/recipes.md`.
+Full runnable versions of this and other shapes, with computed and sorting, are in `references/recipes.md`.
 
 ## Traps
 
-- **`withDevtools` is not part of NgRx.** It comes from the third-party `@angular-architects/ngrx-toolkit`. It is a common hallucination — do not present it as official, and add the dependency if a project actually wants it.
-- **Calling `rxMethod` / `signalMethod` with a signal outside an injection context, without an explicit `injector`, is deprecated and will throw in a future version.** It bites when a root-provided store's method is called from a component's `ngOnInit`. Pass `{ injector: this.injector }`.
+- **`withDevtools` is not part of NgRx** — it comes from the third-party `@angular-architects/ngrx-toolkit`; never present it as official.
+- **Calling `rxMethod` / `signalMethod` with a signal outside an injection context without `{ injector }` is deprecated** (it bites from a component's `ngOnInit`); pass `{ injector: this.injector }`.
 - **State must be a record, not an array.** `withState([])` and `signalState([])` are invalid; NgRx ships ESLint rules for exactly this.
 - **`withComputed` auto-wraps plain functions** in `computed()`. Both `() => …` and `computed(() => …)` work; don't double-wrap.
 - **`watchState` is synchronous, `getState` inside an `effect` is coalesced.** Undo/redo and storage sync need to see every intermediate value, so they need `watchState` — an effect would only show the last value of the tick.
@@ -111,6 +94,6 @@ Read these on demand — they are not loaded until you need them.
 
 ## Beyond NgRx
 
-For Angular questions that are not about state — components, zoneless, routing, the CLI — use the `angular-developer` skill and the `angular-cli` MCP server (`list_projects` → `get_best_practices` → `search_documentation`) rather than relying on memory.
+For Angular questions that are not about state, use `angular-standards`.
 
-NgRx's own ESLint rules (`prefer-protected-state`, `enforce-type-call`, `signal-state-no-arrays-at-root-level`, `with-state-no-arrays-at-root-level`, `signal-store-feature-should-use-generic-type`) are the machine-checkable form of the defaults above; recommend them when a project is adopting the library seriously.
+NgRx's own ESLint rules (`prefer-protected-state`, `enforce-type-call`, `signal-state-no-arrays-at-root-level`, `with-state-no-arrays-at-root-level`, `signal-store-feature-should-use-generic-type`) are the machine-checkable form of the defaults above. Enable them from `@ngrx/eslint-plugin` in a flat-config block with `files: ['**/*.ts']` that extends `...ngrx.configs.signals` and `...ngrx.configs.signalsTypeChecked`; the type-checked rules (split out in v21) need `languageOptions.parserOptions.projectService: true`.

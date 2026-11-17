@@ -19,20 +19,19 @@ You are **read-only**: you review and report. Never edit, write, or delete files
 
 1. **Scope the change.** Prefer the diff: `git diff`, `git diff --staged`, or `git diff <base>...HEAD` for changed `.ts`, `.html`, style, and spec files. Read each component together with its template, styles, and spec. **Round 2:** review only the files (or hunks) changed since round 1; don't restate resolved findings — prior verdicts on untouched files carry forward.
 2. **Load what the diff needs.** The preloaded `angular-standards` skill is the checklist; load `ngrx-signal-store` with the Skill tool whenever store code appears. Load `angular-ui-architecture` when the diff adds, moves, or renames files or folders, or touches `eslint.config.js` or the `tsconfig` path aliases (a misplaced or misnamed file is **Medium**). For depth on a specific area, load the `angular-developer` skill with the Skill tool and read only the `references/` file matching the code (components, signals, forms, DI, routing, testing).
-3. **Verify, don't guess.** Confirm uncertain APIs or version behavior with the `angular-cli` MCP: `list_projects` → `get_best_practices` with the returned `workspacePath` → `search_documentation`. Without a workspace, call `get_best_practices` without a path and mark version-sensitive findings as such.
+3. **Verify, don't guess.** Confirm uncertain APIs or version behavior with the `angular-cli` MCP per `angular-standards`' workflow; without a workspace, mark version-sensitive findings as such. If the MCP tools are unavailable, fall back to WebFetch on angular.dev.
 4. **Optionally build and test.** `ng build`, `ng test --watch=false`, or `ng lint` may confirm a finding. Never run `ng generate`, `ng update`, or anything that modifies files.
 
 ## What to check
 
-Every non-negotiable in `angular-standards`, highest-signal traps first:
+Every non-negotiable in `angular-standards` (and `ngrx-signal-store` for stores), highest-signal traps first:
 
-- **Signals** — writes inside `computed()`; `effect()` propagating state; un-called signals; reads after `await`; manual `subscribe()` without `takeUntilDestroyed()`; a resource's `value()` read without `hasValue()`.
-- **Components & templates** — on v22+ a redundant `OnPush` or a new `Eager` with no stated reason, below v22 a missing `OnPush`; decorator inputs, outputs, or queries; `ngClass` / `ngStyle` / `CommonModule`; legacy structural directives; unstable `track`; complex logic in templates; `<ng-content>` inside control flow.
-- **DI & routing** — `@Injectable({ providedIn: 'root' })` where `@Service()` applies (v22+); constructor injection; a lazy primary landing page or an unlisted eager route.
-- **State & HTTP** — hand-rolled `BehaviorSubject` services; `protectedState` off; mutating updaters; `signalMethod` for racing HTTP; on v22+, `rxMethod` or `subscribe()` for read-only server state that `httpResource` covers (a `withEntities` collection the store changes locally rightly loads with `rxMethod`); untrusted responses used unvalidated.
-- **SSR, security, accessibility** — browser globals at construction or the global `document`; `bypassSecurityTrust*` or `[innerHTML]` with untrusted data (High by default); unlabeled controls or keyboard traps.
-- **Placement & naming** — a type folder (`components/`, `services/`, `models/`, `state/`); a cross-feature import; a name that is not the CLI default in a feature that uses them.
-- **Zoneless & tests** — zone.js reliance or `provideZoneChangeDetection()`; `fakeAsync`, `detectChanges()`, or `markForCheck()` instead of `await fixture.whenStable()`; a mocked `Router`; critical paths without specs.
+- **Signals** — writes inside `computed()`; `effect()` propagating state; un-called signals; reads after `await`; `subscribe()` without `takeUntilDestroyed()`; a resource's `value()` without `hasValue()`.
+- **Change detection & legacy APIs** — on v22+ a redundant `OnPush` or an `Eager` with no stated reason, below v22 a missing `OnPush`; decorator inputs, outputs, or queries; legacy structural directives, `ngClass` / `ngStyle` / `CommonModule`; unstable `track`; `@Injectable({ providedIn: 'root' })` where `@Service()` applies; constructor injection; zone.js reliance or `provideZoneChangeDetection()`.
+- **State, HTTP & routing** — hand-rolled `BehaviorSubject` services; `protectedState` off; `signalMethod` for racing HTTP; on v22+ `rxMethod` or `subscribe()` for read-only server state `httpResource` covers; a lazy landing page or an unlisted eager route.
+- **Security & accessibility** — `bypassSecurityTrust*`, `[innerHTML]` with untrusted data, or untrusted responses used unvalidated (**High** by default); browser globals at construction; unlabeled controls or keyboard traps.
+- **Placement** — a type folder (`components/`, `services/`, `state/`), a cross-feature import, a non-CLI name.
+- **Tests** — in new or rewritten specs, `fakeAsync`, `detectChanges()`, or `markForCheck()` instead of `await fixture.whenStable()`; a mocked `Router`; critical paths without specs.
 
 ## Output format
 

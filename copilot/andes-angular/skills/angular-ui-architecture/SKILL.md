@@ -7,6 +7,8 @@ description: "Use when adding, moving, or naming files in an Angular src/app wor
 
 Where a file goes and what it is called, following the angular.dev style guide: organize by feature area, never by type of code, and name files the way `ng generate` does. Dependencies run one way and ESLint enforces it. This skill fixes folder, name, and scope; component authoring is `angular-standards`, store authoring is `ngrx-signal-store`. Examples use a placeholder feature named `chat`.
 
+`angular-developer`'s `references/naming-conventions.md` shows `components/` and `pipes/` folders, suffix-less pipes, and a `.component.ts` fallback; the style guide and the CLI's defaults outrank it, so follow this skill.
+
 ```text
 src/app/
 ├── core/<topic>/          app-wide singletons by topic: auth/, api/, config/, errors/, events/,
@@ -81,21 +83,15 @@ features/<feature> → core → shared
 
 ## Routes, chunks, and store scope
 
-- **`app.routes.ts` is the only eager route table.** The primary landing page is its one eager component; every other feature is reached through `loadComponent` or `loadChildren`. Guards and matchers come from `core/`; query params arrive as `input()` through `withComponentInputBinding()`. Other eager exceptions (a sign-in callback, the failure pages) are listed in the table, never implied.
+- **`app.routes.ts` is the only eager route table** (lazy-loading rules: `angular-standards`). Guards and matchers come from `core/`. Eager exceptions beyond the landing page (a sign-in callback, the failure pages) are listed in the table, never implied.
 - **The initial graph is what `main.ts`, `app.*`, `core/**`, and the landing feature statically import.** Nothing under another feature may be imported from there. An optional initial-chunk gate (`references/enforcement.md`) fails the build when it happens.
 - **A route's `providers:` lists the stores and `provide*()` calls reached only from its chunk.** State that belongs to one feature is provided on that feature's route, not at the root, so its lifetime ends with the feature; a root-provided class only a lazy feature imports still lands in that feature's chunk, but its state outlives the screen.
-- **One store per entity type.** Root stores in `core/<topic>/`; feature stores in their feature; a store's lifetime is decided by `providedIn` or `providers:`, never by its folder. Compose the shared `with-*` features, and a reset feature that snapshots state at construction **last**, so no state-contributing feature after it survives the reset.
+- **A store's lifetime is decided by `providedIn` or `providers:`, never by its folder.** Compose the shared `with-*` features, and a reset feature that snapshots state at construction **last**, so no state-contributing feature after it survives the reset.
 - **Cross-store coordination goes through `core/events/`.** A component never subscribes to `Events`; the store does, in `withEventHandlers`.
 
 ## Styling and layout
 
-- **Design system first.** Reach for the design system's components and utilities before writing CSS: its grid and flex utilities for layout, its spacing and typography scales, its cards, lists, alerts, badges, placeholders, spinners, and tables. Interactive widgets come from the design system's Angular integration as standalone directives and services, never from a global JavaScript bundle; where it has none, use Angular Aria (`angular-standards`).
-- **Custom CSS is the exception.** A component stylesheet holds only what utilities cannot express, reads the theme's CSS custom properties rather than hex values, and stays inside the `anyComponentStyle` budget. Global styles are partials, `src/styles/_<topic>.scss`, pulled in with `@use`. CSS only a lazy feature needs ships as a non-injected style bundle (`inject: false` plus a `bundleName` in `angular.json`) that the feature loads, because every global stylesheet counts against the initial budget.
-- **Mobile-first.** Lay a screen out for about 360 px, then add breakpoint utilities for wider screens. No fixed pixel widths on layout containers; full-height layouts use `100dvh`; tables and code blocks scroll inside their container instead of widening the page; interactive targets meet WCAG 2.2's 24×24 px minimum. A panel that is a sidebar on large screens becomes an off-canvas drawer on small ones rather than a second layout. Check every screen at 360, 768, and 1280 px in every theme.
-- **The palette only through theme tokens.** Colours come from the theme the global stylesheet configures; a new colour joins that palette block and is never inlined in a component or template. Every text and background pair meets WCAG AA in every theme, and a component that bakes in the primary colour gets its dark-theme override when the app first uses it.
-- **Third-party design systems are themed, not adopted.** A library that ships its own look is restyled in one global partial that maps its CSS custom properties onto the theme's tokens and follows the theme switch. Its utility classes never appear in our templates, and our markup rendered inside it carries an isolating wrapper class the same partial defines.
-- Icons are inline icon-font or SVG elements with `aria-hidden="true"` beside visible or visually-hidden text.
-- Bootstrap 5.3 + ng-bootstrap specifics: `references/bootstrap.md`.
+Design system first, mobile first: the design system’s components and utilities before custom CSS, colours only through theme tokens, layouts built from about 360 px up. Read `references/styling.md` before writing styles or theming a third-party kit; Bootstrap 5.3 + ng-bootstrap specifics are in `references/bootstrap.md`.
 
 ## References
 
@@ -104,4 +100,5 @@ Read these on demand — they are not loaded until you need them.
 | Read this | When |
 | --- | --- |
 | `references/enforcement.md` | Adding or changing the ESLint layer bans, a top-level folder, a feature, or a path alias; a "Crosses a layer boundary" lint error; setting up an initial-chunk gate |
+| `references/styling.md` | Writing component or global styles, laying out a screen, adding a colour, theming a third-party design system |
 | `references/bootstrap.md` | The workspace uses Bootstrap 5.3 / ng-bootstrap and you are writing styles, theming, restyling a third-party kit, or choosing a widget |

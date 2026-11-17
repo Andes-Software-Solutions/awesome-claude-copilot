@@ -1,47 +1,32 @@
 ---
 name: csharp-async
-description: "Use when writing or reviewing asynchronous C# code: async/await, Task vs ValueTask, CancellationToken flow, ConfigureAwait, exception handling, and avoiding sync-over-async deadlocks."
+description: "Use when writing or reviewing asynchronous C# code: async/await, Task vs ValueTask, CancellationToken flow, ConfigureAwait, timeouts, bounded concurrency, IAsyncEnumerable, exception handling, background work, and avoiding sync-over-async deadlocks."
 ---
 
-# C# Async Programming Best Practices
+# C# async
 
-## Naming Conventions
+## Signatures
 
-- Use the 'Async' suffix for all async methods
-- Match method names with their synchronous counterparts when applicable (e.g., `GetDataAsync()` for `GetData()`)
+- `Async` suffix; match the synchronous name when one exists (`GetData` → `GetDataAsync`).
+- Return `Task<T>` / `Task`. Use `ValueTask<T>` only on hot paths that usually complete synchronously, and await a `ValueTask` exactly once — never store it, await it twice, or call `.Result` on it.
+- Accept a `CancellationToken` as the last parameter of every async method that does I/O or long work, and pass it to every async call it makes. On `IAsyncEnumerable<T>` iterators, mark it `[EnumeratorCancellation]`.
+- No `async void` outside event handlers.
 
-## Return Types
+## Blocking and context
 
-- Return `Task<T>` when the method returns a value
-- Return `Task` when the method doesn't return a value
-- Consider `ValueTask<T>` for high-performance scenarios to reduce allocations
-- Avoid returning `void` for async methods except for event handlers
+- Async end to end: never `.Result`, `.Wait()`, or `.GetAwaiter().GetResult()`, and never mix blocking and async calls on one path.
+- `ConfigureAwait(false)` belongs in library code only. ASP.NET Core and worker apps have no synchronization context, so app code omits it.
+- Always await a returned task. Return the task directly (no `async`/`await`) only from one-line pass-throughs with no `using`, `try`, or other code after the call.
 
-## Exception Handling
+## Exceptions
 
-- Use try/catch blocks around await expressions
-- Avoid swallowing exceptions in async methods
-- Use `ConfigureAwait(false)` when appropriate to prevent deadlocks in library code
-- In non-`async` Task-returning methods, return `Task.FromException(...)` rather than throwing synchronously; inside `async` methods, just throw
+- Usage errors (null or invalid arguments) throw synchronously, before the first `await`. Operational errors surface through the returned task: inside `async` methods just throw; non-`async` `Task`-returning methods return `Task.FromException(...)`.
+- Catch only to translate an exception or add context, then rethrow. Never catch to build a response — the API's exception handler does that (`aspnet-rest-apis`). No swallowed exceptions.
 
-## Performance
+## Concurrency and time
 
-- Use `Task.WhenAll()` for parallel execution of multiple tasks
-- Use `Task.WhenAny()` for implementing timeouts or taking the first completed task
-- Avoid unnecessary async/await when simply passing through task results
-- Consider cancellation tokens for long-running operations
-
-## Common Pitfalls
-
-- Never use `.Wait()`, `.Result`, or `.GetAwaiter().GetResult()` in async code
-- Avoid mixing blocking and async code
-- Don't create async void methods (except for event handlers)
-- Always await Task-returning methods
-
-## Implementation Patterns
-
-- Implement the async command pattern for long-running operations
-- Use async streams (IAsyncEnumerable<T>) for processing sequences asynchronously
-- Consider the task-based asynchronous pattern (TAP) for public APIs
-
-When reviewing C# code, identify these issues and suggest improvements that follow these best practices.
+- Run independent operations together with `Task.WhenAll`.
+- Time out with `await task.WaitAsync(timeout, cancellationToken)` or a linked `CancellationTokenSource` with `CancelAfter`, not `Task.WhenAny` against `Task.Delay`.
+- Bound concurrency over a collection with `Parallel.ForEachAsync` (`MaxDegreeOfParallelism`), or a `Channel<T>` for producer/consumer work — never an unbounded `Select(...).WhenAll` over a large input.
+- Stream sequences with `IAsyncEnumerable<T>` and `await foreach`.
+- No fire-and-forget (`_ = DoAsync()`, unawaited `Task.Run`): run background work in a `BackgroundService`, fed by a `Channel<T>` when requests enqueue it.
