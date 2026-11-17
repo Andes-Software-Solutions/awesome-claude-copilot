@@ -57,7 +57,6 @@ Install each stack plugin you need. Its dependencies install with it, so `andes-
 2. **`CLAUDE.md` and `.github/copilot-instructions.md`.** Adds an `@AGENTS.md` import to each, or creates the file with just that line, so project-specific text lives only in `AGENTS.md`. The import matters: a `CLAUDE.local.md` silently turns off Claude Code's native `AGENTS.md` loading, and the import still works when one exists. Copilot CLI resolves the same import and drops duplicate copies. If `.github/copilot-instructions.md` already holds other text, `andes-init` offers to move it into `AGENTS.md`.
 3. **Opt-in settings**, offered one at a time, each shown as a diff first:
    - the `andes` marketplace and `enabledPlugins` for a team rollout
-   - a `permissions.deny` for the Angular CLI `ai_tutor` tool
    - `"effortLevel": "xhigh"`
    - a `docs/plans/` line in `.gitignore`, and a `docs/generated/` line when `andes-documents` is installed in Copilot
 4. **Cleanup.** Offers to delete old drop-in copies, including the cloud-agent link check (`.github/hooks/andes-links.json`, `.github/hooks/andes/check-links.mjs`) that earlier versions installed.
@@ -236,7 +235,7 @@ Tool scoping:
   - Claude tool names look like `mcp__plugin_andes-angular_angular-cli__get_best_practices`.
   - Copilot tool names look like `angular-cli/get_best_practices`.
 - **Unknown names are ignored.** So the `angular-cli` tools granted to `andes-planner-expert` are harmless when `andes-angular` is not installed.
-- **`ai_tutor`.** The Angular CLI server has no flag to remove its `ai_tutor` tool. No agent is granted it, and `andes-init` offers a `permissions.deny` for Claude's main session.
+- **`ai_tutor`.** The Angular CLI server has no flag to remove its `ai_tutor` tool. Agents grant exact tools, so none sees it, and the audit fails on any `ai_tutor` grant.
 - **Node version.** Angular CLI 22.2 requires Node ≥ 22.22.3.
 - **No delete.** The Azure DevOps server has no delete tool. `andes-ado-backlog-manager` sets `System.State` to `Removed`, which hides the item from every backlog and board; the Basic process has no such state.
 

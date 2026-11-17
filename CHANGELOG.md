@@ -11,6 +11,14 @@ moves `[Unreleased]` under a version heading, tags, and publishes the GitHub Rel
 
 ## [Unreleased]
 
+### Removed
+
+- **`andes-init` no longer offers a `permissions.deny` for the Angular CLI `ai_tutor` tool** (all plugins 1.16.1). Every agent grants exact `angular-cli` tools, so none of them can see `ai_tutor`. The audit still fails on any `ai_tutor` grant (`agents/forbidden-tool`). If you accepted the old offer, the rule in `.claude/settings.json` still works and can stay.
+
+### Changed
+
+- **The Copilot `andes-planner-expert` can be invoked by the model** (all plugins 1.16.1). It no longer sets `disable-model-invocation: true`, so Copilot can select it from a request. It still invokes `andes-prd-generator` as before.
+
 ## [1.16.0] - 2026-10-23
 
 ### Removed

@@ -42,7 +42,6 @@ Plugins cannot ship settings, so offer these **one at a time**, show the exact d
 1. `.claude/settings.json` — team rollout for Claude Code:
    - `extraKnownMarketplaces.andes`: `{ "source": { "source": "github", "repo": "Andes-Software-Solutions/awesome-claude-copilot" } }`
    - `enabledPlugins`: `"<plugin>@andes": true` for each detected plugin
-   - when `andes-angular` is enabled: `permissions.deny` gains `"mcp__plugin_andes-angular_angular-cli__ai_tutor"` (the Angular CLI server has no flag to drop its tutor tool; a bare-name deny removes it from context)
 2. `.claude/settings.json` — `"effortLevel": "xhigh"` (the Andes default; costs more per turn — ask separately).
 3. `.gitignore` — a `docs/plans/` line, so the planner's working plans are never committed, and, when `andes-documents` is installed in Copilot, a `docs/generated/` line for the Office and PDF files its skills write and their tooling (`docs/generated/.work/`). Skip a line when the root `.gitignore` already ignores that folder; create the file when it is missing.
 
