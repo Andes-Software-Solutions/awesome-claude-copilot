@@ -52,6 +52,7 @@ export const BooksStore = signalStore(
   withMethods((store, books = inject(BooksData)) => ({
     loadByQuery: rxMethod<string>(pipe(
       debounceTime(300),
+      distinctUntilChanged(),                   // skip a repeated query
       tap(() => patchState(store, setPending())),
       switchMap((query) => books.search(query).pipe(   // a newer query cancels the older one
         tapResponse({                                  // keeps the rxMethod alive on error
